@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Profile - RD1 PXE{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-lg border-0 rounded-lg mt-5">
+                <div class="card-header">
+                    <h3 class="text-center font-weight-light my-4">
+                        <i class="fas fa-user-circle text-primary me-2"></i>User Profile
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-user me-2"></i>Username
+                                </label>
+                                <p class="form-control-plaintext">{{ user.username }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-envelope me-2"></i>Email Address
+                                </label>
+                                <p class="form-control-plaintext">{{ user.email|default:"Not provided" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-id-card me-2"></i>First Name
+                                </label>
+                                <p class="form-control-plaintext">{{ user.first_name|default:"Not provided" }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-id-card me-2"></i>Last Name
+                                </label>
+                                <p class="form-control-plaintext">{{ user.last_name|default:"Not provided" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-calendar-alt me-2"></i>Date Joined
+                                </label>
+                                <p class="form-control-plaintext">{{ user.date_joined|date:"F j, Y" }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-clock me-2"></i>Last Login
+                                </label>
+                                <p class="form-control-plaintext">
+                                    {% if user.last_login %}
+                                        {{ user.last_login|date:"F j, Y g:i A" }}
+                                    {% else %}
+                                        Never
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card shadow-lg border-0 rounded-lg mt-5">
+                <div class="card-header">
+                    <h5 class="text-center font-weight-light my-2">
+                        <i class="fas fa-cogs text-primary me-2"></i>Account Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-3">
+                        <a href="{% url 'auth:change_password' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-key me-2"></i>Change Password
+                        </a>
+                        
+                        <a href="{% url 'index' %}" class="btn btn-outline-success">
+                            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                        </a>
+                        
+                        <a href="{% url 'auth:logout' %}" class="btn btn-outline-danger" onclick="return confirm('Are you sure you want to logout?')">
+                            <i class="fas fa-sign-out-alt me-2"></i>Logout
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Account Security Info -->
+            <div class="card shadow-lg border-0 rounded-lg mt-4">
+                <div class="card-header">
+                    <h6 class="text-center font-weight-light my-2">
+                        <i class="fas fa-shield-alt text-success me-2"></i>Security Status
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center">
+                        <div class="mb-2">
+                            <i class="fas fa-check-circle text-success fa-2x"></i>
+                        </div>
+                        <p class="text-muted mb-0">Your account is secure</p>
+                        <small class="text-muted">
+                            Last password change: 
+                            {% if user.password %}
+                                Recently
+                            {% else %}
+                                Never
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

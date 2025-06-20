@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% block title %}Remote Control{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">Remote Control</h1>
+            <p class="mb-0 text-muted">Launch KVM or SOL console by specifying BMC credentials</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-mouse-pointer me-2"></i>Remote Console Access
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form id="remoteControlForm">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="bmc_ip" class="form-label fw-bold"><i class="fas fa-network-wired me-2 text-primary"></i>BMC IP Address</label>
+                            <input type="text" class="form-control" id="bmc_ip" placeholder="e.g. 192.168.1.150" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="username" class="form-label fw-bold"><i class="fas fa-user me-2 text-success"></i>Username</label>
+                            <select class="form-select" id="username">
+                                <option value="ADMIN">ADMIN</option>
+                                <option value="root">root</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label for="password" class="form-label fw-bold"><i class="fas fa-key me-2 text-warning"></i>Password</label>
+                            <input type="text" class="form-control" id="password" placeholder="BMC password" required>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="button" id="kvmBtn" class="btn btn-outline-success me-md-2">
+                                <i class="fas fa-desktop me-1"></i>KVM
+                            </button>
+                            <button type="button" id="solBtn" class="btn btn-outline-warning">
+                                <i class="fas fa-terminal me-1"></i>SOL
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const kvmBtn = document.getElementById('kvmBtn');
+        const solBtn = document.getElementById('solBtn');
+
+        function getPayload() {
+            return {
+                bmc_ip: document.getElementById('bmc_ip').value.trim(),
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value
+            };
+        }
+
+        function validate(payload) {
+            return payload.bmc_ip && payload.password;
+        }
+
+        function handleError(btn, message) {
+            alert(message);
+            btn.disabled = false;
+            btn.innerHTML = btn.dataset.original;
+            btn.classList.remove('btn-danger');
+            btn.classList.add(btn.dataset.originalClass);
+        }
+
+        // Save original labels
+        kvmBtn.dataset.original = kvmBtn.innerHTML;
+        kvmBtn.dataset.originalClass = 'btn-outline-success';
+        solBtn.dataset.original = solBtn.innerHTML;
+        solBtn.dataset.originalClass = 'btn-outline-warning';
+
+        kvmBtn.addEventListener('click', function() {
+            const payload = getPayload();
+            if (!validate(payload)) {
+                alert('Please fill out all fields.');
+                return;
+            }
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Connecting...';
+
+            fetch('{% url "remote_kvm" %}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    window.open(data.kvm_url, '_blank');
+                    btn.innerHTML = '<i class="fas fa-check me-1"></i>KVM Opened';
+                    btn.classList.remove('btn-outline-success');
+                    btn.classList.add('btn-success');
+                } else {
+                    handleError(btn, data.error || 'Failed to retrieve KVM URL');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                handleError(btn, 'Unexpected error occurred');
+            })
+            .finally(() => {
+                setTimeout(() => {
+                    btn.innerHTML = btn.dataset.original;
+                    btn.className = 'btn ' + btn.dataset.originalClass;
+                    btn.disabled = false;
+                }, 3000);
+            });
+        });
+
+        solBtn.addEventListener('click', function() {
+            const payload = getPayload();
+            if (!validate(payload)) {
+                alert('Please fill out all fields.');
+                return;
+            }
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Starting...';
+
+            fetch('{% url "remote_start_sol" %}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    window.open(data.sol_terminal_url, '_blank');
+                    btn.innerHTML = '<i class="fas fa-check me-1"></i>SOL Opened';
+                    btn.classList.remove('btn-outline-warning');
+                    btn.classList.add('btn-success');
+                } else {
+                    handleError(btn, data.error || 'Failed to start SOL session');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                handleError(btn, 'Unexpected error occurred');
+            })
+            .finally(() => {
+                setTimeout(() => {
+                    btn.innerHTML = btn.dataset.original;
+                    btn.className = 'btn ' + btn.dataset.originalClass;
+                    btn.disabled = false;
+                }, 3000);
+            });
+        });
+    });
+</script>
+{% endblock %} 

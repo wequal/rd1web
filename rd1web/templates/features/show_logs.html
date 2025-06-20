@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Log Viewer - {{ current_dir }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">Log Viewer</h1>
+            <p class="mb-0 text-muted">Browse and view system log files</p>
+        </div>
+        <div class="d-flex gap-2">
+            {% if current_dir and current_dir != "Root" %}
+                <!-- Check if current directory is a system folder (starts with burnin-, dc-, ac- or is MAC format) -->
+                {% if current_dir|slice:":7:" == "burnin-" or current_dir|slice:":3:" == "dc-" or current_dir|slice:":3:" == "ac-" or current_dir|length == 17 and "-" in current_dir %}
+                    <a href="{% url 'system_details' current_dir %}" class="btn btn-outline-success">
+                        <i class="fas fa-desktop me-1"></i>Back to System Details
+                    </a>
+                {% endif %}
+            {% endif %}
+            <a href="{% url 'system_list' %}" class="btn btn-outline-info">
+                <i class="fas fa-list me-1"></i>System Overview
+            </a>
+            {% if parent %}
+                <a href="{% url 'log' path=parent %}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-up me-2"></i>Back to Parent
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Breadcrumb Card -->
+    <div class="card mb-4">
+        <div class="card-body py-3">
+            <nav aria-label="breadcrumb" class="mb-0">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item">
+                        <a href="{% url 'log_root' %}" class="text-decoration-none">
+                            <i class="fas fa-home me-1"></i>Root
+                        </a>
+                    </li>
+                    {% if not is_root %}
+                        {% for part in breadcrumb_parts %}
+                            <li class="breadcrumb-item">
+                                <a href="{% url 'log' path=part.path %}" class="text-decoration-none">{{ part.name }}</a>
+                            </li>
+                        {% endfor %}
+                    {% endif %}
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Current Directory Info -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Current Directory</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ current_dir }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-folder-open fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Items</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ items|length }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-list fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Directories</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {% for item in items %}{% if item.is_dir %}{% if forloop.first %}1{% else %}{{ forloop.counter }}{% endif %}{% endif %}{% empty %}0{% endfor %}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-folder fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Files</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {% for item in items %}{% if not item.is_dir %}{% if forloop.first %}1{% else %}{{ forloop.counter }}{% endif %}{% endif %}{% empty %}0{% endfor %}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-file fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Listing -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">Directory Contents</h6>
+            <div class="dropdown no-arrow">
+                <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in" aria-labelledby="dropdownMenuLink">
+                    <div class="dropdown-header">View Options:</div>
+                    <a class="dropdown-item" href="#" onclick="toggleView('list')">
+                        <i class="fas fa-list fa-sm fa-fw mr-2 text-gray-400"></i>List View
+                    </a>
+                    <a class="dropdown-item" href="#" onclick="toggleView('grid')">
+                        <i class="fas fa-th fa-sm fa-fw mr-2 text-gray-400"></i>Grid View
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="fileTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="border-0 ps-4">Name</th>
+                            <th class="border-0">Type</th>
+                            <th class="border-0">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                            <tr class="file-row">
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center">
+                                        <div class="file-icon me-3">
+                                            {% if item.is_dir %}
+                                                <div class="icon-wrapper bg-warning bg-opacity-10 p-2 rounded-3">
+                                                    <i class="fas fa-folder text-warning fa-lg"></i>
+                                                </div>
+                                            {% else %}
+                                                <div class="icon-wrapper bg-primary bg-opacity-10 p-2 rounded-3">
+                                                    {% if item.name|slice:"-4:" == ".log" or item.name|slice:"-4:" == ".txt" or "." not in item.name %}
+                                                        <i class="fas fa-file-alt text-primary fa-lg"></i>
+                                                    {% elif item.name|slice:"-5:" == ".json" %}
+                                                        <i class="fas fa-file-code text-success fa-lg"></i>
+                                                    {% elif item.name|slice:"-3:" == ".py" or item.name|slice:"-3:" == ".js" %}
+                                                        <i class="fas fa-file-code text-info fa-lg"></i>
+                                                    {% elif item.name|slice:"-4:" == ".pdf" %}
+                                                        <i class="fas fa-file-pdf text-danger fa-lg"></i>
+                                                    {% elif item.name|slice:"-4:" == ".zip" or item.name|slice:"-4:" == ".tar" or item.name|slice:"-3:" == ".gz" %}
+                                                        <i class="fas fa-file-archive text-secondary fa-lg"></i>
+                                                    {% elif item.name|slice:"-4:" == ".jpg" or item.name|slice:"-4:" == ".png" or item.name|slice:"-4:" == ".gif" %}
+                                                        <i class="fas fa-file-image text-warning fa-lg"></i>
+                                                    {% else %}
+                                                        <i class="fas fa-file text-primary fa-lg"></i>
+                                                    {% endif %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="file-info">
+                                            <div class="file-name fw-bold">{{ item.name }}</div>
+                                            {% if not item.is_dir %}
+                                                <small class="text-muted">
+                                                    {% if "." in item.name %}
+                                                        {{ item.name|slice:"-10:" }} file
+                                                    {% else %}
+                                                        Text file
+                                                    {% endif %}
+                                                </small>
+                                            {% else %}
+                                                <small class="text-muted">Directory</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if item.is_dir %}
+                                        <span class="badge bg-warning text-dark">Directory</span>
+                                    {% else %}
+                                        <span class="badge bg-primary">File</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.is_dir %}
+                                        <a href="{% url 'log' path=item.path %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-folder-open me-1"></i>Open
+                                        </a>
+                                    {% else %}
+                                        <a href="{% url 'view_file' path=item.path %}" class="btn btn-sm btn-outline-success" target="_blank">
+                                            <i class="fas fa-eye me-1"></i>View
+                                        </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center py-5">
+                                    <div class="text-muted">
+                                        <i class="fas fa-folder-open fa-3x mb-3 text-gray-300"></i>
+                                        <h5 class="text-gray-600">Directory is Empty</h5>
+                                        <p class="mb-0">This directory contains no files or subdirectories.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .border-left-primary {
+        border-left: 0.25rem solid #4e73df !important;
+    }
+    
+    .border-left-success {
+        border-left: 0.25rem solid #1cc88a !important;
+    }
+    
+    .border-left-info {
+        border-left: 0.25rem solid #36b9cc !important;
+    }
+    
+    .border-left-warning {
+        border-left: 0.25rem solid #f6c23e !important;
+    }
+    
+    .text-xs {
+        font-size: 0.7rem;
+    }
+    
+    .text-gray-800 {
+        color: #5a5c69 !important;
+    }
+    
+    .text-gray-600 {
+        color: #858796 !important;
+    }
+    
+    .text-gray-300 {
+        color: #dddfeb !important;
+    }
+    
+    .shadow {
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15) !important;
+    }
+    
+    .file-row:hover {
+        background-color: rgba(0,0,0,.02);
+        transform: translateY(-1px);
+        transition: all 0.2s ease;
+    }
+    
+    .icon-wrapper {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .file-name {
+        font-size: 0.95rem;
+        color: #2c3e50;
+    }
+    
+    .breadcrumb-item + .breadcrumb-item::before {
+        content: "›";
+        color: #6c757d;
+    }
+    
+    .card-header {
+        background-color: #f8f9fc;
+        border-bottom: 1px solid #e3e6f0;
+    }
+</style>
+
+<script>
+    function toggleView(viewType) {
+        // Future implementation for grid/list view toggle
+        console.log('Toggle view to:', viewType);
+    }
+</script>
+{% endblock %}

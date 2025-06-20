@@ -1,0 +1,516 @@
+{% extends 'base.html' %}
+{% block title %}PXE Boot Manager{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">PXE Boot Manager</h1>
+            <p class="mb-0 text-muted">Configure network boot settings for target systems</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#helpModal">
+                <i class="fas fa-question-circle me-1"></i>Help
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Form Card -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-server me-2"></i>PXE Configuration
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="pxeForm">
+                        {% csrf_token %}
+                        
+                        <!-- MAC Addresses -->
+                        <div class="mb-4">
+                            <label for="{{ form.mac.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-network-wired me-2 text-primary"></i>MAC Addresses
+                            </label>
+                            <textarea class="form-control" id="{{ form.mac.id_for_label }}" name="{{ form.mac.name }}" 
+                                      rows="4" placeholder="Enter MAC addresses (one per line)&#10;Supported formats:&#10;aa:bb:cc:dd:ee:ff (with colons)&#10;aa-bb-cc-dd-ee-ff (with dashes)&#10;aabbccddeeff (without separators)">{{ form.mac.value|default_if_none:"" }}</textarea>
+                            {% if form.mac.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.mac.errors %}
+                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Enter one MAC address per line. Supports colon, dash, or no separators.
+                            </small>
+                        </div>
+
+                        <!-- Image Selection -->
+                        <div class="mb-4">
+                            <label for="{{ form.image.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-compact-disc me-2 text-success"></i>Boot Image
+                            </label>
+                            {{ form.image }}
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Select the operating system image to boot from.
+                            </small>
+                        </div>
+
+                        <!-- Test Type Selection -->
+                        <div class="mb-4">
+                            <label for="{{ form.test_type.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-cogs me-2 text-warning"></i>Test Type
+                            </label>
+                            {{ form.test_type }}
+                            {% if form.test_type.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.test_type.errors %}
+                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Select the type of test to configure.
+                            </small>
+                        </div>
+
+                        <!-- BurnIn Test Configuration -->
+                        <div id="burnin-config" class="test-config" style="display: none;">
+                            <div class="card border-left-warning mb-4">
+                                <div class="card-header">
+                                    <h6 class="m-0 font-weight-bold text-warning">
+                                        <i class="fas fa-fire me-2"></i>BurnIn Test Configuration
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Select BurnIn Tests:</label>
+                                        <div class="row">
+                                            {% for choice in form.burnin_tests.field.choices %}
+                                            <div class="col-md-6 mb-2">
+                                                <div class="form-check">
+                                                    <input class="form-check-input burnin-test-checkbox" type="checkbox" 
+                                                           name="burnin_tests" value="{{ choice.0 }}" 
+                                                           id="id_burnin_tests_{{ forloop.counter0 }}">
+                                                    <label class="form-check-label" for="id_burnin_tests_{{ forloop.counter0 }}">
+                                                        {{ choice.1 }}
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        {% if form.burnin_tests.errors %}
+                                            <div class="text-danger mt-1">
+                                                {% for error in form.burnin_tests.errors %}
+                                                    <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <!-- Duration fields -->
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3 duration-field" id="sat" style="display: none;">
+                                            <label for="{{ form.sat.id_for_label }}" class="form-label">{{ form.sat.label }}</label>
+                                            {{ form.sat }}
+                                            {% if form.sat.errors %}
+                                                <div class="text-danger mt-1">
+                                                    {% for error in form.sat.errors %}
+                                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-6 mb-3 duration-field" id="iperf" style="display: none;">
+                                            <label for="{{ form.iperf.id_for_label }}" class="form-label">{{ form.iperf.label }}</label>
+                                            {{ form.iperf }}
+                                            {% if form.iperf.errors %}
+                                                <div class="text-danger mt-1">
+                                                    {% for error in form.iperf.errors %}
+                                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-6 mb-3 duration-field" id="stress" style="display: none;">
+                                            <label for="{{ form.stress.id_for_label }}" class="form-label">{{ form.stress.label }}</label>
+                                            {{ form.stress }}
+                                            {% if form.stress.errors %}
+                                                <div class="text-danger mt-1">
+                                                    {% for error in form.stress.errors %}
+                                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-6 mb-3 duration-field" id="fio" style="display: none;">
+                                            <label for="{{ form.fio.id_for_label }}" class="form-label">{{ form.fio.label }}</label>
+                                            {{ form.fio }}
+                                            {% if form.fio.errors %}
+                                                <div class="text-danger mt-1">
+                                                    {% for error in form.fio.errors %}
+                                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- DC Test Configuration -->
+                        <div id="dc-config" class="test-config" style="display: none;">
+                            <div class="card border-left-info mb-4">
+                                <div class="card-header">
+                                    <h6 class="m-0 font-weight-bold text-info">
+                                        <i class="fas fa-bolt me-2"></i>DC Test Configuration
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.dc_cycle.id_for_label }}" class="form-label">{{ form.dc_cycle.label }}</label>
+                                            {{ form.dc_cycle }}
+                                            {% if form.dc_cycle.errors %}
+                                                <div class="text-danger mt-1">
+                                                    {% for error in form.dc_cycle.errors %}
+                                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.dc_interval.id_for_label }}" class="form-label">{{ form.dc_interval.label }}</label>
+                                            {{ form.dc_interval }}
+                                            {% if form.dc_interval.errors %}
+                                                <div class="text-danger mt-1">
+                                                    {% for error in form.dc_interval.errors %}
+                                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- AC Test Configuration -->
+                        <div id="ac-config" class="test-config" style="display: none;">
+                            <div class="card border-left-danger mb-4">
+                                <div class="card-header">
+                                    <h6 class="m-0 font-weight-bold text-danger">
+                                        <i class="fas fa-plug me-2"></i>AC Test Configuration
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.pdu_ip.id_for_label }}" class="form-label">{{ form.pdu_ip.label }}</label>
+                                            {{ form.pdu_ip }}
+                                            {% if form.pdu_ip.errors %}
+                                                <div class="text-danger mt-1">
+                                                    {% for error in form.pdu_ip.errors %}
+                                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.ports.id_for_label }}" class="form-label">{{ form.ports.label }}</label>
+                                            {{ form.ports }}
+                                            {% if form.ports.errors %}
+                                                <div class="text-danger mt-1">
+                                                    {% for error in form.ports.errors %}
+                                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                            <small class="form-text text-muted">{{ form.ports.help_text }}</small>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.ac_cycle.id_for_label }}" class="form-label">{{ form.ac_cycle.label }}</label>
+                                            {{ form.ac_cycle }}
+                                            {% if form.ac_cycle.errors %}
+                                                <div class="text-danger mt-1">
+                                                    {% for error in form.ac_cycle.errors %}
+                                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.ac_interval.id_for_label }}" class="form-label">{{ form.ac_interval.label }}</label>
+                                            {{ form.ac_interval }}
+                                            {% if form.ac_interval.errors %}
+                                                <div class="text-danger mt-1">
+                                                    {% for error in form.ac_interval.errors %}
+                                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Options -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-tasks me-2 text-info"></i>Actions
+                            </label>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        {{ form.check }}
+                                        <label class="form-check-label" for="{{ form.check.id_for_label }}">
+                                            <i class="fas fa-search me-1"></i>{{ form.check.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        {{ form.remove }}
+                                        <label class="form-check-label" for="{{ form.remove.id_for_label }}">
+                                            <i class="fas fa-trash me-1"></i>{{ form.remove.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="reset" class="btn btn-outline-secondary me-md-2">
+                                <i class="fas fa-undo me-1"></i>Reset
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-1"></i>Execute
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Panel -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">
+                        <i class="fas fa-info-circle me-2"></i>Test Configuration Guide
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6 class="text-warning"><i class="fas fa-fire me-1"></i>BurnIn Tests</h6>
+                        <p class="small text-muted mb-2">Select one or more tests: SAT, IPERF, STRESS, DCGM, FIO. Duration required for SAT, IPERF, STRESS, and FIO.</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="text-info"><i class="fas fa-bolt me-1"></i>DC Test</h6>
+                        <p class="small text-muted mb-2">Specify cycle limit and interval between cycles for DC power testing.</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="text-danger"><i class="fas fa-plug me-1"></i>AC Test</h6>
+                        <p class="small text-muted mb-2">Configure PDU IP, port numbers, cycle limit, and interval for AC power testing.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    {% if result %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-check-circle me-2"></i>Execution Results
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% for k, v in result.items %}
+                        <div class="mb-3">
+                            <h6 class="text-primary text-capitalize">
+                                <i class="fas fa-arrow-right me-1"></i>{{ k }}
+                            </h6>
+                            <div class="bg-light p-3 rounded">
+                                {% if v %}
+                                    {% for item in v %}
+                                        <div class="d-flex align-items-center mb-1">
+                                            <i class="fas fa-check text-success me-2"></i>
+                                            <code class="small">{{ item }}</code>
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="text-muted">No results</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Help Modal -->
+<div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="helpModalLabel">
+                    <i class="fas fa-question-circle me-2"></i>PXE Boot Manager Help
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h6>MAC Address Format</h6>
+                <p>Enter MAC addresses in any of these formats:</p>
+                <ul>
+                    <li><code>aa:bb:cc:dd:ee:ff</code> (colon separated)</li>
+                    <li><code>aa-bb-cc-dd-ee-ff</code> (dash separated)</li>
+                    <li><code>aabbccddeeff</code> (no separators)</li>
+                </ul>
+                
+                <h6>Test Types</h6>
+                <div class="mb-3">
+                    <strong>BurnIn Tests:</strong>
+                    <ul>
+                        <li><strong>SAT</strong> - System Acceptance Test (requires duration)</li>
+                        <li><strong>IPERF</strong> - Network performance test (requires duration)</li>
+                        <li><strong>STRESS</strong> - System stress test (requires duration)</li>
+                        <li><strong>DCGM</strong> - GPU monitoring test</li>
+                        <li><strong>FIO</strong> - I/O performance test (requires duration)</li>
+                    </ul>
+                </div>
+                <div class="mb-3">
+                    <strong>DC Test:</strong>
+                    <p>Tests DC power cycling with specified cycle limit and interval.</p>
+                </div>
+                <div class="mb-3">
+                    <strong>AC Test:</strong>
+                    <p>Tests AC power cycling using PDU, requires IP address, port numbers, cycle limit, and interval.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+    }
+    
+    .form-check-input:checked {
+        background-color: #3b82f6;
+        border-color: #3b82f6;
+    }
+    
+    .text-gray-800 {
+        color: #1e293b !important;
+    }
+    
+    .card-header {
+        background-color: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .shadow {
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+    }
+    
+    .border-left-warning {
+        border-left: 0.25rem solid #f59e0b !important;
+    }
+    
+    .border-left-info {
+        border-left: 0.25rem solid #06b6d4 !important;
+    }
+    
+    .border-left-danger {
+        border-left: 0.25rem solid #dc2626 !important;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Form validation and UX improvements
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('pxeForm');
+        const checkBox = document.getElementById('{{ form.check.id_for_label }}');
+        const removeBox = document.getElementById('{{ form.remove.id_for_label }}');
+        const testTypeSelect = document.getElementById('test_type');
+        
+        // Ensure only one action is selected at a time
+        checkBox.addEventListener('change', function() {
+            if (this.checked) {
+                removeBox.checked = false;
+            }
+        });
+        
+        removeBox.addEventListener('change', function() {
+            if (this.checked) {
+                checkBox.checked = false;
+            }
+        });
+        
+        // Show/hide test configurations based on test type selection
+        function toggleTestConfig() {
+            const selectedTestType = testTypeSelect.value;
+            const testConfigs = document.querySelectorAll('.test-config');
+            
+            // Hide all test configurations
+            testConfigs.forEach(config => {
+                config.style.display = 'none';
+            });
+            
+            // Show selected test configuration
+            if (selectedTestType) {
+                const configElement = document.getElementById(selectedTestType + '-config');
+                if (configElement) {
+                    configElement.style.display = 'block';
+                }
+            }
+        }
+        
+        testTypeSelect.addEventListener('change', toggleTestConfig);
+        
+        // Handle BurnIn test checkboxes to show/hide duration fields
+        const burninCheckboxes = document.querySelectorAll('.burnin-test-checkbox');
+        
+        burninCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const testName = this.value.toLowerCase();
+                const durationField = document.getElementById(testName);
+                
+                if (durationField) {
+                    if (this.checked && testName !== 'dcgm') {
+                        durationField.style.display = 'block';
+                    } else {
+                        durationField.style.display = 'none';
+                    }
+                }
+            });
+        });
+        
+        // Initialize on page load
+        toggleTestConfig();
+    });
+</script>
+{% endblock %}

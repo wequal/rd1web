@@ -1,0 +1,13 @@
+# Django collectstatic output
+rd1web/staticfiles/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# SQLite database (local dev)
+rd1web/db.sqlite3
+
+# VS Code settings
+.vscode/
+.idea/ 

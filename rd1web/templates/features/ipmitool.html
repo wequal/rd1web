@@ -1,0 +1,336 @@
+{% extends 'base.html' %}
+{% block title %}IPMI Tool{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">IPMI Management Tool</h1>
+            <p class="mb-0 text-muted">Execute IPMI commands on remote BMC interfaces</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#commandsModal">
+                <i class="fas fa-list me-1"></i>Common Commands
+            </button>
+            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#helpModal">
+                <i class="fas fa-question-circle me-1"></i>Help
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Form Card -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-terminal me-2"></i>IPMI Command Execution
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="ipmiForm">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <!-- BMC IP Addresses -->
+                            <div class="col-md-6">
+                                <div class="mb-4">
+                                    <label for="{{ form.bmc_ip.id_for_label }}" class="form-label fw-bold">
+                                        <i class="fas fa-network-wired me-2 text-primary"></i>BMC IP Addresses
+                                    </label>
+                                    <textarea class="form-control" id="{{ form.bmc_ip.id_for_label }}" name="{{ form.bmc_ip.name }}" 
+                                              rows="4" placeholder="Enter BMC IP addresses (one per line)&#10;Example:&#10;192.168.1.100&#10;192.168.1.101">{{ form.bmc_ip.value|default_if_none:"" }}</textarea>
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Enter one IP address per line for each BMC interface.
+                                    </small>
+                                </div>
+                            </div>
+
+                            <!-- Passwords -->
+                            <div class="col-md-6">
+                                <div class="mb-4">
+                                    <label for="{{ form.pwd.id_for_label }}" class="form-label fw-bold">
+                                        <i class="fas fa-key me-2 text-warning"></i>Passwords
+                                    </label>
+                                    <textarea class="form-control" id="{{ form.pwd.id_for_label }}" name="{{ form.pwd.name }}" 
+                                              rows="4" placeholder="Enter passwords (one per line)&#10;Must match order of IP addresses">{{ form.pwd.value|default_if_none:"" }}</textarea>
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Enter passwords in the same order as IP addresses.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Username -->
+                        <div class="mb-4">
+                            <label for="{{ form.user.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-user me-2 text-success"></i>Username
+                            </label>
+                            {{ form.user }}
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                BMC username (typically 'ADMIN' or 'root').
+                            </small>
+                        </div>
+
+                        <!-- Command -->
+                        <div class="mb-4">
+                            <label for="{{ form.command.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-code me-2 text-info"></i>IPMI Command
+                            </label>
+                            {{ form.command }}
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Enter the IPMI command to execute (without 'ipmitool' prefix).
+                            </small>
+                        </div>
+
+                        <!-- Quick Command Buttons -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-bolt me-2 text-warning"></i>Quick Commands
+                            </label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="setCommand('power status')">
+                                    <i class="fas fa-power-off me-1"></i>Power Status
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-success" onclick="setCommand('power on')">
+                                    <i class="fas fa-play me-1"></i>Power On
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="setCommand('power off')">
+                                    <i class="fas fa-stop me-1"></i>Power Off
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-warning" onclick="setCommand('power reset')">
+                                    <i class="fas fa-redo me-1"></i>Reset
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-info" onclick="setCommand('sdr')">
+                                    <i class="fas fa-thermometer-half me-1"></i>Sensors
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setCommand('fru print')">
+                                    <i class="fas fa-info me-1"></i>FRU Info
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="reset" class="btn btn-outline-secondary me-md-2">
+                                <i class="fas fa-undo me-1"></i>Reset
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-play me-1"></i>Execute Command
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Panel -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">
+                        <i class="fas fa-info-circle me-2"></i>Usage Guide
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6 class="text-primary"><i class="fas fa-network-wired me-1"></i>BMC Setup</h6>
+                        <p class="small text-muted mb-2">Ensure BMC interfaces are configured and accessible over the network.</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="text-success"><i class="fas fa-shield-alt me-1"></i>Authentication</h6>
+                        <p class="small text-muted mb-2">Use valid BMC credentials. Default usernames are often 'ADMIN' or 'root'.</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i>Safety</h6>
+                        <p class="small text-muted mb-2">Be careful with power commands as they affect system availability.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    {% if result %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-terminal me-2"></i>Command Results
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for ip, output in result.items %}
+                            <div class="col-md-6 mb-3">
+                                <div class="border rounded p-3">
+                                    <h6 class="text-primary mb-2">
+                                        <i class="fas fa-server me-1"></i>{{ ip }}
+                                    </h6>
+                                    <div class="bg-dark text-light p-3 rounded" style="font-family: 'Courier New', monospace; font-size: 0.85rem;">
+                                        <pre class="mb-0" style="white-space: pre-wrap; color: #00ff00;">{{ output|default:"No output" }}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Common Commands Modal -->
+<div class="modal fade" id="commandsModal" tabindex="-1" aria-labelledby="commandsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="commandsModalLabel">
+                    <i class="fas fa-list me-2"></i>Common IPMI Commands
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Power Management</h6>
+                        <ul class="list-unstyled">
+                            <li><code>power status</code> - Check power state</li>
+                            <li><code>power on</code> - Power on system</li>
+                            <li><code>power off</code> - Power off system</li>
+                            <li><code>power reset</code> - Reset system</li>
+                            <li><code>power cycle</code> - Power cycle</li>
+                        </ul>
+                        
+                        <h6>System Information</h6>
+                        <ul class="list-unstyled">
+                            <li><code>fru print</code> - FRU information</li>
+                            <li><code>mc info</code> - BMC information</li>
+                            <li><code>bmc info</code> - BMC details</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Monitoring</h6>
+                        <ul class="list-unstyled">
+                            <li><code>sensor reading</code> - All sensors</li>
+                            <li><code>sensor list</code> - Sensor list</li>
+                            <li><code>sel list</code> - System event log</li>
+                            <li><code>sel clear</code> - Clear event log</li>
+                        </ul>
+                        
+                        <h6>Boot Options</h6>
+                        <ul class="list-unstyled">
+                            <li><code>chassis bootdev pxe</code> - Boot from PXE</li>
+                            <li><code>chassis bootdev disk</code> - Boot from disk</li>
+                            <li><code>chassis bootdev cdrom</code> - Boot from CD</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Help Modal -->
+<div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="helpModalLabel">
+                    <i class="fas fa-question-circle me-2"></i>IPMI Tool Help
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h6>About IPMI</h6>
+                <p>IPMI (Intelligent Platform Management Interface) allows remote management of server hardware including power control, monitoring, and configuration.</p>
+                
+                <h6>Prerequisites</h6>
+                <ul>
+                    <li>BMC must be configured with network settings</li>
+                    <li>Valid username and password for BMC access</li>
+                    <li>Network connectivity to BMC interface</li>
+                </ul>
+                
+                <h6>Security Notes</h6>
+                <ul>
+                    <li>Use strong passwords for BMC accounts</li>
+                    <li>Limit network access to BMC interfaces</li>
+                    <li>Monitor BMC access logs regularly</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+    }
+    
+    .text-gray-800 {
+        color: #1e293b !important;
+    }
+    
+    .card-header {
+        background-color: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .shadow {
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+    }
+    
+    .btn-outline-primary:hover,
+    .btn-outline-success:hover,
+    .btn-outline-danger:hover,
+    .btn-outline-warning:hover,
+    .btn-outline-info:hover,
+    .btn-outline-secondary:hover {
+        transform: translateY(-1px);
+        transition: all 0.2s ease;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function setCommand(command) {
+        document.getElementById('{{ form.command.id_for_label }}').value = command;
+    }
+    
+    // Form validation and UX improvements
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('ipmiForm');
+        const bmcIpField = document.getElementById('{{ form.bmc_ip.id_for_label }}');
+        const pwdField = document.getElementById('{{ form.pwd.id_for_label }}');
+        
+        // Validate IP and password count match
+        form.addEventListener('submit', function(e) {
+            const ips = bmcIpField.value.split('\n').filter(ip => ip.trim() !== '');
+            const passwords = pwdField.value.split('\n').filter(pwd => pwd.trim() !== '');
+            
+            if (ips.length !== passwords.length) {
+                e.preventDefault();
+                alert('Number of IP addresses must match number of passwords!');
+                return false;
+            }
+        });
+    });
+</script>
+{% endblock %}

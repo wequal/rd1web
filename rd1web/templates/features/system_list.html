@@ -1,0 +1,898 @@
+{% extends 'base.html' %}
+{% block title %}System Overview{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">System Overview</h1>
+            <p class="mb-0 text-muted">Monitor and manage all connected systems categorized by test type</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-primary" onclick="location.reload()">
+                <i class="fas fa-sync me-1"></i>Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                BurnIn Tests
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ systems.burnin|length }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-fire fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                DC Tests
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ systems.dc|length }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-bolt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                AC Tests
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ systems.ac|length }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-plug fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-left-secondary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
+                                Other Systems
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ systems.other|length }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-server fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabbed System Lists -->
+    <div class="card shadow">
+        <div class="card-header py-3">
+            <ul class="nav nav-pills card-header-pills" id="systemTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="burnin-tab" data-bs-toggle="pill" data-bs-target="#burninTab" type="button" role="tab">
+                        <i class="fas fa-fire me-1"></i>BurnIn Tests ({{ systems.burnin|length }})
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="dc-tab" data-bs-toggle="pill" data-bs-target="#dcTab" type="button" role="tab">
+                        <i class="fas fa-bolt me-1"></i>DC Tests ({{ systems.dc|length }})
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="ac-tab" data-bs-toggle="pill" data-bs-target="#acTab" type="button" role="tab">
+                        <i class="fas fa-plug me-1"></i>AC Tests ({{ systems.ac|length }})
+                    </button>
+                </li>
+                {% if systems.other %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="other-tab" data-bs-toggle="pill" data-bs-target="#otherTab" type="button" role="tab">
+                        <i class="fas fa-server me-1"></i>Other ({{ systems.other|length }})
+                    </button>
+                </li>
+                {% endif %}
+                {% if systems.archive %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="archive-tab" data-bs-toggle="pill" data-bs-target="#archiveTab" type="button" role="tab">
+                        <i class="fas fa-archive me-1"></i>Archive ({{ systems.archive|length }})
+                    </button>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+        <div class="card-body p-0">
+            <div class="tab-content" id="systemTabContent">
+                <!-- BurnIn Tab -->
+                <div class="tab-pane fade show active" id="burninTab" role="tabpanel">
+                    {% if systems.burnin %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="burninTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="border-0 ps-4">System</th>
+                                        <th class="border-0">Network Info</th>
+                                        <th class="border-0">Current Test</th>
+                                        <th class="border-0">Test Status</th>
+                                        <th class="border-0">Activity</th>
+                                        <th class="border-0">Last Updated</th>
+                                        <th class="border-0">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for system in systems.burnin %}
+                                        <tr class="system-row">
+                                            <td class="ps-4">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="system-icon me-3">
+                                                        <div class="icon-wrapper bg-warning bg-opacity-10 p-2 rounded-3">
+                                                            <i class="fas fa-fire text-warning fa-lg"></i>
+                                                        </div>
+                                                    </div>
+                                                    <div class="system-info">
+                                                        <div class="system-name fw-bold">{{ system.formatted_mac }}</div>
+                                                        <small class="text-muted">{{ system.folder_name }}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                {% if system.sysconfig.bmc_ip %}
+                                                    <div class="small">
+                                                        <div><strong>BMC:</strong> {{ system.sysconfig.bmc_ip }}</div>
+                                                        <div><strong>LAN:</strong> {{ system.sysconfig.bootip|default:"N/A" }}</div>
+                                                    </div>
+                                                {% else %}
+                                                    <span class="text-muted">N/A</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if system.current_test %}
+                                                    <span class="badge bg-primary">{{ system.current_test }}</span>
+                                                {% else %}
+                                                    <span class="text-muted">None</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="test-status-container">
+                                                    {% if system.test_details %}
+                                                        {% for test_name, test_status in system.test_details.items %}
+                                                            <span class="badge 
+                                                                {% if test_status == 'COMPLETED' %}bg-success
+                                                                {% elif test_status == 'FAIL' %}bg-danger
+                                                                {% elif test_status == 'RUNNING' %}bg-primary
+                                                                {% else %}bg-secondary{% endif %} me-1 mb-1">
+                                                                {{ test_name }}: {{ test_status }}
+                                                            </span>
+                                                        {% endfor %}
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">Unknown</span>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge 
+                                                    {% if system.activity_status == 'Online' %}bg-success
+                                                    {% elif system.activity_status == 'Recent' %}bg-warning text-dark
+                                                    {% elif system.activity_status == 'Offline' %}bg-danger
+                                                    {% else %}bg-secondary{% endif %}">
+                                                    <i class="fas fa-circle me-1" style="font-size: 0.6em;"></i>
+                                                    {{ system.activity_status }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if system.last_updated %}
+                                                    <span class="text-muted">{{ system.last_updated|date:"M d, H:i" }}</span>
+                                                {% else %}
+                                                    <span class="text-muted">Never</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <a href="{% url 'system_details' system.folder_name %}" 
+                                                       class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-eye me-1"></i>Details
+                                                    </a>
+                                                    <a href="{% url 'log' path=system.folder_name %}" 
+                                                       class="btn btn-sm btn-outline-info">
+                                                        <i class="fas fa-file-alt me-1"></i>Logs
+                                                    </a>
+                                                    {% if system.sysconfig.bmc_ip %}
+                                                        <button class="btn btn-sm btn-outline-success" 
+                                                                onclick="openKVM('{{ system.folder_name }}')">
+                                                            <i class="fas fa-desktop me-1"></i>KVM
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-warning" 
+                                                                onclick="openSOL('{{ system.folder_name }}')">
+                                                            <i class="fas fa-terminal me-1"></i>SOL
+                                                        </button>
+                                                    {% endif %}
+                                                    <button class="btn btn-sm btn-outline-danger" onclick="archiveSystem('{{ system.folder_name }}')">
+                                                        <i class="fas fa-archive me-1"></i>Archive
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <div class="text-muted">
+                                <i class="fas fa-fire fa-3x mb-3 text-gray-300"></i>
+                                <h5 class="text-gray-600">No BurnIn Systems</h5>
+                                <p class="mb-0">No systems are currently running BurnIn tests.</p>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- DC Tab -->
+                <div class="tab-pane fade" id="dcTab" role="tabpanel">
+                    {% if systems.dc %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="dcTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="border-0 ps-4">System</th>
+                                        <th class="border-0">Network Info</th>
+                                        <th class="border-0">Cycle Progress</th>
+                                        <th class="border-0">Status</th>
+                                        <th class="border-0">Activity</th>
+                                        <th class="border-0">Last Updated</th>
+                                        <th class="border-0">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for system in systems.dc %}
+                                        <tr class="system-row">
+                                            <td class="ps-4">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="system-icon me-3">
+                                                        <div class="icon-wrapper bg-info bg-opacity-10 p-2 rounded-3">
+                                                            <i class="fas fa-bolt text-info fa-lg"></i>
+                                                        </div>
+                                                    </div>
+                                                    <div class="system-info">
+                                                        <div class="system-name fw-bold">{{ system.formatted_mac }}</div>
+                                                        <small class="text-muted">{{ system.folder_name }}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                {% if system.sysconfig.bmc_ip %}
+                                                    <div class="small">
+                                                        <div><strong>BMC:</strong> {{ system.sysconfig.bmc_ip }}</div>
+                                                        <div><strong>LAN:</strong> {{ system.sysconfig.bootip|default:"N/A" }}</div>
+                                                    </div>
+                                                {% else %}
+                                                    <span class="text-muted">N/A</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if system.test_details.current_cycle is not None %}
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="progress me-2" style="width: 100px; height: 8px;">
+                                                            <div class="progress-bar bg-info" 
+                                                                 style="width: {{ system.progress }}%"></div>
+                                                        </div>
+                                                        <small class="text-muted">
+                                                            {{ system.test_details.current_cycle }}/{{ system.test_details.total_cycles }}
+                                                            ({{ system.progress|floatformat:0 }}%)
+                                                        </small>
+                                                    </div>
+                                                {% else %}
+                                                    <span class="text-muted">No data</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <span class="badge 
+                                                    {% if system.status == 'COMPLETED' %}bg-success
+                                                    {% elif system.status == 'RUNNING' %}bg-primary
+                                                    {% elif system.status == 'STARTING' %}bg-warning text-dark
+                                                    {% elif system.status == 'FAIL' %}bg-danger
+                                                    {% else %}bg-secondary{% endif %}">
+                                                    {{ system.status }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge 
+                                                    {% if system.activity_status == 'Online' %}bg-success
+                                                    {% elif system.activity_status == 'Recent' %}bg-warning text-dark
+                                                    {% elif system.activity_status == 'Offline' %}bg-danger
+                                                    {% else %}bg-secondary{% endif %}">
+                                                    <i class="fas fa-circle me-1" style="font-size: 0.6em;"></i>
+                                                    {{ system.activity_status }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if system.last_updated %}
+                                                    <span class="text-muted">{{ system.last_updated|date:"M d, H:i" }}</span>
+                                                {% else %}
+                                                    <span class="text-muted">Never</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <a href="{% url 'system_details' system.folder_name %}" 
+                                                       class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-eye me-1"></i>Details
+                                                    </a>
+                                                    <a href="{% url 'log' path=system.folder_name %}" 
+                                                       class="btn btn-sm btn-outline-info">
+                                                        <i class="fas fa-file-alt me-1"></i>Logs
+                                                    </a>
+                                                    {% if system.sysconfig.bmc_ip %}
+                                                        <button class="btn btn-sm btn-outline-success" 
+                                                                onclick="openKVM('{{ system.folder_name }}')">
+                                                            <i class="fas fa-desktop me-1"></i>KVM
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-warning" 
+                                                                onclick="openSOL('{{ system.folder_name }}')">
+                                                            <i class="fas fa-terminal me-1"></i>SOL
+                                                        </button>
+                                                    {% endif %}
+                                                    <button class="btn btn-sm btn-outline-danger" onclick="archiveSystem('{{ system.folder_name }}')">
+                                                        <i class="fas fa-archive me-1"></i>Archive
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <div class="text-muted">
+                                <i class="fas fa-bolt fa-3x mb-3 text-gray-300"></i>
+                                <h5 class="text-gray-600">No DC Systems</h5>
+                                <p class="mb-0">No systems are currently running DC tests.</p>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- AC Tab -->
+                <div class="tab-pane fade" id="acTab" role="tabpanel">
+                    {% if systems.ac %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="acTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="border-0 ps-4">System</th>
+                                        <th class="border-0">Network Info</th>
+                                        <th class="border-0">Cycle Progress</th>
+                                        <th class="border-0">Status</th>
+                                        <th class="border-0">Activity</th>
+                                        <th class="border-0">Last Updated</th>
+                                        <th class="border-0">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for system in systems.ac %}
+                                        <tr class="system-row">
+                                            <td class="ps-4">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="system-icon me-3">
+                                                        <div class="icon-wrapper bg-danger bg-opacity-10 p-2 rounded-3">
+                                                            <i class="fas fa-plug text-danger fa-lg"></i>
+                                                        </div>
+                                                    </div>
+                                                    <div class="system-info">
+                                                        <div class="system-name fw-bold">{{ system.formatted_mac }}</div>
+                                                        <small class="text-muted">{{ system.folder_name }}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                {% if system.sysconfig.bmc_ip %}
+                                                    <div class="small">
+                                                        <div><strong>BMC:</strong> {{ system.sysconfig.bmc_ip }}</div>
+                                                        <div><strong>LAN:</strong> {{ system.sysconfig.bootip|default:"N/A" }}</div>
+                                                    </div>
+                                                {% else %}
+                                                    <span class="text-muted">N/A</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if system.test_details.current_cycle is not None %}
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="progress me-2" style="width: 100px; height: 8px;">
+                                                            <div class="progress-bar bg-danger" 
+                                                                 style="width: {{ system.progress }}%"></div>
+                                                        </div>
+                                                        <small class="text-muted">
+                                                            {{ system.test_details.current_cycle }}/{{ system.test_details.total_cycles }}
+                                                            ({{ system.progress|floatformat:0 }}%)
+                                                        </small>
+                                                    </div>
+                                                {% else %}
+                                                    <span class="text-muted">No data</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <span class="badge 
+                                                    {% if system.status == 'COMPLETED' %}bg-success
+                                                    {% elif system.status == 'RUNNING' %}bg-primary
+                                                    {% elif system.status == 'STARTING' %}bg-warning text-dark
+                                                    {% elif system.status == 'FAIL' %}bg-danger
+                                                    {% else %}bg-secondary{% endif %}">
+                                                    {{ system.status }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge 
+                                                    {% if system.activity_status == 'Online' %}bg-success
+                                                    {% elif system.activity_status == 'Recent' %}bg-warning text-dark
+                                                    {% elif system.activity_status == 'Offline' %}bg-danger
+                                                    {% else %}bg-secondary{% endif %}">
+                                                    <i class="fas fa-circle me-1" style="font-size: 0.6em;"></i>
+                                                    {{ system.activity_status }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if system.last_updated %}
+                                                    <span class="text-muted">{{ system.last_updated|date:"M d, H:i" }}</span>
+                                                {% else %}
+                                                    <span class="text-muted">Never</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <a href="{% url 'system_details' system.folder_name %}" 
+                                                       class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-eye me-1"></i>Details
+                                                    </a>
+                                                    <a href="{% url 'log' path=system.folder_name %}" 
+                                                       class="btn btn-sm btn-outline-info">
+                                                        <i class="fas fa-file-alt me-1"></i>Logs
+                                                    </a>
+                                                    {% if system.sysconfig.bmc_ip %}
+                                                        <button class="btn btn-sm btn-outline-success" 
+                                                                onclick="openKVM('{{ system.folder_name }}')">
+                                                            <i class="fas fa-desktop me-1"></i>KVM
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-warning" 
+                                                                onclick="openSOL('{{ system.folder_name }}')">
+                                                            <i class="fas fa-terminal me-1"></i>SOL
+                                                        </button>
+                                                    {% endif %}
+                                                    <button class="btn btn-sm btn-outline-danger" onclick="archiveSystem('{{ system.folder_name }}')">
+                                                        <i class="fas fa-archive me-1"></i>Archive
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <div class="text-muted">
+                                <i class="fas fa-plug fa-3x mb-3 text-gray-300"></i>
+                                <h5 class="text-gray-600">No AC Systems</h5>
+                                <p class="mb-0">No systems are currently running AC tests.</p>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Other Tab -->
+                {% if systems.other %}
+                <div class="tab-pane fade" id="otherTab" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="otherTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="border-0 ps-4">System</th>
+                                    <th class="border-0">Network Info</th>
+                                    <th class="border-0">Status</th>
+                                    <th class="border-0">Activity</th>
+                                    <th class="border-0">Last Updated</th>
+                                    <th class="border-0">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for system in systems.other %}
+                                    <tr class="system-row">
+                                        <td class="ps-4">
+                                            <div class="d-flex align-items-center">
+                                                <div class="system-icon me-3">
+                                                    <div class="icon-wrapper bg-secondary bg-opacity-10 p-2 rounded-3">
+                                                        <i class="fas fa-server text-secondary fa-lg"></i>
+                                                    </div>
+                                                </div>
+                                                <div class="system-info">
+                                                    <div class="system-name fw-bold">{{ system.formatted_mac }}</div>
+                                                    <small class="text-muted">{{ system.folder_name }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if system.sysconfig.bmc_ip %}
+                                                <div class="small">
+                                                    <div><strong>BMC:</strong> {{ system.sysconfig.bmc_ip }}</div>
+                                                    <div><strong>LAN:</strong> {{ system.sysconfig.bootip|default:"N/A" }}</div>
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">N/A</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary">{{ system.status }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge 
+                                                {% if system.activity_status == 'Online' %}bg-success
+                                                {% elif system.activity_status == 'Recent' %}bg-warning text-dark
+                                                {% elif system.activity_status == 'Offline' %}bg-danger
+                                                {% else %}bg-secondary{% endif %}">
+                                                <i class="fas fa-circle me-1" style="font-size: 0.6em;"></i>
+                                                {{ system.activity_status }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if system.last_updated %}
+                                                <span class="text-muted">{{ system.last_updated|date:"M d, H:i" }}</span>
+                                            {% else %}
+                                                <span class="text-muted">Never</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{% url 'system_details' system.folder_name %}" 
+                                                   class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-eye me-1"></i>Details
+                                                </a>
+                                                <a href="{% url 'log' path=system.folder_name %}" 
+                                                   class="btn btn-sm btn-outline-info">
+                                                    <i class="fas fa-file-alt me-1"></i>Logs
+                                                </a>
+                                                {% if system.sysconfig.bmc_ip %}
+                                                    <button class="btn btn-sm btn-outline-success" 
+                                                            onclick="openKVM('{{ system.folder_name }}')">
+                                                        <i class="fas fa-desktop me-1"></i>KVM
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-warning" 
+                                                            onclick="openSOL('{{ system.folder_name }}')">
+                                                        <i class="fas fa-terminal me-1"></i>SOL
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Archive Tab -->
+                {% if systems.archive %}
+                <div class="tab-pane fade" id="archiveTab" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="archiveTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="border-0 ps-4">System</th>
+                                    <th class="border-0">Network Info</th>
+                                    <th class="border-0">Status</th>
+                                    <th class="border-0">Last Updated</th>
+                                    <th class="border-0">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for system in systems.archive %}
+                                    <tr class="system-row">
+                                        <td class="ps-4">
+                                            <div class="d-flex align-items-center">
+                                                <div class="system-icon me-3">
+                                                    <div class="icon-wrapper bg-dark bg-opacity-10 p-2 rounded-3">
+                                                        <i class="fas fa-archive text-dark fa-lg"></i>
+                                                    </div>
+                                                </div>
+                                                <div class="system-info">
+                                                    <div class="system-name fw-bold">{{ system.formatted_mac }}</div>
+                                                    <small class="text-muted">{{ system.folder_name }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if system.sysconfig.bmc_ip %}
+                                                <div class="small">
+                                                    <div><strong>BMC:</strong> {{ system.sysconfig.bmc_ip }}</div>
+                                                    <div><strong>LAN:</strong> {{ system.sysconfig.bootip|default:"N/A" }}</div>
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">N/A</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary">{{ system.status }}</span>
+                                        </td>
+                                        <td>
+                                            {% if system.last_updated %}
+                                                <span class="text-muted">{{ system.last_updated|date:"M d, H:i" }}</span>
+                                            {% else %}
+                                                <span class="text-muted">Never</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{% url 'system_details' system.folder_name %}" 
+                                                   class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-eye me-1"></i>Details
+                                                </a>
+                                                <a href="{% url 'log' path='archive/'|add:system.folder_name %}" 
+                                                   class="btn btn-sm btn-outline-info">
+                                                    <i class="fas fa-file-alt me-1"></i>Logs
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .border-left-warning {
+        border-left: 0.25rem solid #f6c23e !important;
+    }
+    
+    .border-left-info {
+        border-left: 0.25rem solid #36b9cc !important;
+    }
+    
+    .border-left-danger {
+        border-left: 0.25rem solid #e74a3b !important;
+    }
+    
+    .border-left-secondary {
+        border-left: 0.25rem solid #858796 !important;
+    }
+    
+    .text-xs {
+        font-size: 0.7rem;
+    }
+    
+    .text-gray-800 {
+        color: #5a5c69 !important;
+    }
+    
+    .text-gray-600 {
+        color: #6c757d !important;
+    }
+    
+    .text-gray-300 {
+        color: #dddfeb !important;
+    }
+    
+    .nav-pills .nav-link {
+        border-radius: 0.375rem;
+        margin-right: 0.25rem;
+    }
+    
+    .nav-pills .nav-link.active {
+        background-color: #3b82f6;
+    }
+    
+    .system-row:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+    
+    .icon-wrapper {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .test-status-container {
+        max-width: 200px;
+    }
+    
+    .btn-group .btn {
+        margin-right: 2px;
+    }
+    
+    .btn-group .btn:last-child {
+        margin-right: 0;
+    }
+</style>
+
+<script>
+// KVM functionality
+async function openKVM(folderName) {
+    const kvmButton = document.querySelector(`button[onclick="openKVM('${folderName}')"]`);
+    const originalText = kvmButton ? kvmButton.innerHTML : '';
+    
+    try {
+        if (kvmButton) {
+            kvmButton.disabled = true;
+            kvmButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Connecting...';
+        }
+        
+        console.log(`Attempting KVM connection for folder: ${folderName}`);
+        const response = await fetch(`/systems/${folderName}/kvm/`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('KVM response:', data);
+        
+        if (data.success) {
+            console.log(`Opening KVM URL: ${data.kvm_url}`);
+            // Open KVM in a new tab
+            const kvmWindow = window.open(data.kvm_url, '_blank');
+            if (!kvmWindow) {
+                alert('Popup blocked! Please allow popups for KVM access.');
+            }
+        } else {
+            console.error('KVM error:', data.error);
+            alert(`Error opening KVM: ${data.error}\nError Type: ${data.error_type || 'unknown'}`);
+        }
+    } catch (error) {
+        console.error('KVM connection error:', error);
+        alert('Error connecting to KVM: ' + error.message);
+    } finally {
+        if (kvmButton) {
+            kvmButton.disabled = false;
+            kvmButton.innerHTML = originalText;
+        }
+    }
+}
+
+// SOL functionality
+async function openSOL(folderName) {
+    const solButton = document.querySelector(`button[onclick="openSOL('${folderName}')"]`);
+    const originalText = solButton ? solButton.innerHTML : '';
+    
+    try {
+        if (solButton) {
+            solButton.disabled = true;
+            solButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Starting...';
+        }
+        
+        console.log(`Attempting SOL session for folder: ${folderName}`);
+        
+        const response = await fetch(`/systems/${folderName}/sol/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('SOL response:', data);
+        
+        if (data.success) {
+            console.log(`Opening SOL terminal for BMC: ${data.bmc_ip}`);
+            // Open SOL terminal in new tab
+            window.open(data.sol_terminal_url, '_blank');
+            
+            if (solButton) {
+                solButton.innerHTML = '<i class="fas fa-check me-1"></i>SOL Terminal Opened';
+                solButton.classList.remove('btn-outline-warning');
+                solButton.classList.add('btn-success');
+                
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    solButton.innerHTML = originalText;
+                    solButton.classList.remove('btn-success');
+                    solButton.classList.add('btn-outline-warning');
+                    solButton.disabled = false;
+                }, 3000);
+            }
+        } else {
+            console.error('SOL error:', data.error);
+            alert(`Error starting SOL session: ${data.error}\nError Type: ${data.error_type || 'unknown'}`);
+        }
+    } catch (error) {
+        console.error('SOL connection error:', error);
+        alert('Error connecting to SOL: ' + error.message);
+    } finally {
+        if (solButton && !solButton.classList.contains('btn-success')) {
+            solButton.disabled = false;
+            solButton.innerHTML = originalText;
+        }
+    }
+}
+
+function archiveSystem(folder){
+  if(!confirm('Archive system '+folder+'?')) return;
+  fetch(`/systems/${folder}/archive/`,{method:'POST',headers:{'X-CSRFToken':'{{ csrf_token }}'}})
+    .then(r=>r.json()).then(d=>{if(d.success){alert('Archived');location.reload();}else{alert('Error: '+d.error);}})
+    .catch(e=>{alert('Request failed');});
+}
+
+// Add summary collapse for test status columns
+function buildStatusSummaries(){
+  document.querySelectorAll('.test-status-container').forEach((container, idx)=>{
+    const badges = Array.from(container.querySelectorAll('.badge'));
+    if(badges.length<=3) return; // Already compact
+
+    // Count statuses
+    let countCompleted=0, countRunning=0, countFailed=0, countOther=0;
+    badges.forEach(b=>{
+      const t=b.textContent.toUpperCase();
+      if(t.includes('COMPLETED')) countCompleted++; else if(t.includes('RUNNING')) countRunning++; else if(t.includes('FAIL')) countFailed++; else countOther++;
+    });
+
+    // Helper to create badge
+    const makeBadge=(cls,txt)=>{const s=document.createElement('span');s.className=`badge ${cls} me-1`;s.textContent=txt;return s;};
+
+    // Summary line
+    const summary=document.createElement('div');
+    summary.className='d-inline-flex align-items-center flex-wrap';
+    if(countCompleted) summary.appendChild(makeBadge('bg-success',`✓ ${countCompleted}`));
+    if(countRunning)   summary.appendChild(makeBadge('bg-primary',`▶ ${countRunning}`));
+    if(countFailed)    summary.appendChild(makeBadge('bg-danger',`✕ ${countFailed}`));
+    if(countOther)     summary.appendChild(makeBadge('bg-secondary',`${countOther}`));
+    const caret=document.createElement('i');
+    caret.className='fas fa-chevron-down text-muted ms-1';
+    summary.appendChild(caret);
+
+    // Details section (collapsed by default)
+    const details=document.createElement('div');
+    const detailsId=`statusDetails${idx}`;
+    details.id=detailsId;
+    details.className='collapse mt-1';
+    badges.forEach(b=>details.appendChild(b));
+
+    // Configure toggle
+    summary.setAttribute('data-bs-toggle','collapse');
+    summary.setAttribute('data-bs-target',`#${detailsId}`);
+    summary.style.cursor='pointer';
+
+    // Replace container content
+    container.innerHTML='';
+    container.appendChild(summary);
+    container.appendChild(details);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', buildStatusSummaries);
+</script>
+{% endblock %} 

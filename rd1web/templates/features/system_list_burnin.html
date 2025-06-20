@@ -1,0 +1,107 @@
+<!-- BurnIn Systems Table -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-warning">
+            <i class="fas fa-fire me-2"></i>BurnIn Test Systems ({{ systems.burnin|length }})
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        {% if systems.burnin %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="burninTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="border-0 ps-4">System</th>
+                            <th class="border-0">Current Test</th>
+                            <th class="border-0">Test Status</th>
+                            <th class="border-0">Activity</th>
+                            <th class="border-0">Last Updated</th>
+                            <th class="border-0">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for system in systems.burnin %}
+                            <tr class="system-row">
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center">
+                                        <div class="system-icon me-3">
+                                            <div class="icon-wrapper bg-warning bg-opacity-10 p-2 rounded-3">
+                                                <i class="fas fa-fire text-warning fa-lg"></i>
+                                            </div>
+                                        </div>
+                                        <div class="system-info">
+                                            <div class="system-name fw-bold">{{ system.formatted_mac }}</div>
+                                            <small class="text-muted">{{ system.folder_name }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if system.current_test %}
+                                        <span class="badge bg-primary">{{ system.current_test }}</span>
+                                    {% else %}
+                                        <span class="text-muted">None</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="test-status-container">
+                                        {% if system.test_details %}
+                                            {% for test_name, test_status in system.test_details.items %}
+                                                <span class="badge 
+                                                    {% if test_status == 'PASS' %}bg-success
+                                                    {% elif test_status == 'FAIL' %}bg-danger
+                                                    {% elif test_status == 'RUNNING' %}bg-primary
+                                                    {% elif test_status == 'COMPLETED' %}bg-info
+                                                    {% else %}bg-secondary{% endif %} me-1 mb-1">
+                                                    {{ test_name }}: {{ test_status }}
+                                                </span>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="badge bg-secondary">Unknown</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge 
+                                        {% if system.activity_status == 'Online' %}bg-success
+                                        {% elif system.activity_status == 'Recent' %}bg-warning text-dark
+                                        {% elif system.activity_status == 'Offline' %}bg-danger
+                                        {% else %}bg-secondary{% endif %}">
+                                        <i class="fas fa-circle me-1" style="font-size: 0.6em;"></i>
+                                        {{ system.activity_status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if system.last_updated %}
+                                        <span class="text-muted">{{ system.last_updated|date:"M d, H:i" }}</span>
+                                    {% else %}
+                                        <span class="text-muted">Never</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'system_details' system.folder_name %}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye me-1"></i>Details
+                                        </a>
+                                        <a href="{% url 'log' path=system.folder_name %}" 
+                                           class="btn btn-sm btn-outline-info">
+                                            <i class="fas fa-file-alt me-1"></i>Logs
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div class="text-muted">
+                    <i class="fas fa-fire fa-3x mb-3 text-gray-300"></i>
+                    <h5 class="text-gray-600">No BurnIn Systems</h5>
+                    <p class="mb-0">No systems are currently running BurnIn tests.</p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div> 

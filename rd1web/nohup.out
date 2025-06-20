@@ -1,0 +1,180 @@
+Watching for file changes with StatReloader
+[11/Jun/2025 00:47:32] "GET / HTTP/1.1" 200 2489
+[11/Jun/2025 00:47:32] "GET /static/css/styles.css HTTP/1.1" 304 0
+[11/Jun/2025 00:47:32] "GET /static/js/scripts.js HTTP/1.1" 304 0
+[11/Jun/2025 00:47:33] "GET /pxe/ HTTP/1.1" 200 3575
+[11/Jun/2025 00:47:33] "GET /static/js/pxe-toggle.js HTTP/1.1" 304 0
+[11/Jun/2025 00:47:52] "POST /pxe/ HTTP/1.1" 200 3951
+[sudo] password: [11/Jun/2025 00:48:11] "POST /pxe/ HTTP/1.1" 200 3910
+[sudo] password: [11/Jun/2025 01:07:09] "POST /pxe/ HTTP/1.1" 200 3974
+[sudo] password: [11/Jun/2025 16:38:20] "POST /pxe/ HTTP/1.1" 200 3973
+[11/Jun/2025 16:38:20] "GET /static/js/pxe-toggle.js HTTP/1.1" 304 0
+[sudo] password: [sudo] password: [11/Jun/2025 16:45:16] "POST /pxe/ HTTP/1.1" 200 3973
+[sudo] password: [11/Jun/2025 16:45:24] "POST /pxe/ HTTP/1.1" 200 3910
+[11/Jun/2025 16:50:54] "GET /pxe/ HTTP/1.1" 200 3575
+[sudo] password: [11/Jun/2025 16:51:13] "POST /pxe/ HTTP/1.1" 200 3973
+[11/Jun/2025 16:51:23] "GET /ipmitool/ HTTP/1.1" 200 3672
+[11/Jun/2025 16:51:37] "POST /ipmitool/ HTTP/1.1" 200 4035
+[11/Jun/2025 17:24:21] "GET /ipmitool/ HTTP/1.1" 200 3672
+[11/Jun/2025 17:24:25] "GET /pxe/ HTTP/1.1" 200 3575
+[sudo] password: [11/Jun/2025 17:24:43] "POST /pxe/ HTTP/1.1" 200 3910
+[11/Jun/2025 17:25:41] "GET / HTTP/1.1" 200 2489
+[11/Jun/2025 17:25:41] "GET /static/css/styles.css HTTP/1.1" 304 0
+[11/Jun/2025 17:25:41] "GET /static/js/scripts.js HTTP/1.1" 304 0
+/home/devin/rd1web/rd1web/pxe/views/pxe_input.py changed, reloading.
+Performing system checks...
+
+System check identified no issues (0 silenced).
+June 11, 2025 - 00:47:17
+Django version 5.2.1, using settings 'rd1web.settings'
+Starting development server at http://172.31.60.129:80/
+Quit the server with CONTROL-C.
+
+WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
+For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
+Watching for file changes with StatReloader
+Watching for file changes with StatReloader
+[11/Jun/2025 17:43:30] "GET /pxe/ HTTP/1.1" 200 3575
+[11/Jun/2025 17:46:07] "POST /pxe/ HTTP/1.1" 200 3801
+[sudo] password: [11/Jun/2025 17:46:37] "POST /pxe/ HTTP/1.1" 200 3971
+Internal Server Error: /pxe/
+Traceback (most recent call last):
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/rd1web/pxe/views/pxe_input.py", line 51, in pxe_input
+    return render(request,'features/pxe.html',{'form':form,'result':result})
+                                                      ^^^^
+UnboundLocalError: cannot access local variable 'form' where it is not associated with a value
+[11/Jun/2025 17:46:48] "POST /pxe/ HTTP/1.1" 500 62984
+/home/devin/rd1web/rd1web/pxe/views/pxe_input.py changed, reloading.
+Performing system checks...
+
+System check identified no issues (0 silenced).
+June 11, 2025 - 17:43:16
+Django version 5.2.1, using settings 'rd1web.settings'
+Starting development server at http://172.31.60.129:80/
+Quit the server with CONTROL-C.
+
+WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
+For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
+Watching for file changes with StatReloader
+Watching for file changes with StatReloader
+[sudo] password: [11/Jun/2025 17:49:02] "POST /pxe/ HTTP/1.1" 200 3971
+[11/Jun/2025 17:49:06] "POST /pxe/ HTTP/1.1" 200 3951
+[sudo] password: [11/Jun/2025 17:49:13] "POST /pxe/ HTTP/1.1" 200 3910
+[sudo] password: [11/Jun/2025 17:49:18] "POST /pxe/ HTTP/1.1" 200 3971
+[11/Jun/2025 17:51:52] "GET / HTTP/1.1" 200 2489
+/home/devin/rd1web/rd1web/pxe/urls.py changed, reloading.
+Performing system checks...
+
+System check identified no issues (0 silenced).
+June 11, 2025 - 17:48:37
+Django version 5.2.1, using settings 'rd1web.settings'
+Starting development server at http://172.31.60.129:80/
+Quit the server with CONTROL-C.
+
+WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
+For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
+Watching for file changes with StatReloader
+Exception in thread django-main-thread:
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/utils/autoreload.py", line 64, in wrapper
+    fn(*args, **kwargs)
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/core/management/commands/runserver.py", line 134, in inner_run
+    self.check(**check_kwargs)
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/core/management/base.py", line 492, in check
+    all_issues = checks.run_checks(
+                 ^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/core/checks/registry.py", line 89, in run_checks
+    new_errors = check(app_configs=app_configs, databases=databases)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/core/checks/urls.py", line 44, in check_url_namespaces_unique
+    all_namespaces = _load_all_namespaces(resolver)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/core/checks/urls.py", line 63, in _load_all_namespaces
+    url_patterns = getattr(resolver, "url_patterns", [])
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+                                         ^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/urls/resolvers.py", line 718, in url_patterns
+    patterns = getattr(self.urlconf_module, "urlpatterns", self.urlconf_module)
+                       ^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+                                         ^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/urls/resolvers.py", line 711, in urlconf_module
+    return import_module(self.urlconf_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/devin/rd1web/rd1web/rd1web/urls.py", line 22, in <module>
+    path('',include('pxe.urls')),
+            ^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/urls/conf.py", line 39, in include
+    urlconf_module = import_module(urlconf_module)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/devin/rd1web/rd1web/pxe/urls.py", line 6, in <module>
+    from .views.log_view import log_view
+ImportError: cannot import name 'log_view' from 'pxe.views.log_view' (/home/devin/rd1web/rd1web/pxe/views/log_view.py)
+/home/devin/rd1web/rd1web/pxe/views/log_view.py changed, reloading.
+Performing system checks...
+
+Watching for file changes with StatReloader
+Performing system checks...
+
+System check identified no issues (0 silenced).
+June 11, 2025 - 18:00:22
+Django version 5.2.1, using settings 'rd1web.settings'
+Starting development server at http://172.31.60.129:80/
+Quit the server with CONTROL-C.
+
+WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
+For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
+Watching for file changes with StatReloader
+[11/Jun/2025 18:04:33] "GET / HTTP/1.1" 200 2676
+Internal Server Error: /logs/
+Traceback (most recent call last):
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/rd1web/pxe/views/log_view.py", line 18, in log_view
+    return render(request, "show_logs.html", {"logs": logs})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/template/loader.py", line 61, in render_to_string
+    template = get_template(template_name, using=using)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/template/loader.py", line 19, in get_template
+    raise TemplateDoesNotExist(template_name, chain=chain)
+django.template.exceptions.TemplateDoesNotExist: show_logs.html
+[11/Jun/2025 18:04:34] "GET /logs/ HTTP/1.1" 500 74304

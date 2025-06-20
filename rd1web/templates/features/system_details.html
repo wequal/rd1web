@@ -1,0 +1,1255 @@
+{% extends 'base.html' %}
+{% block title %}System Details - {{ formatted_mac|upper }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Enhanced Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h2 mb-2 text-primary fw-bold">
+                <i class="fas fa-server text-primary me-2"></i>System Details
+            </h1>
+            <div class="d-flex align-items-center">
+                <span class="badge bg-secondary fs-6 me-2">{{ formatted_mac|upper }}</span>
+                {% if test_info.test_type and test_info.test_type != 'Unknown' %}
+                    {% if test_info.test_type == 'BurnIn' %}
+                        <span class="badge bg-warning text-dark fs-6">
+                            <i class="fas fa-fire me-1"></i>{{ test_info.test_type }}
+                        </span>
+                    {% elif test_info.test_type == 'DC' %}
+                        <span class="badge bg-success fs-6">
+                            <i class="fas fa-bolt me-1"></i>{{ test_info.test_type }}
+                        </span>
+                    {% elif test_info.test_type == 'AC' %}
+                        <span class="badge bg-danger fs-6">
+                            <i class="fas fa-plug me-1"></i>{{ test_info.test_type }}
+                        </span>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'system_list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Systems
+            </a>
+            <a href="{% url 'log' path=log_path %}" class="btn btn-outline-info">
+                <i class="fas fa-file-alt me-1"></i>View Raw Logs
+            </a>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>Error:</strong> {{ error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    <!-- Enhanced System Status Cards Row -->
+    <div class="row mb-4">
+        <!-- System Overview -->
+        <div class="col-lg-4 mb-3">
+            <div class="card shadow-sm h-100 border-start border-4 border-primary">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-server fa-2x text-primary mb-2"></i>
+                    <h6 class="fw-bold text-primary mb-1">System Online</h6>
+                    <p class="text-muted small mb-1">{{ formatted_mac|upper }}</p>
+                    <small class="text-muted">
+                        {% if last_updated %}
+                            {{ last_updated|date:"M d, H:i" }}
+                        {% else %}
+                            Unknown
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Type & Architecture -->
+        <div class="col-lg-4 mb-3">
+            <div class="card shadow-sm h-100 border-start border-4 border-info">
+                <div class="card-body text-center py-3">
+                    {% if test_info.test_type and test_info.test_type != 'Unknown' %}
+                        {% if test_info.test_type == 'BurnIn' %}
+                            <i class="fas fa-fire fa-2x text-warning mb-2"></i>
+                            <h6 class="fw-bold text-warning mb-1">BurnIn Test</h6>
+                            <small class="text-muted">Stress Testing</small>
+                        {% elif test_info.test_type == 'DC' %}
+                            <i class="fas fa-bolt fa-2x text-success mb-2"></i>
+                            <h6 class="fw-bold text-success mb-1">DC Power Test</h6>
+                            <small class="text-muted">Power Cycling</small>
+                        {% elif test_info.test_type == 'AC' %}
+                            <i class="fas fa-plug fa-2x text-danger mb-2"></i>
+                            <h6 class="fw-bold text-danger mb-1">AC Power Test</h6>
+                            <small class="text-muted">AC Power Cycling</small>
+                        {% endif %}
+                    {% else %}
+                        <i class="fas fa-microchip fa-2x text-info mb-2"></i>
+                        <h6 class="fw-bold text-info mb-1">Architecture</h6>
+                        <small class="text-muted">{{ cpu_info.Architecture|default:"Unknown" }}</small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Network Management -->
+        {% if sysconfig.bmc_ip %}
+        <div class="col-lg-4 mb-3">
+            <div class="card shadow-sm h-100 border-start border-4 border-success">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-network-wired fa-2x text-success mb-2"></i>
+                    <h6 class="fw-bold text-success mb-1">Remote Access</h6>
+                    <p class="text-muted small mb-2">BMC: {{ sysconfig.bmc_ip }}</p>
+                    <div class="d-grid gap-1">
+                        <button class="btn btn-outline-success btn-sm kvm-btn-simple" data-folder="{{ folder_name }}">
+                            <i class="fas fa-desktop me-1"></i>KVM
+                        </button>
+                        <button class="btn btn-outline-warning btn-sm sol-btn-simple" data-folder="{{ folder_name }}">
+                            <i class="fas fa-terminal me-1"></i>SOL
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Enhanced Testing Status Card -->
+    {% if test_info.test_type and test_info.test_type != 'Unknown' %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-gradient py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="m-0 fw-bold text-white">
+                            <i class="fas fa-flask me-2"></i>Testing Status
+                        </h5>
+                        <div class="d-flex align-items-center">
+                            {% if test_info.status == 'COMPLETED' %}
+                                <span class="badge bg-success fs-6">
+                                    <i class="fas fa-check-circle me-1"></i>{{ test_info.status }}
+                                </span>
+                            {% elif test_info.status == 'RUNNING' %}
+                                <span class="badge bg-primary fs-6">
+                                    <i class="fas fa-play-circle me-1"></i>{{ test_info.status }}
+                                </span>
+                            {% elif test_info.status == 'FAIL' %}
+                                <span class="badge bg-danger fs-6">
+                                    <i class="fas fa-times-circle me-1"></i>{{ test_info.status }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-warning fs-6">
+                                    <i class="fas fa-question-circle me-1"></i>{{ test_info.status|default:"UNKNOWN" }}
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if test_info.test_type == 'BurnIn' %}
+                                         <!-- Enhanced BurnIn Test Display -->
+                     <div class="row">
+                         <div class="col-md-4 mb-3">
+                             <div class="text-center p-2 bg-light rounded">
+                                 {% if test_info.status == 'COMPLETED' %}
+                                     <i class="fas fa-check-circle fa-3x text-success mb-2"></i>
+                                     <h6 class="text-success fw-bold mb-1">{{ test_info.status }}</h6>
+                                 {% elif test_info.status == 'RUNNING' %}
+                                     <i class="fas fa-spinner fa-spin fa-3x text-primary mb-2"></i>
+                                     <h6 class="text-primary fw-bold mb-1">{{ test_info.status }}</h6>
+                                 {% elif test_info.status == 'FAIL' %}
+                                     <i class="fas fa-times-circle fa-3x text-danger mb-2"></i>
+                                     <h6 class="text-danger fw-bold mb-1">{{ test_info.status }}</h6>
+                                 {% else %}
+                                     <i class="fas fa-question-circle fa-3x text-warning mb-2"></i>
+                                     <h6 class="text-warning fw-bold mb-1">{{ test_info.status|default:"UNKNOWN" }}</h6>
+                                 {% endif %}
+                                 <p class="text-muted small mb-0">Overall Status</p>
+                             </div>
+                         </div>
+                        <div class="col-md-8">
+                            <h6 class="text-primary mb-3 fw-bold">
+                                <i class="fas fa-list-check me-2"></i>Individual Test Results
+                            </h6>
+                            {% if test_info.details %}
+                            <div class="row g-2">
+                                {% for test_name, status in test_info.details.items %}
+                                <div class="col-md-6 col-lg-4 mb-2">
+                                    <div class="card border-0 bg-light h-100">
+                                        <div class="card-body p-2">
+                                            <div class="d-flex align-items-center">
+                                                {% if status == 'COMPLETED' %}
+                                                    <span class="badge bg-success me-2">
+                                                        <i class="fas fa-check"></i>
+                                                    </span>
+                                                {% elif status == 'RUNNING' %}
+                                                    <span class="badge bg-primary me-2">
+                                                        <i class="fas fa-spinner fa-spin"></i>
+                                                    </span>
+                                                {% elif status == 'FAIL' %}
+                                                    <span class="badge bg-danger me-2">
+                                                        <i class="fas fa-times"></i>
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary me-2">
+                                                        <i class="fas fa-minus"></i>
+                                                    </span>
+                                                {% endif %}
+                                                <div>
+                                                    <div class="fw-bold small">{{ test_name }}</div>
+                                                    <div class="text-muted small">{{ status }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info mb-0">
+                                <i class="fas fa-info-circle me-2"></i>No test details available
+                            </div>
+                            {% endif %}
+                            
+                            {% if test_info.current_tests %}
+                            <div class="mt-4 p-3 bg-primary bg-opacity-10 rounded">
+                                <h6 class="fw-bold text-primary mb-2">
+                                    <i class="fas fa-play-circle me-2"></i>Currently Running
+                                </h6>
+                                <div class="d-flex flex-wrap gap-2">
+                                    {% for test in test_info.current_tests %}
+                                    <span class="badge bg-primary fs-6">
+                                        <i class="fas fa-spinner fa-spin me-1"></i>{{ test }}
+                                    </span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% elif test_info.test_type == 'DC' or test_info.test_type == 'AC' %}
+                                         <!-- Enhanced DC/AC Test Display -->
+                     <div class="row">
+                         <div class="col-md-4 mb-3">
+                             <div class="text-center p-2 bg-light rounded">
+                                 {% if test_info.status == 'COMPLETED' %}
+                                     <i class="fas fa-check-circle fa-3x text-success mb-2"></i>
+                                     <h6 class="text-success fw-bold mb-1">{{ test_info.status }}</h6>
+                                 {% elif test_info.status == 'RUNNING' %}
+                                     <i class="fas fa-sync fa-spin fa-3x text-primary mb-2"></i>
+                                     <h6 class="text-primary fw-bold mb-1">{{ test_info.status }}</h6>
+                                 {% elif test_info.status == 'FAIL' %}
+                                     <i class="fas fa-times-circle fa-3x text-danger mb-2"></i>
+                                     <h6 class="text-danger fw-bold mb-1">{{ test_info.status }}</h6>
+                                 {% else %}
+                                     <i class="fas fa-play-circle fa-3x text-info mb-2"></i>
+                                     <h6 class="text-info fw-bold mb-1">{{ test_info.status|default:"STARTING" }}</h6>
+                                 {% endif %}
+                                 <p class="text-muted small mb-0">Overall Status</p>
+                             </div>
+                         </div>
+                         <div class="col-md-4 mb-3">
+                             <div class="text-center p-2 bg-light rounded h-100">
+                                 <i class="fas fa-percentage fa-2x text-info mb-2"></i>
+                                 <h6 class="fw-bold text-info mb-1">{{ test_info.progress|floatformat:1 }}%</h6>
+                                 <p class="text-muted small mb-2">Progress</p>
+                                 <div class="progress" style="height: 8px;">
+                                     <div class="progress-bar bg-info progress-bar-striped {% if test_info.status == 'RUNNING' %}progress-bar-animated{% endif %}" 
+                                          role="progressbar" 
+                                          style="width: {{ test_info.progress }}%" 
+                                          aria-valuenow="{{ test_info.progress }}" 
+                                          aria-valuemin="0" aria-valuemax="100">
+                                     </div>
+                                 </div>
+                             </div>
+                         </div>
+                         <div class="col-md-4 mb-3">
+                             <div class="text-center p-2 bg-light rounded h-100">
+                                 <i class="fas fa-sync fa-2x text-secondary mb-2"></i>
+                                 <h6 class="fw-bold text-secondary mb-1">
+                                     {{ test_info.details.current_cycle|default:"0" }} / {{ test_info.details.total_cycles|default:"0" }}
+                                 </h6>
+                                 <p class="text-muted small mb-1">Cycles Completed</p>
+                                 {% if test_info.details.remaining_cycles %}
+                                 <small class="text-muted">
+                                     {{ test_info.details.remaining_cycles }} remaining
+                                 </small>
+                                 {% endif %}
+                             </div>
+                         </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Enhanced Network Information Card -->
+    {% if sysconfig.bmc_ip or sysconfig.bootip %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header py-3">
+                    <h6 class="m-0 fw-bold text-primary">
+                        <i class="fas fa-network-wired me-2"></i>Network Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% if sysconfig.bmc_ip %}
+                        <div class="col-md-4 mb-3">
+                            <div class="text-center p-3 border rounded">
+                                <i class="fas fa-server fa-2x text-success mb-2"></i>
+                                <h6 class="fw-bold">BMC IP Address</h6>
+                                <p class="text-muted mb-1">{{ sysconfig.bmc_ip }}</p>
+                                {% if sysconfig.bmc_user %}
+                                <small class="text-muted">User: {{ sysconfig.bmc_user }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if sysconfig.bootip %}
+                        <div class="col-md-4 mb-3">
+                            <div class="text-center p-3 border rounded">
+                                <i class="fas fa-ethernet fa-2x text-primary mb-2"></i>
+                                <h6 class="fw-bold">LAN IP Address</h6>
+                                <p class="text-muted mb-0">{{ sysconfig.bootip }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if sysconfig.bmc_ip %}
+                        <div class="col-md-4 mb-3">
+                            <div class="text-center p-3 border rounded">
+                                <i class="fas fa-tools fa-2x text-primary mb-2"></i>
+                                <h6 class="fw-bold">Remote Management</h6>
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-outline-success btn-sm kvm-btn-simple" data-folder="{{ folder_name }}">
+                                        <i class="fas fa-desktop me-1"></i>Open KVM Console
+                                    </button>
+                                    <button class="btn btn-outline-warning btn-sm sol-btn-simple" data-folder="{{ folder_name }}">
+                                        <i class="fas fa-terminal me-1"></i>Start SOL Session
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Hardware Overview -->
+    <div class="row mb-4">
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 fw-bold text-primary">
+                        <i class="fas fa-microchip me-2"></i>Hardware Summary
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if hardware_info.count %}
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <a href="#cpuTab" class="text-decoration-none hardware-nav-link" data-bs-toggle="pill" data-bs-target="#cpuTab">
+                                <div class="d-flex align-items-center p-2 rounded hover-bg-light">
+                                    <i class="fas fa-microchip text-primary me-2"></i>
+                                    <div>
+                                        <div class="fw-bold">CPU</div>
+                                        <div class="text-muted">{{ hardware_info.count.cpu }} Socket(s)</div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="#memoryTab" class="text-decoration-none hardware-nav-link" data-bs-toggle="pill" data-bs-target="#memoryTab">
+                                <div class="d-flex align-items-center p-2 rounded hover-bg-light">
+                                    <i class="fas fa-memory text-info me-2"></i>
+                                    <div>
+                                        <div class="fw-bold">Memory</div>
+                                        <div class="text-muted">{{ hardware_info.count.mem }} Module(s)</div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="#storageTab" class="text-decoration-none hardware-nav-link" data-bs-toggle="pill" data-bs-target="#storageTab">
+                                <div class="d-flex align-items-center p-2 rounded hover-bg-light">
+                                    <i class="fas fa-hdd text-warning me-2"></i>
+                                    <div>
+                                        <div class="fw-bold">Storage</div>
+                                        <div class="text-muted">{{ hardware_info.count.drive }} Drive(s)</div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="#networkTab" class="text-decoration-none hardware-nav-link" data-bs-toggle="pill" data-bs-target="#networkTab">
+                                <div class="d-flex align-items-center p-2 rounded hover-bg-light">
+                                    <i class="fas fa-network-wired text-success me-2"></i>
+                                    <div>
+                                        <div class="fw-bold">Network</div>
+                                        <div class="text-muted">{{ hardware_info.count.nic }} Interface(s)</div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="#gpuTab" class="text-decoration-none hardware-nav-link" data-bs-toggle="pill" data-bs-target="#gpuTab">
+                                <div class="d-flex align-items-center p-2 rounded hover-bg-light">
+                                    <i class="fas fa-display text-purple me-2"></i>
+                                    <div>
+                                        <div class="fw-bold">GPU</div>
+                                        <div class="text-muted">{{ hardware_info.count.gpu|default:"0" }} Unit(s)</div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="#powerTab" class="text-decoration-none hardware-nav-link" data-bs-toggle="pill" data-bs-target="#powerTab">
+                                <div class="d-flex align-items-center p-2 rounded hover-bg-light">
+                                    <i class="fas fa-plug text-danger me-2"></i>
+                                    <div>
+                                        <div class="fw-bold">Power Supply</div>
+                                        <div class="text-muted">{{ hardware_info.count.psu }} Unit(s)</div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="#pciTab" class="text-decoration-none hardware-nav-link" data-bs-toggle="pill" data-bs-target="#pciTab">
+                                <div class="d-flex align-items-center p-2 rounded hover-bg-light">
+                                    <i class="fas fa-expand-arrows-alt text-secondary me-2"></i>
+                                    <div>
+                                        <div class="fw-bold">PCIe Slots</div>
+                                        <div class="text-muted">{{ hardware_info.count.pcie }} Slot(s)</div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="#fanTab" class="text-decoration-none hardware-nav-link" data-bs-toggle="pill" data-bs-target="#fanTab">
+                                <div class="d-flex align-items-center p-2 rounded hover-bg-light">
+                                    <i class="fas fa-fan text-info me-2"></i>
+                                    <div>
+                                        <div class="fw-bold">Fans</div>
+                                        <div class="text-muted">{{ hardware_info.count.fan|default:"0" }} Unit(s)</div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">Hardware information not available</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 fw-bold text-primary">
+                        <i class="fas fa-code-branch me-2"></i>Firmware Versions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if firmware_info %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Component</th>
+                                    <th>Version</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for key, value in firmware_info.items %}
+                                <tr>
+                                    <td><strong>{{ key }}</strong></td>
+                                    <td><span class="text-dark">{{ value }}</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>No firmware information available
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 fw-bold text-primary">
+                        <i class="fas fa-microchip me-2"></i>System FRU Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if fru_info %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Property</th>
+                                    <th>Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for key, value in fru_info.items %}
+                                <tr>
+                                    <td><strong>{{ key }}</strong></td>
+                                    <td>{{ value }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>No FRU information available
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hardware Details Tabs -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 fw-bold text-primary">
+                        <i class="fas fa-list-alt me-2"></i>Hardware Components
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <!-- Tab Navigation -->
+                    <ul class="nav nav-pills mb-3" id="hardwareTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="cpu-tab" data-bs-toggle="pill" data-bs-target="#cpuTab" type="button" role="tab">
+                                <i class="fas fa-microchip me-1"></i>CPU
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="memory-tab" data-bs-toggle="pill" data-bs-target="#memoryTab" type="button" role="tab">
+                                <i class="fas fa-memory me-1"></i>Memory
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="storage-tab" data-bs-toggle="pill" data-bs-target="#storageTab" type="button" role="tab">
+                                <i class="fas fa-hdd me-1"></i>Storage
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="network-tab" data-bs-toggle="pill" data-bs-target="#networkTab" type="button" role="tab">
+                                <i class="fas fa-network-wired me-1"></i>Network
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="gpu-tab" data-bs-toggle="pill" data-bs-target="#gpuTab" type="button" role="tab">
+                                <i class="fas fa-display me-1"></i>GPU
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="power-tab" data-bs-toggle="pill" data-bs-target="#powerTab" type="button" role="tab">
+                                <i class="fas fa-plug me-1"></i>Power
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="pci-tab" data-bs-toggle="pill" data-bs-target="#pciTab" type="button" role="tab">
+                                <i class="fas fa-expand-arrows-alt me-1"></i>PCIe
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="fan-tab" data-bs-toggle="pill" data-bs-target="#fanTab" type="button" role="tab">
+                                <i class="fas fa-fan me-1"></i>Fans
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="hardwareTabContent">
+                        <!-- CPU Tab -->
+                        <div class="tab-pane fade show active" id="cpuTab" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0"><i class="fas fa-microchip text-primary me-2"></i>CPU Information</h5>
+                                <span class="badge bg-primary">{{ hardware_info.count.cpu|default:"0" }} Socket(s)</span>
+                            </div>
+                            {% if hardware_info.cpu %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Property</th>
+                                            <th>Value</th>
+                                            </tr>
+                                    </thead>
+                                        <tbody>
+                                            <tr>
+                                            <td><strong>Model</strong></td>
+                                            <td>{{ hardware_info.cpu.Model|default:"N/A" }}</td>
+                                            </tr>
+                                        <tr>
+                                            <td><strong>Speed</strong></td>
+                                            <td>{{ hardware_info.cpu.Speed|default:"N/A" }} MHz</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Cores</strong></td>
+                                            <td>{{ hardware_info.cpu.Core|default:"N/A" }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Threads</strong></td>
+                                            <td>{{ hardware_info.cpu.Thread|default:"N/A" }}</td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>No CPU information available
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Memory Tab -->
+                        <div class="tab-pane fade" id="memoryTab" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0"><i class="fas fa-memory text-info me-2"></i>Memory Information</h5>
+                                <span class="badge bg-info">{{ hardware_info.count.mem|default:"0" }} Module(s)</span>
+                            </div>
+                            {% if hardware_info.mem %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Slot</th>
+                                            <th>Type</th>
+                                            <th>Size</th>
+                                            <th>Manufacturer</th>
+                                            <th>Part Number</th>
+                                            <th>Serial Number</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for slot, mem_info in hardware_info.mem.items %}
+                                        <tr>
+                                            <td><strong>{{ slot }}</strong></td>
+                                            <td>{{ mem_info.Type|default:"N/A" }}</td>
+                                            <td>{{ mem_info.Size|default:"N/A" }}</td>
+                                            <td>{{ mem_info.MFG|default:"N/A" }}</td>
+                                            <td>{{ mem_info.PN|default:"N/A" }}</td>
+                                            <td>{{ mem_info.SN|default:"N/A" }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>No memory information available
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Storage Tab -->
+                        <div class="tab-pane fade" id="storageTab" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0"><i class="fas fa-hdd text-warning me-2"></i>Storage Information</h5>
+                                <span class="badge bg-warning">{{ hardware_info.count.drive|default:"0" }} Drive(s)</span>
+                            </div>
+                            {% if hardware_info.drive %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Device</th>
+                                            <th>Model</th>
+                                            <th>Capacity</th>
+                                            <th>Serial Number</th>
+                                            <th>Firmware</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for device, drive_info in hardware_info.drive.items %}
+                                        <tr>
+                                            <td><strong>{{ device }}</strong></td>
+                                            <td>{{ drive_info.Model|default:"N/A" }}</td>
+                                            <td>{{ drive_info.Capacity|default:"N/A" }}</td>
+                                            <td>{{ drive_info.SN|default:"N/A" }}</td>
+                                            <td>{{ drive_info.FW|default:"N/A" }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>No storage information available
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Network Tab -->
+                        <div class="tab-pane fade" id="networkTab" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0"><i class="fas fa-network-wired text-success me-2"></i>Network Information</h5>
+                                <span class="badge bg-success">{{ hardware_info.count.nic|default:"0" }} Interface(s)</span>
+                            </div>
+                            {% if hardware_info.nic %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Interface</th>
+                                            <th>Product</th>
+                                            <th>Vendor</th>
+                                            <th>MAC Address</th>
+                                            <th>Driver</th>
+                                            <th>Firmware</th>
+                                            <th>Bus</th>
+                                            <th>IP Address</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for interface, nic_info in hardware_info.nic.items %}
+                                        <tr>
+                                            <td><strong>{{ interface }}</strong></td>
+                                            <td>{{ nic_info.Product|default:"N/A" }}</td>
+                                            <td>{{ nic_info.Vendor|default:"N/A" }}</td>
+                                            <td><code>{{ nic_info.MAC|default:"N/A" }}</code></td>
+                                            <td>{{ nic_info.Driver|default:"N/A" }}</td>
+                                            <td>{{ nic_info.FW|default:"N/A" }}</td>
+                                            <td>{{ nic_info.Bus|default:"N/A" }}</td>
+                                            <td>{{ nic_info.IP|default:"N/A" }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>No network information available
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- GPU Tab -->
+                        <div class="tab-pane fade" id="gpuTab" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0"><i class="fas fa-display text-purple me-2"></i>GPU Information</h5>
+                                <span class="badge bg-secondary">{{ hardware_info.count.gpu|default:"0" }} Unit(s)</span>
+                            </div>
+                            {% if hardware_info.gpu %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>GPU</th>
+                                            <th>Model</th>
+                                            <th>PCIe ID</th>
+                                            <th>Serial Number</th>
+                                            <th>Driver</th>
+                                            <th>VBIOS</th>
+                                            <th>Memory</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for gpu_id, gpu_info in hardware_info.gpu.items %}
+                                        <tr>
+                                            <td><strong>GPU {{ gpu_id }}</strong></td>
+                                            <td>{{ gpu_info.Model|default:"N/A" }}</td>
+                                            <td>{{ gpu_info.PCIE_ID|default:"N/A" }}</td>
+                                            <td>{{ gpu_info.SN|default:"N/A" }}</td>
+                                            <td>{{ gpu_info.Driver|default:"N/A" }}</td>
+                                            <td>{{ gpu_info.VBIOS|default:"N/A" }}</td>
+                                            <td>{{ gpu_info.Memory|default:"N/A" }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>No GPU information available
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Power Tab -->
+                        <div class="tab-pane fade" id="powerTab" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0"><i class="fas fa-plug text-danger me-2"></i>Power Supply Information</h5>
+                                <span class="badge bg-danger">{{ hardware_info.count.psu|default:"0" }} Unit(s)</span>
+                            </div>
+                            {% if hardware_info.power %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Unit</th>
+                                            <th>Model</th>
+                                            <th>Revision</th>
+                                            <th>Capacity</th>
+                                            <th>Serial Number</th>
+                                            <th>Manufacturer</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for psu_id, psu_info in hardware_info.power.items %}
+                                        <tr>
+                                            <td><strong>{{ psu_id }}</strong></td>
+                                            <td>{{ psu_info.Model|default:"N/A" }}</td>
+                                            <td>{{ psu_info.Rev|default:"N/A" }}</td>
+                                            <td>{{ psu_info.Capacity|default:"N/A" }}</td>
+                                            <td>{{ psu_info.SN|default:"N/A" }}</td>
+                                            <td>{{ psu_info.MFG|default:"N/A" }}</td>
+                                            <td>
+                                                {% if psu_info.Plugged == "Yes" %}
+                                                    <span class="badge bg-success">Plugged</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning">{{ psu_info.Plugged|default:"Unknown" }}</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>No power supply information available
+                        </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- PCIe Tab -->
+                        <div class="tab-pane fade" id="pciTab" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0"><i class="fas fa-expand-arrows-alt text-secondary me-2"></i>PCIe Information</h5>
+                                <span class="badge bg-secondary">{{ hardware_info.count.pcie|default:"0" }} Device(s)</span>
+                            </div>
+                            {% if hardware_info.lspci %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Address</th>
+                                            <th>Device</th>
+                                            <th>Link Capability</th>
+                                            <th>Link Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for address, pci_info in hardware_info.lspci.items %}
+                                        <tr>
+                                            <td>
+                                                {% if pci_info.has_file %}
+                                                    <a href="{{ pci_info.file_url }}" target="_blank" class="text-decoration-none pcie-address-link" title="Click to view PCIe device details">
+                                                        <strong>{{ address }}</strong>
+                                                        <i class="fas fa-external-link-alt ms-1 text-muted small"></i>
+                                                    </a>
+                            {% else %}
+                                                    <strong>{{ address }}</strong>
+                            {% endif %}
+                                            </td>
+                                            <td>{{ pci_info.Name|default:"N/A" }}</td>
+                                            <td>
+                                                {% if pci_info.lnkcap_speed and pci_info.lnkcap_width %}
+                                                    {{ pci_info.lnkcap_speed }} {{ pci_info.lnkcap_width }}
+                                                {% else %}
+                                                    N/A
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if pci_info.lnksta_speed and pci_info.lnksta_width %}
+                                                    {{ pci_info.lnksta_speed }} {{ pci_info.lnksta_width }}
+                            {% else %}
+                                                    N/A
+                            {% endif %}
+                                            </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                            {% elif pci_devices %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Address</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for device in pci_devices %}
+                                        <tr>
+                                            <td><strong>{{ device.address }}</strong></td>
+                                            <td>{{ device.description }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>No PCIe information available
+                        </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Fans Tab -->
+                        <div class="tab-pane fade" id="fanTab" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0"><i class="fas fa-fan text-info me-2"></i>Fan Information</h5>
+                                <span class="badge bg-info">{{ hardware_info.count.fan|default:"0" }} Unit(s)</span>
+                            </div>
+                            {% if hardware_info.fan %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Fan</th>
+                                            <th>Status</th>
+                                            <th>Reading</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for fan_id, fan_info in hardware_info.fan.items %}
+                                        <tr>
+                                            <td><strong>{{ fan_id }}</strong></td>
+                                            <td>
+                                                {% if fan_info.Status == "Absent" %}
+                                                    <span class="badge bg-secondary">{{ fan_info.Status }}</span>
+                                                {% elif fan_info.Status == "OK" %}
+                                                    <span class="badge bg-success">{{ fan_info.Status }}</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning">{{ fan_info.Status|default:"Unknown" }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ fan_info.Reading|default:"N/A" }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>No fan information available
+                        </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for KVM/SOL functionality -->
+<style>
+/* Enhanced System Details Styling */
+.card {
+    border: none;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.card-header.bg-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    border-radius: 12px 12px 0 0 !important;
+}
+
+/* Status Badge Enhancements */
+.badge.fs-6 {
+    font-size: 0.875rem !important;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+}
+
+/* Progress Bar Enhancements */
+.progress {
+    border-radius: 8px;
+    background-color: #f8f9fa;
+}
+
+.progress-bar {
+    border-radius: 8px;
+}
+
+/* Button Enhancements */
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+/* Card Border Styling */
+.border-start.border-4 {
+    border-left-width: 4px !important;
+}
+
+/* Test Status Cards */
+.bg-light {
+    background-color: #f8f9fa !important;
+    border-radius: 8px;
+}
+
+/* Loading Animation */
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+.fa-spinner.fa-spin {
+    animation: fa-spin 2s infinite linear;
+}
+
+/* Custom styles for hardware navigation */
+.hardware-nav-link:hover .hover-bg-light {
+    background-color: #f8f9fa !important;
+    transition: background-color 0.2s ease;
+}
+
+.hardware-nav-link {
+    color: inherit !important;
+}
+
+.hardware-nav-link:hover {
+    color: inherit !important;
+}
+
+/* PCIe address link styling */
+.pcie-address-link {
+    color: #007bff !important;
+}
+
+.pcie-address-link:hover {
+    color: #0056b3 !important;
+    text-decoration: underline !important;
+}
+
+/* Smooth scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Hardware details section offset for smooth scrolling */
+#hardwareTabContent {
+    scroll-margin-top: 100px;
+}
+
+/* Enhanced Responsive Design */
+@media (max-width: 768px) {
+    .col-lg-4 {
+        margin-bottom: 1rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .btn-sm {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+}
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+    // Hardware navigation functionality
+    document.querySelectorAll('.hardware-nav-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Get the target tab
+            const targetTab = this.getAttribute('data-bs-target');
+            
+            // Activate the tab
+            const tabTrigger = document.querySelector(`button[data-bs-target="${targetTab}"]`);
+            if (tabTrigger) {
+                // Use Bootstrap's tab functionality
+                const tab = new bootstrap.Tab(tabTrigger);
+                tab.show();
+                
+                // Smooth scroll to the hardware details section
+                setTimeout(() => {
+                    const hardwareSection = document.getElementById('hardwareTabContent');
+                    if (hardwareSection) {
+                        hardwareSection.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'start' 
+                        });
+                    }
+                }, 100);
+            }
+        });
+    });
+
+    // KVM functionality
+    document.querySelectorAll('.kvm-btn-simple').forEach(button => {
+        button.addEventListener('click', function() {
+            const folderName = this.dataset.folder;
+            const btn = this;
+            
+            // Disable button and show loading
+                btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Connecting...';
+            
+            fetch(`/systems/${folderName}/kvm/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Open KVM in new tab
+                        window.open(data.kvm_url, '_blank');
+                        
+                        // Show success message
+                        btn.innerHTML = '<i class="fas fa-check me-1"></i>KVM Opened';
+                        btn.classList.remove('btn-outline-success');
+                        btn.classList.add('btn-success');
+                        
+                        // Reset button after 3 seconds
+                        setTimeout(() => {
+                            btn.innerHTML = '<i class="fas fa-desktop me-1"></i>Open KVM Console';
+                            btn.classList.remove('btn-success');
+                            btn.classList.add('btn-outline-success');
+                            btn.disabled = false;
+                        }, 3000);
+                } else {
+                        // Show error
+                        btn.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Error';
+                        btn.classList.remove('btn-outline-success');
+                        btn.classList.add('btn-danger');
+                        
+                        // Show error details
+                        alert(`KVM Error: ${data.error}`);
+                        
+                        // Reset button after 3 seconds
+                        setTimeout(() => {
+                            btn.innerHTML = '<i class="fas fa-desktop me-1"></i>Open KVM Console';
+                            btn.classList.remove('btn-danger');
+                            btn.classList.add('btn-outline-success');
+                btn.disabled = false;
+                        }, 3000);
+                    }
+                })
+                .catch(error => {
+                    console.error('KVM Error:', error);
+                    btn.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Error';
+                    btn.classList.remove('btn-outline-success');
+                    btn.classList.add('btn-danger');
+                    alert('Failed to connect to KVM service');
+                    
+                    // Reset button after 3 seconds
+                    setTimeout(() => {
+                        btn.innerHTML = '<i class="fas fa-desktop me-1"></i>Open KVM Console';
+                        btn.classList.remove('btn-danger');
+                        btn.classList.add('btn-outline-success');
+                        btn.disabled = false;
+                    }, 3000);
+                });
+        });
+    });
+
+    // SOL functionality
+    document.querySelectorAll('.sol-btn-simple').forEach(button => {
+        button.addEventListener('click', function() {
+            const folderName = this.dataset.folder;
+            const btn = this;
+            
+            // Disable button and show loading
+                btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Starting...';
+            
+            fetch(`/systems/${folderName}/sol/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+            if (data.success) {
+                    // Open SOL terminal in new tab
+                    window.open(data.sol_terminal_url, '_blank');
+                    
+                    // Show success message
+                    btn.innerHTML = '<i class="fas fa-check me-1"></i>SOL Terminal Opened';
+                    btn.classList.remove('btn-outline-warning');
+                    btn.classList.add('btn-success');
+                    
+                    // Reset button after 3 seconds
+                    setTimeout(() => {
+                        btn.innerHTML = '<i class="fas fa-terminal me-1"></i>Start SOL Session';
+                        btn.classList.remove('btn-success');
+                        btn.classList.add('btn-outline-warning');
+                        btn.disabled = false;
+                    }, 3000);
+                } else {
+                    // Show error
+                    btn.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Error';
+                    btn.classList.remove('btn-outline-warning');
+                    btn.classList.add('btn-danger');
+                    
+                    // Show error details
+                    alert(`SOL Error: ${data.error}`);
+                    
+                    // Reset button after 3 seconds
+                    setTimeout(() => {
+                        btn.innerHTML = '<i class="fas fa-terminal me-1"></i>Start SOL Session';
+                        btn.classList.remove('btn-danger');
+                        btn.classList.add('btn-outline-warning');
+                        btn.disabled = false;
+                    }, 3000);
+                }
+            })
+            .catch(error => {
+                console.error('SOL Error:', error);
+                btn.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Error';
+                btn.classList.remove('btn-outline-warning');
+                btn.classList.add('btn-danger');
+                alert('Failed to connect to SOL service');
+                
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-terminal me-1"></i>Start SOL Session';
+                    btn.classList.remove('btn-danger');
+                    btn.classList.add('btn-outline-warning');
+                btn.disabled = false;
+                }, 3000);
+            });
+        });
+    });
+});
+</script>
+
+{% endblock %} 

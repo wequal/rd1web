@@ -1,0 +1,217 @@
+<!-- DC Systems Table -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-info">
+            <i class="fas fa-bolt me-2"></i>DC Test Systems ({{ systems.dc|length }})
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        {% if systems.dc %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="dcTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="border-0 ps-4">System</th>
+                            <th class="border-0">Cycle Progress</th>
+                            <th class="border-0">Status</th>
+                            <th class="border-0">Activity</th>
+                            <th class="border-0">Last Updated</th>
+                            <th class="border-0">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for system in systems.dc %}
+                            <tr class="system-row">
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center">
+                                        <div class="system-icon me-3">
+                                            <div class="icon-wrapper bg-info bg-opacity-10 p-2 rounded-3">
+                                                <i class="fas fa-bolt text-info fa-lg"></i>
+                                            </div>
+                                        </div>
+                                        <div class="system-info">
+                                            <div class="system-name fw-bold">{{ system.formatted_mac }}</div>
+                                            <small class="text-muted">{{ system.folder_name }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if system.test_details.current_cycle is not None %}
+                                        <div class="d-flex align-items-center">
+                                            <div class="progress me-2" style="width: 100px; height: 8px;">
+                                                <div class="progress-bar bg-info" 
+                                                     style="width: {{ system.progress }}%"></div>
+                                            </div>
+                                            <small class="text-muted">
+                                                {{ system.test_details.current_cycle }}/{{ system.test_details.total_cycles }}
+                                                ({{ system.progress|floatformat:0 }}%)
+                                            </small>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">No data</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge 
+                                        {% if system.status == 'COMPLETED' %}bg-success
+                                        {% elif system.status == 'RUNNING' %}bg-primary
+                                        {% elif system.status == 'STARTING' %}bg-warning text-dark
+                                        {% elif system.status == 'FAIL' %}bg-danger
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ system.status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge 
+                                        {% if system.activity_status == 'Online' %}bg-success
+                                        {% elif system.activity_status == 'Recent' %}bg-warning text-dark
+                                        {% elif system.activity_status == 'Offline' %}bg-danger
+                                        {% else %}bg-secondary{% endif %}">
+                                        <i class="fas fa-circle me-1" style="font-size: 0.6em;"></i>
+                                        {{ system.activity_status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if system.last_updated %}
+                                        <span class="text-muted">{{ system.last_updated|date:"M d, H:i" }}</span>
+                                    {% else %}
+                                        <span class="text-muted">Never</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'system_details' system.folder_name %}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye me-1"></i>Details
+                                        </a>
+                                        <a href="{% url 'log' path=system.folder_name %}" 
+                                           class="btn btn-sm btn-outline-info">
+                                            <i class="fas fa-file-alt me-1"></i>Logs
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div class="text-muted">
+                    <i class="fas fa-bolt fa-3x mb-3 text-gray-300"></i>
+                    <h5 class="text-gray-600">No DC Systems</h5>
+                    <p class="mb-0">No systems are currently running DC tests.</p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- AC Systems Table -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-danger">
+            <i class="fas fa-plug me-2"></i>AC Test Systems ({{ systems.ac|length }})
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        {% if systems.ac %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="acTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="border-0 ps-4">System</th>
+                            <th class="border-0">Cycle Progress</th>
+                            <th class="border-0">Status</th>
+                            <th class="border-0">Activity</th>
+                            <th class="border-0">Last Updated</th>
+                            <th class="border-0">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for system in systems.ac %}
+                            <tr class="system-row">
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center">
+                                        <div class="system-icon me-3">
+                                            <div class="icon-wrapper bg-danger bg-opacity-10 p-2 rounded-3">
+                                                <i class="fas fa-plug text-danger fa-lg"></i>
+                                            </div>
+                                        </div>
+                                        <div class="system-info">
+                                            <div class="system-name fw-bold">{{ system.formatted_mac }}</div>
+                                            <small class="text-muted">{{ system.folder_name }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if system.test_details.current_cycle is not None %}
+                                        <div class="d-flex align-items-center">
+                                            <div class="progress me-2" style="width: 100px; height: 8px;">
+                                                <div class="progress-bar bg-danger" 
+                                                     style="width: {{ system.progress }}%"></div>
+                                            </div>
+                                            <small class="text-muted">
+                                                {{ system.test_details.current_cycle }}/{{ system.test_details.total_cycles }}
+                                                ({{ system.progress|floatformat:0 }}%)
+                                            </small>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">No data</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge 
+                                        {% if system.status == 'COMPLETED' %}bg-success
+                                        {% elif system.status == 'RUNNING' %}bg-primary
+                                        {% elif system.status == 'STARTING' %}bg-warning text-dark
+                                        {% elif system.status == 'FAIL' %}bg-danger
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ system.status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge 
+                                        {% if system.activity_status == 'Online' %}bg-success
+                                        {% elif system.activity_status == 'Recent' %}bg-warning text-dark
+                                        {% elif system.activity_status == 'Offline' %}bg-danger
+                                        {% else %}bg-secondary{% endif %}">
+                                        <i class="fas fa-circle me-1" style="font-size: 0.6em;"></i>
+                                        {{ system.activity_status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if system.last_updated %}
+                                        <span class="text-muted">{{ system.last_updated|date:"M d, H:i" }}</span>
+                                    {% else %}
+                                        <span class="text-muted">Never</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'system_details' system.folder_name %}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye me-1"></i>Details
+                                        </a>
+                                        <a href="{% url 'log' path=system.folder_name %}" 
+                                           class="btn btn-sm btn-outline-info">
+                                            <i class="fas fa-file-alt me-1"></i>Logs
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div class="text-muted">
+                    <i class="fas fa-plug fa-3x mb-3 text-gray-300"></i>
+                    <h5 class="text-gray-600">No AC Systems</h5>
+                    <p class="mb-0">No systems are currently running AC tests.</p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div> 
