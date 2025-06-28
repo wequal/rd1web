@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 
 class PxeForm(forms.Form):
     mac=forms.CharField(widget=forms.Textarea(attrs={'class':'form-control','style': 'width: 300px;',}),label='MAC')
-    image=forms.ChoiceField(choices=[('ubuntu2204-arm64','Ubuntu2204-ARM64'),('rocky93','rocky93'),('c','C')],label='Image')
+    image=forms.ChoiceField(choices=[('ubuntu2204-arm64','Ubuntu2204-ARM64'),('ubuntu2204-x86','Ubuntu2204-X86'),],label='Image')
     
     test_type = forms.ChoiceField(
         choices=[

@@ -93,9 +93,7 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Directories</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {% for item in items %}{% if item.is_dir %}{% if forloop.first %}1{% else %}{{ forloop.counter }}{% endif %}{% endif %}{% empty %}0{% endfor %}
-                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ dir_count }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-folder fa-2x text-gray-300"></i>
@@ -111,12 +109,47 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Files</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {% for item in items %}{% if not item.is_dir %}{% if forloop.first %}1{% else %}{{ forloop.counter }}{% endif %}{% endif %}{% empty %}0{% endfor %}
-                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ file_count }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-file fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Statistics Row -->
+    <div class="row mb-4">
+        <div class="col-xl-6 col-md-12 mb-4">
+            <div class="card border-left-secondary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">Total File Size</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_size }}</div>
+                            <small class="text-muted">Size of all files in directory</small>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-hdd fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-6 col-md-12 mb-4">
+            <div class="card border-left-dark shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-dark text-uppercase mb-1">Path</div>
+                            <div class="h6 mb-0 font-weight-bold text-gray-800" style="font-size: 0.9rem;">{{ current_path }}</div>
+                            <small class="text-muted">Current directory path</small>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-map-marker-alt fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
@@ -149,7 +182,8 @@
                     <thead class="table-light">
                         <tr>
                             <th class="border-0 ps-4">Name</th>
-                            <th class="border-0">Type</th>
+                            <th class="border-0">Size</th>
+                            <th class="border-0">Modified</th>
                             <th class="border-0">Actions</th>
                         </tr>
                     </thead>
@@ -185,26 +219,14 @@
                                         </div>
                                         <div class="file-info">
                                             <div class="file-name fw-bold">{{ item.name }}</div>
-                                            {% if not item.is_dir %}
-                                                <small class="text-muted">
-                                                    {% if "." in item.name %}
-                                                        {{ item.name|slice:"-10:" }} file
-                                                    {% else %}
-                                                        Text file
-                                                    {% endif %}
-                                                </small>
-                                            {% else %}
-                                                <small class="text-muted">Directory</small>
-                                            {% endif %}
                                         </div>
                                     </div>
                                 </td>
                                 <td>
-                                    {% if item.is_dir %}
-                                        <span class="badge bg-warning text-dark">Directory</span>
-                                    {% else %}
-                                        <span class="badge bg-primary">File</span>
-                                    {% endif %}
+                                    <span class="text-muted fw-bold">{{ item.size }}</span>
+                                </td>
+                                <td>
+                                    <span class="text-muted" style="font-size: 0.85rem;">{{ item.mtime }}</span>
                                 </td>
                                 <td>
                                     {% if item.is_dir %}
@@ -220,7 +242,7 @@
                             </tr>
                         {% empty %}
                             <tr>
-                                <td colspan="3" class="text-center py-5">
+                                <td colspan="4" class="text-center py-5">
                                     <div class="text-muted">
                                         <i class="fas fa-folder-open fa-3x mb-3 text-gray-300"></i>
                                         <h5 class="text-gray-600">Directory is Empty</h5>
@@ -251,6 +273,14 @@
     
     .border-left-warning {
         border-left: 0.25rem solid #f6c23e !important;
+    }
+    
+    .border-left-secondary {
+        border-left: 0.25rem solid #858796 !important;
+    }
+    
+    .border-left-dark {
+        border-left: 0.25rem solid #5a5c69 !important;
     }
     
     .text-xs {

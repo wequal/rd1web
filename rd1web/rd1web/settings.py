@@ -24,9 +24,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-(oql-%h*1h4%2+1-s&vkc+ls*4+l&atr*+(hajf)l4q76rf_ay'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['172.31.60.129','127.0.0.1','localhost']
+ALLOWED_HOSTS = ['*']  # Allow all IP addresses to access
 
 
 # Application definition
@@ -81,6 +81,11 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels.layers.InMemoryChannelLayer',
     },
 }
+
+# ASGI/Daphne timeout configurations for better file serving
+ASGI_APPLICATION_CLOSE_TIMEOUT = 60  # Allow 60 seconds for apps to close
+ASGI_HTTP_TIMEOUT = 120  # Allow 2 minutes for HTTP requests (large files)
+ASGI_WEBSOCKET_HANDSHAKE_TIMEOUT = 10  # WebSocket handshake timeout
 
 
 # Database
@@ -140,6 +145,11 @@ STATICFILES_DIRS = [
 # Static files will be collected here for production
 STATIC_ROOT = os.path.join(BASE_DIR.parent, 'staticfiles')
 
+# Security settings for proxy
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -151,5 +161,46 @@ LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/auth/login/'
 
 # Session settings
-SESSION_COOKIE_AGE = 3600  # 1 hour
+SESSION_COOKIE_AGE = 86400  # 24 hour
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+# Logging configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'mac_ip.log'),
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'pxe': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}

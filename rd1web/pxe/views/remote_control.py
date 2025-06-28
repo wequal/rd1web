@@ -38,9 +38,12 @@ def remote_control(request):
 @csrf_exempt
 def remote_kvm(request):
     """Return the BMC IKVM URL for the provided credentials."""
+    logger.info("Received remote KVM request")
     try:
         data = json.loads(request.body.decode())
-    except Exception:
+        logger.info(f"Request data: {data}")
+    except Exception as e:
+        logger.error(f"Error decoding JSON payload: {e}")
         return JsonResponse({
             'success': False,
             'error': 'Invalid JSON payload',
@@ -52,15 +55,17 @@ def remote_kvm(request):
     bmc_pwd = data.get('password', '')
 
     if not (bmc_ip and bmc_pwd):
+        logger.error("Missing bmc_ip or password in remote KVM request")
         return JsonResponse({
             'success': False,
             'error': 'bmc_ip and password are required',
             'error_type': 'param_error'
         })
 
-    logger.info("Remote KVM request – IP=%s user=%s", bmc_ip, bmc_user)
+    logger.info(f"Remote KVM request – IP={bmc_ip} user={bmc_user}")
 
     redfish_url = f"https://{bmc_ip}/redfish/v1/Managers/1/Oem/Supermicro/IKVM"
+    logger.info(f"Attempting Redfish request to: {redfish_url}")
 
     try:
         response = requests.get(
@@ -69,8 +74,11 @@ def remote_kvm(request):
             verify=False,
             timeout=10,
         )
+        logger.info(f"Redfish response status: {response.status_code}")
+        if response.status_code != 200:
+            logger.error(f"Redfish API error. Status: {response.status_code}, Response: {response.text[:200]}")
     except requests.exceptions.RequestException as exc:
-        logger.error("Redfish request failed: %s", exc)
+        logger.error(f"Redfish request failed: {exc}")
         return JsonResponse({
             'success': False,
             'error': f'Failed to contact BMC: {exc}',
@@ -85,8 +93,12 @@ def remote_kvm(request):
             'error_type': 'redfish_error'
         })
 
-    ikvm_url = response.json().get('URI')
+    ikvm_data = response.json()
+    logger.info(f"Redfish response data: {ikvm_data}")
+    ikvm_url = ikvm_data.get('URI')
+    
     if not ikvm_url:
+        logger.error("KVM URI not found in Redfish response")
         return JsonResponse({
             'success': False,
             'error': 'KVM URI not present in Redfish response',
@@ -94,6 +106,7 @@ def remote_kvm(request):
         })
 
     full_url = f"https://{bmc_ip}{ikvm_url}"
+    logger.info(f"Successfully generated KVM URL: {full_url}")
     return JsonResponse({'success': True, 'kvm_url': full_url})
 
 

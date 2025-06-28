@@ -7,7 +7,7 @@ from .views.ipmitool import ipmitool
 from .views.log_view import log_view
 from .views.view_file import view_file
 from .views.system_details import system_details, system_list
-from .views.kvm_sol import get_kvm_url, start_sol_session, get_system_network_info, debug_system_info, sol_terminal
+from .views.kvm_sol import get_kvm_url, start_sol_session, get_system_network_info, debug_system_info, sol_terminal, kvm_viewer
 from .views.pcie_file import serve_pcie_file
 from .views.remote_control import (
     remote_control,
@@ -16,15 +16,19 @@ from .views.remote_control import (
     remote_sol_terminal,
 )
 from .views.archive import archive_system
+from .views.mac_ip_view import mac_ip_results, mac_ip_api
 
 
 urlpatterns = [
     path('', index, name='index'),
     path('pxe/', pxe_input, name='pxe'),
     path('ipmitool/', ipmitool, name='ipmitool'),
+    path('mac-ip/', mac_ip_results, name='mac_ip_results'),
+    path('api/mac-ip/', mac_ip_api, name='mac_ip_api'),
     path('systems/', system_list, name='system_list'),
     path('systems/<str:mac>/', system_details, name='system_details'),
     path('systems/<str:folder_name>/kvm/', get_kvm_url, name='get_kvm_url'),
+    path('systems/<str:folder_name>/kvm/viewer/', kvm_viewer, name='kvm_viewer'),
     path('systems/<str:folder_name>/sol/', start_sol_session, name='start_sol_session'),
     path('systems/<str:folder_name>/sol/terminal/', sol_terminal, name='sol_terminal'),
     path('systems/<str:folder_name>/network/', get_system_network_info, name='get_system_network_info'),

@@ -132,7 +132,10 @@ class SOLConsumer(AsyncWebsocketConsumer):
                 await asyncio.sleep(0.05)  # Small delay to prevent busy waiting
             except Exception as e:
                 logger.error(f"Error reading SOL output: {str(e)}")
-                break 
+                break
+
+# KVM WebSocket consumer removed - KVM now uses direct BMC URL approach
+# for simpler and more reliable access
 
 class RemoteSOLConsumer(AsyncWebsocketConsumer):
     """WebSocket consumer for ad-hoc SOL sessions started from *Remote Control*."""
@@ -216,4 +219,6 @@ class RemoteSOLConsumer(AsyncWebsocketConsumer):
                 await asyncio.sleep(0.05)
             except Exception:
                 logger.exception('Error reading SOL output')
-                break 
+                break
+
+# RemoteKVMConsumer removed - Remote KVM now uses direct BMC URL approach 

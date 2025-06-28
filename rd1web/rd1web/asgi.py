@@ -12,8 +12,7 @@ from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
 from django.urls import path
-from pxe.consumers import SOLConsumer
-from pxe.consumers import RemoteSOLConsumer
+from pxe.consumers import SOLConsumer, RemoteSOLConsumer
 from django.conf import settings
 from django.contrib.staticfiles.handlers import ASGIStaticFilesHandler
 
@@ -28,8 +27,11 @@ if settings.DEBUG:
     django_asgi_app = ASGIStaticFilesHandler(django_asgi_app)
 
 websocket_urlpatterns = [
+    # SOL (Serial Over LAN) WebSocket endpoints
     path('ws/sol/<str:folder_name>/', SOLConsumer.as_asgi()),
     path('ws/remote-sol/', RemoteSOLConsumer.as_asgi()),
+    
+    # KVM WebSocket endpoints removed - KVM now uses direct BMC URL approach
 ]
 
 application = ProtocolTypeRouter({

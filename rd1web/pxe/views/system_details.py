@@ -309,13 +309,17 @@ def determine_test_type_and_status(log_dir, folder_name):
     
     elif test_info['test_type'] == 'AC':
         # AC test logic - similar to DC but check for AC-specific files
-        ac_result_files = ['ac_power.log', 'pdu.log', 'power_cycle.log', 'AC_result.txt']
-        ac_found = any(os.path.exists(os.path.join(log_dir, f)) for f in ac_result_files)
-        
-        # Check for cycle information similar to DC
+        # First check AC_result.txt for explicit status (similar to DC_result.txt)
+        ac_result_path = os.path.join(log_dir, 'AC_result.txt')
         cycle_count_path = os.path.join(log_dir, 'cycle_count')
         cycle_flag_path = os.path.join(log_dir, 'cycle_flag.txt')
         
+        if os.path.exists(ac_result_path):
+            ac_result = get_file_content(ac_result_path)
+            if ac_result:
+                test_info['status'] = ac_result.strip().upper()
+        
+        # Check for cycle information similar to DC
         if os.path.exists(cycle_count_path):
             cycle_content = get_file_content(cycle_count_path)
             if cycle_content:
@@ -351,10 +355,14 @@ def determine_test_type_and_status(log_dir, folder_name):
                 else:
                     test_info['status'] = 'STARTING'
         
-        if ac_found and test_info['status'] == 'Unknown':
-            test_info['status'] = 'RUNNING'
-        elif not ac_found:
-            test_info['status'] = 'UNKNOWN'
+        # Add additional file detection for AC tests to be more robust
+        if test_info['status'] == 'Unknown':
+            # Check for any AC-related log files that indicate the test is running
+            ac_indicator_files = ['ac_power.log', 'pdu.log', 'power_cycle.log', 'run', 'display']
+            ac_files_found = any(os.path.exists(os.path.join(log_dir, f)) for f in ac_indicator_files)
+            
+            if ac_files_found:
+                test_info['status'] = 'RUNNING'
     
     return test_info
 

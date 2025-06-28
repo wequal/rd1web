@@ -115,6 +115,63 @@
         {% endif %}
     </div>
 
+    <!-- Quick File Access Card -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header py-3">
+                    <h6 class="m-0 fw-bold text-primary">
+                        <i class="fas fa-bolt me-2"></i>Quick File Access
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3 mb-3">
+                            <div class="border rounded p-3 h-100">
+                                <i class="fas fa-chart-line fa-2x text-success mb-2"></i>
+                                <h6 class="fw-bold mb-2">Power Chart</h6>
+                                <p class="text-muted small mb-2">System power consumption graph</p>
+                                <a href="{% url 'view_file' path=log_path|add:'/power_chart.png' %}" class="btn btn-outline-success btn-sm" target="_blank">
+                                    <i class="fas fa-eye me-1"></i>View Chart
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="border rounded p-3 h-100">
+                                <i class="fas fa-thermometer-half fa-2x text-warning mb-2"></i>
+                                <h6 class="fw-bold mb-2">Temperature Chart</h6>
+                                <p class="text-muted small mb-2">System temperature monitoring</p>
+                                <a href="{% url 'view_file' path=log_path|add:'/temp_chart.png' %}" class="btn btn-outline-warning btn-sm" target="_blank">
+                                    <i class="fas fa-eye me-1"></i>View Chart
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="border rounded p-3 h-100">
+                                <i class="fas fa-list-alt fa-2x text-danger mb-2"></i>
+                                <h6 class="fw-bold mb-2">SEL Log</h6>
+                                <p class="text-muted small mb-2">System Event Log entries</p>
+                                <a href="{% url 'view_file' path=log_path|add:'/sel.log' %}" class="btn btn-outline-danger btn-sm" target="_blank">
+                                    <i class="fas fa-eye me-1"></i>View Log
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="border rounded p-3 h-100">
+                                <i class="fas fa-file-text fa-2x text-info mb-2"></i>
+                                <h6 class="fw-bold mb-2">Run Log</h6>
+                                <p class="text-muted small mb-2">System execution log file</p>
+                                <a href="{% url 'view_file' path=log_path|add:'/run.log' %}" class="btn btn-outline-info btn-sm" target="_blank">
+                                    <i class="fas fa-eye me-1"></i>View Log
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Enhanced Testing Status Card -->
     {% if test_info.test_type and test_info.test_type != 'Unknown' %}
     <div class="row mb-4">
@@ -1115,68 +1172,60 @@ html {
         });
     });
 
-    // KVM functionality
+    // KVM functionality - Server-side KVM with viewer
     document.querySelectorAll('.kvm-btn-simple').forEach(button => {
         button.addEventListener('click', function() {
             const folderName = this.dataset.folder;
             const btn = this;
             
-            // Disable button and show loading
+            try {
+                // Disable button and show loading
                 btn.disabled = true;
-                    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Connecting...';
-            
-            fetch(`/systems/${folderName}/kvm/`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Open KVM in new tab
-                        window.open(data.kvm_url, '_blank');
-                        
-                        // Show success message
-                        btn.innerHTML = '<i class="fas fa-check me-1"></i>KVM Opened';
-                        btn.classList.remove('btn-outline-success');
-                        btn.classList.add('btn-success');
-                        
-                        // Reset button after 3 seconds
-                        setTimeout(() => {
-                            btn.innerHTML = '<i class="fas fa-desktop me-1"></i>Open KVM Console';
-                            btn.classList.remove('btn-success');
-                            btn.classList.add('btn-outline-success');
-                            btn.disabled = false;
-                        }, 3000);
-                } else {
-                        // Show error
-                        btn.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Error';
-                        btn.classList.remove('btn-outline-success');
-                        btn.classList.add('btn-danger');
-                        
-                        // Show error details
-                        alert(`KVM Error: ${data.error}`);
-                        
-                        // Reset button after 3 seconds
-                        setTimeout(() => {
-                            btn.innerHTML = '<i class="fas fa-desktop me-1"></i>Open KVM Console';
-                            btn.classList.remove('btn-danger');
-                            btn.classList.add('btn-outline-success');
-                btn.disabled = false;
-                        }, 3000);
-                    }
-                })
-                .catch(error => {
-                    console.error('KVM Error:', error);
-                    btn.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Error';
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Starting...';
+                
+                console.log(`Opening server-side KVM viewer for folder: ${folderName}`);
+                
+                // Open the new KVM viewer in a new tab
+                const kvmViewerUrl = `/systems/${folderName}/kvm/viewer/`;
+                const kvmWindow = window.open(kvmViewerUrl, '_blank', 'width=1200,height=900');
+                
+                if (kvmWindow) {
+                    console.log(`KVM viewer opened for ${folderName}`);
+                    
+                    // Show success message
+                    btn.innerHTML = '<i class="fas fa-check me-1"></i>KVM Viewer Opened';
                     btn.classList.remove('btn-outline-success');
-                    btn.classList.add('btn-danger');
-                    alert('Failed to connect to KVM service');
+                    btn.classList.add('btn-success');
                     
                     // Reset button after 3 seconds
                     setTimeout(() => {
                         btn.innerHTML = '<i class="fas fa-desktop me-1"></i>Open KVM Console';
-                        btn.classList.remove('btn-danger');
+                        btn.classList.remove('btn-success');
                         btn.classList.add('btn-outline-success');
                         btn.disabled = false;
                     }, 3000);
-                });
+                } else {
+                    throw new Error('Popup blocked! Please allow popups for KVM access.');
+                }
+            } catch (error) {
+                console.error('KVM viewer error:', error);
+                
+                // Show error
+                btn.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Error';
+                btn.classList.remove('btn-outline-success');
+                btn.classList.add('btn-danger');
+                
+                // Show error details
+                alert(`KVM Viewer Error: ${error.message}`);
+                
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-desktop me-1"></i>Open KVM Console';
+                    btn.classList.remove('btn-danger');
+                    btn.classList.add('btn-outline-success');
+                    btn.disabled = false;
+                }, 3000);
+            }
         });
     });
 

@@ -1,0 +1,402 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}KVM - {{ folder_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        background: #1a1a1a;
+        overflow: hidden;
+    }
+    
+    .kvm-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #000;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .kvm-header {
+        background: #2c3e50;
+        color: white;
+        padding: 10px 20px;
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        height: 50px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        z-index: 1000;
+    }
+    
+    .kvm-title {
+        font-weight: bold;
+        font-size: 16px;
+    }
+    
+    .kvm-controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    
+    .kvm-status {
+        padding: 5px 10px;
+        border-radius: 3px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    
+    .status-connecting { background: #f39c12; color: white; }
+    .status-connected { background: #27ae60; color: white; }
+    .status-error { background: #e74c3c; color: white; }
+    .status-disconnected { background: #95a5a6; color: white; }
+    
+    .kvm-btn {
+        padding: 5px 15px;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: background-color 0.2s;
+    }
+    
+    .btn-primary { background: #3498db; color: white; }
+    .btn-primary:hover { background: #2980b9; }
+    
+    .btn-danger { background: #e74c3c; color: white; }
+    .btn-danger:hover { background: #c0392b; }
+    
+    .kvm-viewer {
+        flex: 1;
+        position: relative;
+        background: #000;
+        overflow: hidden;
+    }
+    
+    #vnc-canvas {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        border: 1px solid #34495e;
+        box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        max-width: 100%;
+        max-height: 100%;
+    }
+    
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.8);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        z-index: 100;
+    }
+    
+    .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #34495e;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .error-message {
+        background: #e74c3c;
+        color: white;
+        padding: 20px;
+        border-radius: 5px;
+        margin: 20px;
+        text-align: center;
+    }
+    
+    .info-panel {
+        position: absolute;
+        top: 70px;
+        right: 20px;
+        background: rgba(44, 62, 80, 0.9);
+        color: white;
+        padding: 15px;
+        border-radius: 5px;
+        font-size: 12px;
+        z-index: 500;
+        display: none;
+    }
+    
+    .info-panel.show {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="kvm-container">
+    <div class="kvm-header">
+        <div class="kvm-title">
+            <i class="fas fa-desktop"></i>
+            KVM Console - {{ folder_name }}
+            <span style="font-weight: normal; color: #bdc3c7; margin-left: 10px;">{{ bmc_ip }}</span>
+        </div>
+        
+        <div class="kvm-controls">
+            <div id="kvm-status" class="kvm-status status-connecting">Connecting...</div>
+            <button id="info-btn" class="kvm-btn btn-primary" title="Show session info">
+                <i class="fas fa-info-circle"></i> Info
+            </button>
+            <button id="fullscreen-btn" class="kvm-btn btn-primary" title="Toggle fullscreen">
+                <i class="fas fa-expand"></i> Fullscreen
+            </button>
+            <button id="disconnect-btn" class="kvm-btn btn-danger" title="Disconnect KVM session">
+                <i class="fas fa-times"></i> Disconnect
+            </button>
+        </div>
+    </div>
+    
+    <div class="kvm-viewer">
+        <div id="loading-overlay" class="loading-overlay">
+            <div class="loading-spinner"></div>
+            <div>Starting KVM session...</div>
+            <div style="font-size: 12px; margin-top: 10px; color: #bdc3c7;">
+                This may take 10-15 seconds
+            </div>
+        </div>
+        
+        <canvas id="vnc-canvas" style="display: none;"></canvas>
+        
+        <div id="error-container" style="display: none;">
+            <div class="error-message">
+                <h3>KVM Connection Error</h3>
+                <p id="error-text">Failed to establish KVM connection</p>
+                <button onclick="location.reload()" class="kvm-btn btn-primary">
+                    <i class="fas fa-redo"></i> Retry
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="info-panel" class="info-panel">
+        <h4>Session Information</h4>
+        <div id="session-info">
+            <div><strong>Folder:</strong> {{ folder_name }}</div>
+            <div><strong>BMC IP:</strong> {{ bmc_ip }}</div>
+            <div><strong>Status:</strong> <span id="session-status">Loading...</span></div>
+            <div><strong>Display:</strong> <span id="display-info">-</span></div>
+            <div><strong>WebSocket:</strong> <span id="websocket-info">-</span></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+class KVMViewer {
+    constructor(folderName) {
+        this.folderName = folderName;
+        this.websocket = null;
+        this.vncClient = null;
+        this.sessionInfo = null;
+        
+        this.initializeUI();
+        this.connectWebSocket();
+    }
+    
+    initializeUI() {
+        // Button event handlers
+        document.getElementById('info-btn').onclick = () => this.toggleInfo();
+        document.getElementById('fullscreen-btn').onclick = () => this.toggleFullscreen();
+        document.getElementById('disconnect-btn').onclick = () => this.disconnect();
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'F11') {
+                e.preventDefault();
+                this.toggleFullscreen();
+            } else if (e.key === 'Escape' && document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+        });
+    }
+    
+    connectWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws/kvm/${this.folderName}/`;
+        
+        console.log('Connecting to KVM WebSocket:', wsUrl);
+        this.updateStatus('connecting', 'Connecting...');
+        
+        this.websocket = new WebSocket(wsUrl);
+        
+        this.websocket.onopen = () => {
+            console.log('KVM WebSocket connected');
+            this.updateStatus('connected', 'Connected');
+        };
+        
+        this.websocket.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                this.handleWebSocketMessage(data);
+            } catch (e) {
+                console.error('Error parsing WebSocket message:', e);
+            }
+        };
+        
+        this.websocket.onclose = (event) => {
+            console.log('KVM WebSocket closed:', event.code, event.reason);
+            this.updateStatus('disconnected', 'Disconnected');
+            this.showError('WebSocket connection closed');
+        };
+        
+        this.websocket.onerror = (error) => {
+            console.error('KVM WebSocket error:', error);
+            this.updateStatus('error', 'Connection Error');
+            this.showError('Failed to connect to KVM service');
+        };
+    }
+    
+    handleWebSocketMessage(data) {
+        console.log('KVM WebSocket message:', data);
+        
+        switch (data.type) {
+            case 'kvm_ready':
+                this.sessionInfo = data.session_info;
+                this.updateSessionInfo();
+                this.connectVNC(data.websocket_url);
+                break;
+                
+            case 'status':
+                this.sessionInfo = data.data;
+                this.updateSessionInfo();
+                break;
+                
+            case 'info':
+                console.log('KVM Info:', data.message);
+                break;
+                
+            case 'error':
+                this.showError(data.message);
+                break;
+        }
+    }
+    
+    connectVNC(vncWebSocketUrl) {
+        console.log('Connecting to VNC WebSocket:', vncWebSocketUrl);
+        
+        // Here you would integrate with a VNC client library like noVNC
+        // For now, we'll show a placeholder
+        this.hideLoading();
+        
+        const canvas = document.getElementById('vnc-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas size
+        canvas.width = 1024;
+        canvas.height = 768;
+        canvas.style.display = 'block';
+        
+        // Draw placeholder content
+        ctx.fillStyle = '#2c3e50';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.fillStyle = '#ecf0f1';
+        ctx.font = '24px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('KVM Session Ready', canvas.width/2, canvas.height/2 - 50);
+        
+        ctx.font = '16px Arial';
+        ctx.fillStyle = '#bdc3c7';
+        ctx.fillText(`VNC WebSocket: ${vncWebSocketUrl}`, canvas.width/2, canvas.height/2);
+        ctx.fillText('Integrate noVNC client here', canvas.width/2, canvas.height/2 + 30);
+        ctx.fillText('Chrome is running BMC KVM interface', canvas.width/2, canvas.height/2 + 60);
+        
+        this.updateStatus('connected', 'KVM Ready');
+    }
+    
+    updateStatus(status, text) {
+        const statusEl = document.getElementById('kvm-status');
+        statusEl.className = `kvm-status status-${status}`;
+        statusEl.textContent = text;
+    }
+    
+    updateSessionInfo() {
+        if (!this.sessionInfo) return;
+        
+        document.getElementById('session-status').textContent = 
+            this.sessionInfo.running ? 'Running' : 'Stopped';
+        document.getElementById('display-info').textContent = 
+            `:${this.sessionInfo.display_num} (${this.sessionInfo.vnc_port})`;
+        document.getElementById('websocket-info').textContent = 
+            `:${this.sessionInfo.websocket_port}`;
+    }
+    
+    hideLoading() {
+        document.getElementById('loading-overlay').style.display = 'none';
+    }
+    
+    showError(message) {
+        this.hideLoading();
+        document.getElementById('error-text').textContent = message;
+        document.getElementById('error-container').style.display = 'block';
+        document.getElementById('vnc-canvas').style.display = 'none';
+    }
+    
+    toggleInfo() {
+        const panel = document.getElementById('info-panel');
+        panel.classList.toggle('show');
+        
+        if (panel.classList.contains('show') && this.websocket) {
+            // Request current status
+            this.websocket.send(JSON.stringify({ type: 'get_status' }));
+        }
+    }
+    
+    toggleFullscreen() {
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        } else {
+            document.documentElement.requestFullscreen();
+        }
+    }
+    
+    disconnect() {
+        if (confirm('Are you sure you want to disconnect the KVM session?')) {
+            if (this.websocket) {
+                this.websocket.send(JSON.stringify({
+                    type: 'disconnect_kvm',
+                    reason: 'User requested disconnect'
+                }));
+            }
+            
+            // Close the window/tab after a short delay
+            setTimeout(() => {
+                window.close();
+            }, 1000);
+        }
+    }
+}
+
+// Initialize KVM viewer when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    const kvmViewer = new KVMViewer('{{ folder_name }}');
+});
+</script>
+{% endblock %} 

@@ -1,9 +1,9 @@
-from django.contrib.admin import helpers
 from django.shortcuts import render
-from django.conf import settings
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 
 @login_required
 def index(request):
-    return render(request, 'base.html')
+    return render(request, 'index.html')
 

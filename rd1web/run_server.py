@@ -2,17 +2,56 @@
 """
 Script to run the Django development server with ASGI support for WebSocket functionality.
 This enables the SOL terminal feature with real-time WebSocket communication.
+Configured to work with Nginx reverse proxy setup.
+Supports multiple workers for better concurrent SOL session handling.
 """
 
 import os
 import sys
 import django
+import signal
+import time
+import argparse
 from django.core.management import execute_from_command_line
 from django.conf import settings
+
+# Global list to track worker processes
+worker_processes = []
+
+def signal_handler(sig, frame):
+    """Handle shutdown signals gracefully"""
+    print(f"\n🛑 Received signal {sig}, shutting down workers...")
+    for process in worker_processes:
+        if process.poll() is None:  # Process is still running
+            print(f"   Terminating worker PID {process.pid}")
+            process.terminate()
+    
+    # Wait for processes to terminate gracefully
+    for process in worker_processes:
+        try:
+            process.wait(timeout=5)
+        except:
+            # Force kill if doesn't terminate gracefully
+            process.kill()
+    
+    print("🛑 All workers stopped")
+    sys.exit(0)
 
 def main():
     """Run administrative tasks."""
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'rd1web.settings')
+    
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='RD1 Web Server with multi-worker support')
+    parser.add_argument('--workers', '-w', type=int, default=1, 
+                       help='Number of Daphne workers to start (default: 1, recommended: 4)')
+    parser.add_argument('--start-port', type=int, default=8000,
+                       help='Starting port for workers (default: 8000)')
+    parser.add_argument('command', nargs='?', default=None,
+                       help='Django management command (runserver, migrate, etc.)')
+    
+    # Parse known args to handle Django commands
+    args, unknown = parser.parse_known_args()
     
     try:
         from django.core.management import execute_from_command_line
@@ -35,28 +74,126 @@ def main():
         print("⚠ Install with: pip install channels websockets daphne")
         print("⚠ SOL terminal may not work properly")
     
-    # Server configuration
-    host = '172.31.60.129'
-    port = 80
-    
-    # Check for command line arguments
-    if len(sys.argv) == 1:
-        # Use Daphne for ASGI support instead of Django's runserver
-        print(f"Starting Django ASGI server with Daphne for WebSocket support...")
-        print(f"SOL terminals will be available at ws://{host}:{port}/ws/sol/<folder_name>/")
-        print(f"Access the web interface at http://{host}:{port}/")
-        print(f"Note: Port {port} requires root privileges. Run with sudo if needed.")
+    # Handle Django management commands
+    if args.command or len(unknown) > 0:
+        # Pass through Django commands (migrate, collectstatic, etc.)
+        django_args = [sys.argv[0]]
+        if args.command:
+            django_args.append(args.command)
+        django_args.extend(unknown)
         
-        # Run with Daphne
-        os.system(f'daphne -b {host} -p {port} rd1web.asgi:application')
-    elif sys.argv[1] == 'runserver':
-        # If explicitly asked for runserver, warn about WebSocket limitations
-        print("⚠ Warning: Using Django's runserver may have limited WebSocket support")
-        print("⚠ For full SOL terminal functionality, use 'python3 run_server.py' without arguments")
-        execute_from_command_line(sys.argv)
-    else:
-        # Pass through other Django commands
-        execute_from_command_line(sys.argv)
+        if args.command == 'runserver':
+            print("⚠ Warning: Using Django's runserver has limited WebSocket support")
+            print("⚠ For full SOL terminal functionality, use without 'runserver' command")
+        
+        execute_from_command_line(django_args)
+        return
+    
+    # Server configuration for Nginx proxy setup
+    host = '127.0.0.1'  # Local only - Nginx will handle external requests
+    start_port = args.start_port
+    workers = args.workers
+    
+    # Validate worker count
+    if workers < 1:
+        workers = 1
+    elif workers > 8:
+        print("⚠ Warning: More than 8 workers may cause performance issues")
+        print("⚠ Recommended: 2-6 workers depending on your server specs")
+    
+    # Setup signal handlers for graceful shutdown
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    print(f"🚀 Starting {workers} Django/Daphne worker(s)")
+    print(f"🔧 Using timeout settings: HTTP=120s, App Close=60s, WebSocket Handshake=10s")
+    print(f"✓ SOL terminal functionality will be enabled")
+    print(f"🌐 Nginx should proxy external requests from port 80 to these backends")
+    print(f"📁 Public access via: http://172.31.60.129/ (through Nginx)")
+    print(f"🔌 WebSocket SOL terminals: ws://172.31.60.129/ws/sol/<folder_name>/ (through Nginx)")
+    print(f"⚡ Static files served directly by Nginx for better performance")
+    print()
+    
+    # Calculate expected capacity
+    sol_capacity = workers * 10  # Estimate 10 SOL sessions per worker
+    print(f"📊 Expected capacity: {sol_capacity}-{sol_capacity*2} concurrent SOL sessions")
+    print(f"💾 Memory usage: ~{workers * 50}-{workers * 100}MB for workers")
+    print()
+    
+    # Start worker processes
+    import subprocess
+    
+    for worker_id in range(workers):
+        port = start_port + worker_id
+        
+        # Daphne command for each worker
+        daphne_command = [
+            'daphne',
+            '-b', host,
+            '-p', str(port),
+            '-t', '120',
+            '--application-close-timeout', '60', 
+            '--websocket_connect_timeout', '10',
+            'rd1web.asgi:application'
+        ]
+        
+        try:
+            print(f"🔄 Starting worker {worker_id + 1}/{workers} on {host}:{port}")
+            
+            # Set environment variable to identify worker
+            worker_env = os.environ.copy()
+            worker_env['DAPHNE_WORKER_ID'] = str(worker_id)
+            worker_env['DAPHNE_WORKER_PORT'] = str(port)
+            
+            process = subprocess.Popen(daphne_command, env=worker_env)
+            worker_processes.append(process)
+            time.sleep(0.5)  # Small delay between worker starts
+        except Exception as e:
+            print(f"❌ Error starting worker {worker_id + 1}: {e}")
+            # Cleanup already started workers
+            signal_handler(signal.SIGTERM, None)
+            sys.exit(1)
+    
+    print()
+    print(f"✅ All {workers} workers started successfully!")
+    print(f"🔗 Nginx upstream should include ports: {start_port}-{start_port + workers - 1}")
+    print()
+    print("📋 Worker Status:")
+    for i, process in enumerate(worker_processes):
+        port = start_port + i
+        status = "RUNNING" if process.poll() is None else "STOPPED"
+        print(f"   Worker {i+1}: {host}:{port} - {status} (PID: {process.pid})")
+    
+    print()
+    print("🎯 Load balancing: Nginx will distribute requests across all workers")
+    print("💡 Tip: Monitor with 'ps aux | grep daphne' and 'netstat -tlnp | grep 800'")
+    print("🛑 Press Ctrl+C to stop all workers")
+    print()
+    
+    # Monitor worker processes
+    try:
+        while True:
+            time.sleep(5)
+            
+            # Check if any workers have died
+            dead_workers = []
+            for i, process in enumerate(worker_processes):
+                if process.poll() is not None:
+                    dead_workers.append(i)
+            
+            if dead_workers:
+                print(f"⚠ Warning: Worker(s) {[i+1 for i in dead_workers]} have stopped")
+                # Optionally restart dead workers here
+                
+            # If all workers are dead, exit
+            if len(dead_workers) == len(worker_processes):
+                print("❌ All workers have stopped")
+                break
+                
+    except KeyboardInterrupt:
+        print("\n🛑 Shutdown requested by user")
+    finally:
+        signal_handler(signal.SIGTERM, None)
 
 if __name__ == '__main__':
     main() 

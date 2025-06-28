@@ -8,15 +8,14 @@
                 <div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt"></i></div>
                 Overview
             </a>
+
+            <!-- System Management -->
+            <div class="sb-sidenav-menu-heading">System Management</div>
             
             <a class="nav-link" href="{% url 'system_list' %}">
                 <div class="sb-nav-link-icon"><i class="fas fa-desktop"></i></div>
                 System Overview
             </a>
-            
-
-            <!-- System Management -->
-            <div class="sb-sidenav-menu-heading">System Management</div>
             
             <a class="nav-link" href="{% url 'pxe' %}">
                 <div class="sb-nav-link-icon"><i class="fas fa-server"></i></div>
@@ -31,6 +30,11 @@
                 IPMI Tool
             </a>
             
+            <a class="nav-link" href="{% url 'mac_ip_results' %}">
+                <div class="sb-nav-link-icon"><i class="fas fa-network-wired"></i></div>
+                MAC to IP
+            </a>
+            
             <a class="nav-link" href="{% url 'remote_control' %}">
                 <div class="sb-nav-link-icon"><i class="fas fa-mouse-pointer"></i></div>
                 Remote Control
@@ -39,9 +43,12 @@
         </div>
     </div>
     
-    <!-- Sidebar Footer -->
     <div class="sb-sidenav-footer">
-        <div class="small">System Status</div>
-        <strong><i class="fas fa-circle text-success me-1"></i>Online</strong>
+        <div class="text-center">
+            <img src="{% load static %}{% static 'assets/img/Super_Micro_Computer_Logo.svg.png' %}" alt="Supermicro" style="height: 30px; width: auto; margin-bottom: 0.5rem; opacity: 0.8;">
+            <div class="small">Powered by</div>
+            <strong>Supermicro</strong>
+        </div>
     </div>
+    
 </nav>

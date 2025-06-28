@@ -78,12 +78,12 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
-                                Other Systems
+                                Archive
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ systems.other|length }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ systems.archive|length }}</div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-server fa-2x text-gray-300"></i>
+                            <i class="fas fa-archive fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
@@ -110,17 +110,17 @@
                         <i class="fas fa-plug me-1"></i>AC Tests ({{ systems.ac|length }})
                     </button>
                 </li>
-                {% if systems.other %}
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="other-tab" data-bs-toggle="pill" data-bs-target="#otherTab" type="button" role="tab">
-                        <i class="fas fa-server me-1"></i>Other ({{ systems.other|length }})
-                    </button>
-                </li>
-                {% endif %}
                 {% if systems.archive %}
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="archive-tab" data-bs-toggle="pill" data-bs-target="#archiveTab" type="button" role="tab">
                         <i class="fas fa-archive me-1"></i>Archive ({{ systems.archive|length }})
+                    </button>
+                </li>
+                {% endif %}
+                {% if systems.other %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="other-tab" data-bs-toggle="pill" data-bs-target="#otherTab" type="button" role="tab">
+                        <i class="fas fa-server me-1"></i>Other ({{ systems.other|length }})
                     </button>
                 </li>
                 {% endif %}
@@ -664,6 +664,7 @@
                     </div>
                 </div>
                 {% endif %}
+
             </div>
         </div>
     </div>
@@ -737,7 +738,7 @@
 </style>
 
 <script>
-// KVM functionality
+// KVM functionality - Server-side KVM with viewer
 async function openKVM(folderName) {
     const kvmButton = document.querySelector(`button[onclick="openKVM('${folderName}')"]`);
     const originalText = kvmButton ? kvmButton.innerHTML : '';
@@ -745,34 +746,38 @@ async function openKVM(folderName) {
     try {
         if (kvmButton) {
             kvmButton.disabled = true;
-            kvmButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Connecting...';
+            kvmButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Starting...';
         }
         
-        console.log(`Attempting KVM connection for folder: ${folderName}`);
-        const response = await fetch(`/systems/${folderName}/kvm/`);
+        console.log(`Opening server-side KVM viewer for folder: ${folderName}`);
         
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
+        // Open the new KVM viewer in a new tab
+        const kvmViewerUrl = `/systems/${folderName}/kvm/viewer/`;
+        const kvmWindow = window.open(kvmViewerUrl, '_blank', 'width=1200,height=900');
         
-        const data = await response.json();
-        console.log('KVM response:', data);
-        
-        if (data.success) {
-            console.log(`Opening KVM URL: ${data.kvm_url}`);
-            // Open KVM in a new tab
-            const kvmWindow = window.open(data.kvm_url, '_blank');
-            if (!kvmWindow) {
-                alert('Popup blocked! Please allow popups for KVM access.');
+        if (kvmWindow) {
+            console.log(`KVM viewer opened for ${folderName}`);
+            
+            if (kvmButton) {
+                kvmButton.innerHTML = '<i class="fas fa-check me-1"></i>KVM Viewer Opened';
+                kvmButton.classList.remove('btn-outline-success');
+                kvmButton.classList.add('btn-success');
+                
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    kvmButton.innerHTML = originalText;
+                    kvmButton.classList.remove('btn-success');
+                    kvmButton.classList.add('btn-outline-success');
+                    kvmButton.disabled = false;
+                }, 3000);
             }
         } else {
-            console.error('KVM error:', data.error);
-            alert(`Error opening KVM: ${data.error}\nError Type: ${data.error_type || 'unknown'}`);
+            throw new Error('Popup blocked! Please allow popups for KVM access.');
         }
     } catch (error) {
-        console.error('KVM connection error:', error);
-        alert('Error connecting to KVM: ' + error.message);
-    } finally {
+        console.error('KVM viewer error:', error);
+        alert('Error opening KVM viewer: ' + error.message);
+        
         if (kvmButton) {
             kvmButton.disabled = false;
             kvmButton.innerHTML = originalText;
