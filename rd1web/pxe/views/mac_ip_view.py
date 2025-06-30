@@ -9,7 +9,15 @@ from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.db.models import Q, Count
 from ..models import ArpScanResult
-from ..background_tasks import mac_ip_task
+
+
+def get_scanner_status():
+    """Get scanner status with lazy import to avoid circular imports"""
+    try:
+        from ..background_tasks import mac_ip_task
+        return mac_ip_task.get_status()
+    except Exception:
+        return {'running': False, 'subnets': {}, 'mode': 'unavailable'}
 
 
 @login_required
@@ -44,7 +52,7 @@ def mac_ip_results(request):
     page_obj = paginator.get_page(page_number)
     
     # Get task status
-    task_status = mac_ip_task.get_status()
+    task_status = get_scanner_status()
     
     # Get subnet statistics
     subnet_stats = ArpScanResult.objects.values('subnet_source').annotate(
@@ -102,7 +110,7 @@ def mac_ip_api(request):
             }
         
         data = {
-            'task_status': mac_ip_task.get_status(),
+            'task_status': get_scanner_status(),
             'results': [
                 {
                     'ip_address': result.ip_address,

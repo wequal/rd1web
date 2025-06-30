@@ -115,6 +115,25 @@
                             </div>
                         </div>
 
+                        <!-- Remote Console Access -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-desktop me-2 text-success"></i>Remote Console Access
+                            </label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="button" id="kvmBtn" class="btn btn-outline-success">
+                                    <i class="fas fa-desktop me-1"></i>Open KVM
+                                </button>
+                                <button type="button" id="solBtn" class="btn btn-outline-warning">
+                                    <i class="fas fa-terminal me-1"></i>Open SOL
+                                </button>
+                            </div>
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Use the first BMC IP and password from the lists above.
+                            </small>
+                        </div>
+
                         <!-- Submit Button -->
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                             <button type="reset" class="btn btn-outline-secondary me-md-2">
@@ -314,6 +333,32 @@
         document.getElementById('{{ form.command.id_for_label }}').value = command;
     }
     
+    // Get first BMC credentials from the form
+    function getFirstBmcCredentials() {
+        const bmcIpField = document.getElementById('{{ form.bmc_ip.id_for_label }}');
+        const pwdField = document.getElementById('{{ form.pwd.id_for_label }}');
+        const userField = document.getElementById('{{ form.user.id_for_label }}');
+        
+        const ips = bmcIpField.value.split('\n').filter(ip => ip.trim() !== '');
+        const passwords = pwdField.value.split('\n').filter(pwd => pwd.trim() !== '');
+        
+        if (ips.length === 0) {
+            alert('Please enter at least one BMC IP address');
+            return null;
+        }
+        
+        if (passwords.length === 0) {
+            alert('Please enter at least one password');
+            return null;
+        }
+        
+        return {
+            bmc_ip: ips[0].trim(),
+            username: userField.value,
+            password: passwords[0].trim()
+        };
+    }
+    
     // Form validation and UX improvements
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('ipmiForm');
@@ -330,6 +375,78 @@
                 alert('Number of IP addresses must match number of passwords!');
                 return false;
             }
+        });
+        
+        // KVM Button functionality
+        const kvmBtn = document.getElementById('kvmBtn');
+        kvmBtn.addEventListener('click', function() {
+            const credentials = getFirstBmcCredentials();
+            if (!credentials) return;
+
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Opening KVM...';
+
+            fetch('/remote-control/kvm/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(credentials)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.open(data.kvm_url, '_blank');
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-desktop me-1"></i>Open KVM';
+                } else {
+                    alert('KVM Error: ' + data.error);
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-desktop me-1"></i>Open KVM';
+                }
+            })
+            .catch(error => {
+                alert('Network error: ' + error.message);
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-desktop me-1"></i>Open KVM';
+            });
+        });
+
+        // SOL Button functionality
+        const solBtn = document.getElementById('solBtn');
+        solBtn.addEventListener('click', function() {
+            const credentials = getFirstBmcCredentials();
+            if (!credentials) return;
+
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Opening SOL...';
+
+            fetch('/remote-control/sol/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(credentials)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.open(data.sol_terminal_url, '_blank');
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-terminal me-1"></i>Open SOL';
+                } else {
+                    alert('SOL Error: ' + data.error);
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-terminal me-1"></i>Open SOL';
+                }
+            })
+            .catch(error => {
+                alert('Network error: ' + error.message);
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-terminal me-1"></i>Open SOL';
+            });
         });
     });
 </script>

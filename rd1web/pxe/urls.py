@@ -38,7 +38,7 @@ urlpatterns = [
     path('logs/', log_view, name='log_root'),
     path('logs/<path:path>/', log_view, name='log'),
     path('view/<path:path>/', view_file, name='view_file'),
-    path('remote-control/', remote_control, name='remote_control'),
+
     path('remote-control/kvm/', remote_kvm, name='remote_kvm'),
     path('remote-control/sol/', remote_start_sol, name='remote_start_sol'),
     path('remote-control/sol_terminal/', remote_sol_terminal, name='remote_sol_terminal'),

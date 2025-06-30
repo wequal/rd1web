@@ -1187,7 +1187,7 @@ html {
                 
                 // Open the new KVM viewer in a new tab
                 const kvmViewerUrl = `/systems/${folderName}/kvm/viewer/`;
-                const kvmWindow = window.open(kvmViewerUrl, '_blank', 'width=1200,height=900');
+                const kvmWindow = window.open(kvmViewerUrl, '_blank');
                 
                 if (kvmWindow) {
                     console.log(`KVM viewer opened for ${folderName}`);

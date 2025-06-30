@@ -14,6 +14,13 @@ class PxeConfig(AppConfig):
         # Only start background tasks in the main process (not during migrations, etc.)
         if os.environ.get('RUN_MAIN') or os.environ.get('DJANGO_SETTINGS_MODULE'):
             try:
+                # Check if background scanner is disabled
+                scanner_enabled = os.environ.get('BACKGROUND_SCANNER', 'on') == 'on'
+                
+                if not scanner_enabled:
+                    logger.info("PXE app ready - Multi-subnet scanner disabled (--scanner off)")
+                    return
+                
                 # Only the first worker (worker ID 0) should run background tasks
                 worker_id = os.environ.get('DAPHNE_WORKER_ID', '0')
                 

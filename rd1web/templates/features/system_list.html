@@ -139,7 +139,6 @@
                                         <th class="border-0">Network Info</th>
                                         <th class="border-0">Current Test</th>
                                         <th class="border-0">Test Status</th>
-                                        <th class="border-0">Activity</th>
                                         <th class="border-0">Last Updated</th>
                                         <th class="border-0">Actions</th>
                                     </tr>
@@ -186,23 +185,13 @@
                                                                 {% elif test_status == 'FAIL' %}bg-danger
                                                                 {% elif test_status == 'RUNNING' %}bg-primary
                                                                 {% else %}bg-secondary{% endif %} me-1 mb-1">
-                                                                {{ test_name }}: {{ test_status }}
+                                                                {{ test_name }}{% if test_status == 'FAIL' %}: {{ test_status }}{% endif %}
                                                             </span>
                                                         {% endfor %}
                                                     {% else %}
                                                         <span class="badge bg-secondary">Unknown</span>
                                                     {% endif %}
                                                 </div>
-                                            </td>
-                                            <td>
-                                                <span class="badge 
-                                                    {% if system.activity_status == 'Online' %}bg-success
-                                                    {% elif system.activity_status == 'Recent' %}bg-warning text-dark
-                                                    {% elif system.activity_status == 'Offline' %}bg-danger
-                                                    {% else %}bg-secondary{% endif %}">
-                                                    <i class="fas fa-circle me-1" style="font-size: 0.6em;"></i>
-                                                    {{ system.activity_status }}
-                                                </span>
                                             </td>
                                             <td>
                                                 {% if system.last_updated %}
@@ -263,7 +252,6 @@
                                         <th class="border-0">Network Info</th>
                                         <th class="border-0">Cycle Progress</th>
                                         <th class="border-0">Status</th>
-                                        <th class="border-0">Activity</th>
                                         <th class="border-0">Last Updated</th>
                                         <th class="border-0">Actions</th>
                                     </tr>
@@ -318,16 +306,6 @@
                                                     {% elif system.status == 'FAIL' %}bg-danger
                                                     {% else %}bg-secondary{% endif %}">
                                                     {{ system.status }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span class="badge 
-                                                    {% if system.activity_status == 'Online' %}bg-success
-                                                    {% elif system.activity_status == 'Recent' %}bg-warning text-dark
-                                                    {% elif system.activity_status == 'Offline' %}bg-danger
-                                                    {% else %}bg-secondary{% endif %}">
-                                                    <i class="fas fa-circle me-1" style="font-size: 0.6em;"></i>
-                                                    {{ system.activity_status }}
                                                 </span>
                                             </td>
                                             <td>
@@ -389,7 +367,6 @@
                                         <th class="border-0">Network Info</th>
                                         <th class="border-0">Cycle Progress</th>
                                         <th class="border-0">Status</th>
-                                        <th class="border-0">Activity</th>
                                         <th class="border-0">Last Updated</th>
                                         <th class="border-0">Actions</th>
                                     </tr>
@@ -444,16 +421,6 @@
                                                     {% elif system.status == 'FAIL' %}bg-danger
                                                     {% else %}bg-secondary{% endif %}">
                                                     {{ system.status }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span class="badge 
-                                                    {% if system.activity_status == 'Online' %}bg-success
-                                                    {% elif system.activity_status == 'Recent' %}bg-warning text-dark
-                                                    {% elif system.activity_status == 'Offline' %}bg-danger
-                                                    {% else %}bg-secondary{% endif %}">
-                                                    <i class="fas fa-circle me-1" style="font-size: 0.6em;"></i>
-                                                    {{ system.activity_status }}
                                                 </span>
                                             </td>
                                             <td>
@@ -514,7 +481,6 @@
                                     <th class="border-0 ps-4">System</th>
                                     <th class="border-0">Network Info</th>
                                     <th class="border-0">Status</th>
-                                    <th class="border-0">Activity</th>
                                     <th class="border-0">Last Updated</th>
                                     <th class="border-0">Actions</th>
                                 </tr>
@@ -547,16 +513,6 @@
                                         </td>
                                         <td>
                                             <span class="badge bg-secondary">{{ system.status }}</span>
-                                        </td>
-                                        <td>
-                                            <span class="badge 
-                                                {% if system.activity_status == 'Online' %}bg-success
-                                                {% elif system.activity_status == 'Recent' %}bg-warning text-dark
-                                                {% elif system.activity_status == 'Offline' %}bg-danger
-                                                {% else %}bg-secondary{% endif %}">
-                                                <i class="fas fa-circle me-1" style="font-size: 0.6em;"></i>
-                                                {{ system.activity_status }}
-                                            </span>
                                         </td>
                                         <td>
                                             {% if system.last_updated %}
@@ -753,7 +709,7 @@ async function openKVM(folderName) {
         
         // Open the new KVM viewer in a new tab
         const kvmViewerUrl = `/systems/${folderName}/kvm/viewer/`;
-        const kvmWindow = window.open(kvmViewerUrl, '_blank', 'width=1200,height=900');
+        const kvmWindow = window.open(kvmViewerUrl, '_blank');
         
         if (kvmWindow) {
             console.log(`KVM viewer opened for ${folderName}`);

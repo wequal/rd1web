@@ -96,7 +96,7 @@
                     </div>
                     <div class="card-content">
                         <h4>IPMI Tool</h4>
-                        <p>Remote BMC management and control for power operations, sensor monitoring, and hardware diagnostics.</p>
+                        <p>Remote BMC management with IPMI commands, KVM console access, and SOL terminal connections for comprehensive server control.</p>
                     </div>
                     <div class="card-action">
                         <a href="{% url 'ipmitool' %}" class="btn btn-secondary">
@@ -123,22 +123,7 @@
                     </div>
                 </div>
 
-                <!-- Remote Control -->
-                <div class="tool-card">
-                    <div class="card-icon danger">
-                        <i class="fas fa-mouse-pointer"></i>
-                    </div>
-                    <div class="card-content">
-                        <h4>Remote Control</h4>
-                        <p>Direct KVM and SOL console access to server systems through secure BMC interfaces.</p>
-                    </div>
-                    <div class="card-action">
-                        <a href="{% url 'remote_control' %}" class="btn btn-secondary">
-                            <i class="fas fa-desktop"></i>
-                            Access Remote
-                        </a>
-                    </div>
-                </div>
+
             </div>
         </section>
     </div>

@@ -47,6 +47,8 @@ def main():
                        help='Number of Daphne workers to start (default: 1, recommended: 4)')
     parser.add_argument('--start-port', type=int, default=8000,
                        help='Starting port for workers (default: 8000)')
+    parser.add_argument('--scanner', choices=['on', 'off'], default='on',
+                       help='Enable/disable background IP scanner (default: on)')
     parser.add_argument('command', nargs='?', default=None,
                        help='Django management command (runserver, migrate, etc.)')
     
@@ -105,9 +107,15 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     
+    # Set environment variable for scanner control
+    os.environ['BACKGROUND_SCANNER'] = args.scanner
+    
+    scanner_status = "✓ Enabled" if args.scanner == 'on' else "⚠ Disabled (--scanner off)"
+    
     print(f"🚀 Starting {workers} Django/Daphne worker(s)")
     print(f"🔧 Using timeout settings: HTTP=120s, App Close=60s, WebSocket Handshake=10s")
     print(f"✓ SOL terminal functionality will be enabled")
+    print(f"📡 Background IP scanner: {scanner_status}")
     print(f"🌐 Nginx should proxy external requests from port 80 to these backends")
     print(f"📁 Public access via: http://172.31.60.129/ (through Nginx)")
     print(f"🔌 WebSocket SOL terminals: ws://172.31.60.129/ws/sol/<folder_name>/ (through Nginx)")
