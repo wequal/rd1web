@@ -11606,3 +11606,99 @@ INFO 2025-07-01 17:58:18,093 background_tasks 680865 139038975588032 Concurrent 
 INFO 2025-07-01 17:58:28,094 background_tasks 680865 139038975588032 Starting concurrent multi-subnet scan #2
 INFO 2025-07-01 17:58:28,095 background_tasks 680865 139038895896256 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
 INFO 2025-07-01 17:58:28,095 background_tasks 680865 139038887503552 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-01 18:03:08,155 background_tasks 680865 139038887503552 remote database update: 0 new, 955 updated, 14 inactive
+INFO 2025-07-01 18:03:08,156 background_tasks 680865 139038887503552 Concurrent scan completed for remote subnet
+INFO 2025-07-01 18:03:53,655 background_tasks 680865 139038895896256 local database update: 0 new, 3169 updated, 65 inactive
+INFO 2025-07-01 18:03:53,656 background_tasks 680865 139038895896256 Concurrent scan completed for local subnet
+INFO 2025-07-01 18:03:53,656 background_tasks 680865 139038975588032 Concurrent multi-subnet scan #2 completed
+INFO 2025-07-01 18:04:03,657 background_tasks 680865 139038975588032 Starting concurrent multi-subnet scan #3
+INFO 2025-07-01 18:04:03,658 background_tasks 680865 139038895896256 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-01 18:04:03,658 background_tasks 680865 139038887503552 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-01 18:08:42,427 background_tasks 680865 139038887503552 remote database update: 0 new, 957 updated, 16 inactive
+INFO 2025-07-01 18:08:42,427 background_tasks 680865 139038887503552 Concurrent scan completed for remote subnet
+INFO 2025-07-01 18:09:16,337 background_tasks 680865 139038895896256 local database update: 0 new, 3185 updated, 54 inactive
+INFO 2025-07-01 18:09:16,338 background_tasks 680865 139038895896256 Concurrent scan completed for local subnet
+INFO 2025-07-01 18:09:16,339 background_tasks 680865 139038975588032 Concurrent multi-subnet scan #3 completed
+INFO 2025-07-01 18:09:26,340 background_tasks 680865 139038975588032 Starting concurrent multi-subnet scan #4
+INFO 2025-07-01 18:09:26,340 background_tasks 680865 139038895896256 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-01 18:09:26,341 background_tasks 680865 139038887503552 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-01 18:14:05,950 background_tasks 680865 139038887503552 remote database update: 0 new, 965 updated, 13 inactive
+INFO 2025-07-01 18:14:05,951 background_tasks 680865 139038887503552 Concurrent scan completed for remote subnet
+INFO 2025-07-01 18:14:41,931 background_tasks 680865 139038895896256 local database update: 0 new, 3203 updated, 33 inactive
+INFO 2025-07-01 18:14:41,932 background_tasks 680865 139038895896256 Concurrent scan completed for local subnet
+INFO 2025-07-01 18:14:41,933 background_tasks 680865 139038975588032 Concurrent multi-subnet scan #4 completed
+INFO 2025-07-01 18:14:51,934 background_tasks 680865 139038975588032 Starting concurrent multi-subnet scan #5
+INFO 2025-07-01 18:14:51,934 background_tasks 680865 139038895896256 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-01 18:14:51,935 background_tasks 680865 139038887503552 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-01 18:17:26,974 background_tasks 684117 125279257228992 Starting concurrent multi-subnet scan #1
+INFO 2025-07-01 18:17:26,974 background_tasks 684117 125279353892992 Started multi-subnet scanner with concurrent scanning (subnets: local: 172.31.0.0/16 (arp-scan), remote: 10.135.0.0/16 (fastapi))
+INFO 2025-07-01 18:17:26,975 apps 684117 125279353892992 PXE app ready - Multi-subnet scanner started (primary worker)
+INFO 2025-07-01 18:17:26,975 background_tasks 684117 125279248836288 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-01 18:17:26,976 background_tasks 684117 125279240443584 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-01 18:17:27,395 apps 684142 136775938461824 PXE app ready - Multi-subnet scanner skipped (worker 1)
+INFO 2025-07-01 18:17:27,924 apps 684157 127982926733440 PXE app ready - Multi-subnet scanner skipped (worker 2)
+INFO 2025-07-01 18:17:28,432 apps 684159 140398120034432 PXE app ready - Multi-subnet scanner skipped (worker 3)
+INFO 2025-07-01 18:22:06,076 background_tasks 684117 125279240443584 remote database update: 0 new, 954 updated, 17 inactive
+INFO 2025-07-01 18:22:06,077 background_tasks 684117 125279240443584 Concurrent scan completed for remote subnet
+INFO 2025-07-01 18:22:28,050 background_tasks 685124 136104539846336 Starting concurrent multi-subnet scan #1
+INFO 2025-07-01 18:22:28,050 background_tasks 685124 136104639049856 Started multi-subnet scanner with concurrent scanning (subnets: local: 172.31.0.0/16 (arp-scan), remote: 10.135.0.0/16 (fastapi))
+INFO 2025-07-01 18:22:28,051 apps 685124 136104639049856 PXE app ready - Multi-subnet scanner started (primary worker)
+INFO 2025-07-01 18:22:28,051 background_tasks 685124 136104531453632 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-01 18:22:28,052 background_tasks 685124 136104523060928 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-01 18:22:28,540 apps 685128 131906630082688 PXE app ready - Multi-subnet scanner skipped (worker 1)
+INFO 2025-07-01 18:22:29,029 apps 685143 124126224339072 PXE app ready - Multi-subnet scanner skipped (worker 2)
+INFO 2025-07-01 18:22:29,527 apps 685145 130402817261696 PXE app ready - Multi-subnet scanner skipped (worker 3)
+INFO 2025-07-01 18:23:30,850 background_tasks 685418 132253732566720 Starting concurrent multi-subnet scan #1
+INFO 2025-07-01 18:23:30,851 background_tasks 685418 132253830062208 Started multi-subnet scanner with concurrent scanning (subnets: local: 172.31.0.0/16 (arp-scan), remote: 10.135.0.0/16 (fastapi))
+INFO 2025-07-01 18:23:30,851 apps 685418 132253830062208 PXE app ready - Multi-subnet scanner started (primary worker)
+INFO 2025-07-01 18:23:30,852 background_tasks 685418 132253652874944 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-01 18:23:30,853 background_tasks 685418 132253644482240 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-01 18:23:31,283 apps 685466 137479214506112 PXE app ready - Multi-subnet scanner skipped (worker 1)
+INFO 2025-07-01 18:23:31,676 apps 685483 127129152950400 PXE app ready - Multi-subnet scanner skipped (worker 2)
+INFO 2025-07-01 18:23:32,232 apps 685485 123328612253824 PXE app ready - Multi-subnet scanner skipped (worker 3)
+INFO 2025-07-01 18:23:40,114 kvm_sol 685418 132253627696832 KVM viewer request for folder: burnin-90-5a-08-13-b6-6f
+INFO 2025-07-01 18:23:40,114 utils 685418 132253627696832 Loaded sysconfig for burnin-90-5a-08-13-b6-6f: BMC IP = 10.135.177.80
+INFO 2025-07-01 18:23:40,833 kvm_sol 685418 132253627696832 KVM viewer loaded for burnin-90-5a-08-13-b6-6f: https://10.135.177.80/redfish/U94BEh3pLvg9knO.IKVM
+INFO 2025-07-01 18:23:48,544 kvm_sol 685466 137479109732032 KVM viewer request for folder: burnin-7c-c2-55-8a-68-a9
+INFO 2025-07-01 18:23:48,544 utils 685466 137479109732032 Loaded sysconfig for burnin-7c-c2-55-8a-68-a9: BMC IP = 172.31.35.241
+INFO 2025-07-01 18:23:48,670 kvm_sol 685466 137479109732032 KVM viewer loaded for burnin-7c-c2-55-8a-68-a9: https://172.31.35.241/redfish/eU0PVqbOYUHx59k.IKVM
+INFO 2025-07-01 18:23:52,855 kvm_sol 685483 127129048049344 SOL request for folder: burnin-90-5a-08-13-b6-6f
+INFO 2025-07-01 18:23:52,859 utils 685483 127129048049344 Loaded sysconfig for burnin-90-5a-08-13-b6-6f: BMC IP = 10.135.177.80
+INFO 2025-07-01 18:23:52,859 kvm_sol 685483 127129048049344 SOL terminal URL generated for burnin-90-5a-08-13-b6-6f: /systems/burnin-90-5a-08-13-b6-6f/sol/terminal/
+INFO 2025-07-01 18:23:53,010 kvm_sol 685485 123328507406016 SOL terminal page request for folder: burnin-90-5a-08-13-b6-6f
+INFO 2025-07-01 18:23:53,010 utils 685485 123328507406016 Loaded sysconfig for burnin-90-5a-08-13-b6-6f: BMC IP = 10.135.177.80
+INFO 2025-07-01 18:23:54,658 consumers 685418 132253830062208 SOL WebSocket connection attempt for burnin-90-5a-08-13-b6-6f
+INFO 2025-07-01 18:23:54,659 utils 685418 132253830062208 Loaded sysconfig for burnin-90-5a-08-13-b6-6f: BMC IP = 10.135.177.80
+INFO 2025-07-01 18:23:54,685 sol_session 685418 132253830062208 Started SOL session for burnin-90-5a-08-13-b6-6f (PID=685633)
+INFO 2025-07-01 18:23:54,687 consumers 685418 132253830062208 SOL WebSocket connected for burnin-90-5a-08-13-b6-6f
+INFO 2025-07-01 18:23:55,387 kvm_sol 685466 137479109732032 SOL request for folder: burnin-7c-c2-55-8a-68-a9
+INFO 2025-07-01 18:23:55,391 utils 685466 137479109732032 Loaded sysconfig for burnin-7c-c2-55-8a-68-a9: BMC IP = 172.31.35.241
+INFO 2025-07-01 18:23:55,391 kvm_sol 685466 137479109732032 SOL terminal URL generated for burnin-7c-c2-55-8a-68-a9: /systems/burnin-7c-c2-55-8a-68-a9/sol/terminal/
+INFO 2025-07-01 18:23:55,593 kvm_sol 685483 127129048049344 SOL terminal page request for folder: burnin-7c-c2-55-8a-68-a9
+INFO 2025-07-01 18:23:55,593 utils 685483 127129048049344 Loaded sysconfig for burnin-7c-c2-55-8a-68-a9: BMC IP = 172.31.35.241
+INFO 2025-07-01 18:23:57,706 consumers 685485 123328612253824 SOL WebSocket connection attempt for burnin-7c-c2-55-8a-68-a9
+INFO 2025-07-01 18:23:57,707 utils 685485 123328612253824 Loaded sysconfig for burnin-7c-c2-55-8a-68-a9: BMC IP = 172.31.35.241
+INFO 2025-07-01 18:23:57,719 sol_session 685485 123328612253824 Started SOL session for burnin-7c-c2-55-8a-68-a9 (PID=685644)
+INFO 2025-07-01 18:23:57,720 consumers 685485 123328612253824 SOL WebSocket connected for burnin-7c-c2-55-8a-68-a9
+INFO 2025-07-01 18:24:06,854 consumers 685485 123328612253824 SOL disconnect requested for burnin-7c-c2-55-8a-68-a9: Page closing
+INFO 2025-07-01 18:24:06,856 consumers 685485 123328612253824 SOL WebSocket disconnected for burnin-7c-c2-55-8a-68-a9 with code: 1000
+INFO 2025-07-01 18:24:06,860 sol_session 685485 123328612253824 Cleaned up SOL session for burnin-7c-c2-55-8a-68-a9
+INFO 2025-07-01 18:24:07,324 consumers 685418 132253830062208 SOL disconnect requested for burnin-90-5a-08-13-b6-6f: Page closing
+INFO 2025-07-01 18:24:07,325 consumers 685418 132253830062208 SOL WebSocket disconnected for burnin-90-5a-08-13-b6-6f with code: 1000
+INFO 2025-07-01 18:24:07,330 sol_session 685418 132253830062208 Cleaned up SOL session for burnin-90-5a-08-13-b6-6f
+INFO 2025-07-01 18:24:21,469 remote_control 685485 123328490804928 Received remote KVM request
+INFO 2025-07-01 18:24:21,469 remote_control 685485 123328490804928 Request data: {'bmc_ip': '10.135.177.80', 'username': 'ADMIN', 'password': 'ADMIN'}
+INFO 2025-07-01 18:24:21,469 remote_control 685485 123328490804928 Remote KVM request – IP=10.135.177.80 user=ADMIN
+INFO 2025-07-01 18:24:21,469 remote_control 685485 123328490804928 Attempting Redfish request to: https://10.135.177.80/redfish/v1/Managers/1/Oem/Supermicro/IKVM
+INFO 2025-07-01 18:24:22,154 remote_control 685485 123328490804928 Redfish response status: 200
+INFO 2025-07-01 18:24:22,155 remote_control 685485 123328490804928 Redfish response data: {'@odata.type': '#IKVM.v1_0_3.IKVM', '@odata.id': '/redfish/v1/Managers/1/Oem/Supermicro/IKVM', 'Id': 'IKVM', 'Name': 'IKVM', 'CurrentInterface': 'HTML 5', 'URI': '/redfish/cxpYE8TvRDEJPwh.IKVM', '@odata.etag': '"513767686e841d75ac0b4340aba78055"'}
+INFO 2025-07-01 18:24:22,155 remote_control 685485 123328490804928 Successfully generated KVM URL: https://10.135.177.80/redfish/cxpYE8TvRDEJPwh.IKVM
+INFO 2025-07-01 18:24:29,312 consumers 685483 127129152950400 Remote SOL WebSocket connect: ip=10.135.177.80 user=ADMIN session=a70de1f3
+INFO 2025-07-01 18:24:29,324 sol_session 685483 127129152950400 Started SOL session for a70de1f3 (PID=685784)
+INFO 2025-07-01 18:24:33,919 consumers 685483 127129152950400 Remote SOL disconnected (code=1000 session=a70de1f3)
+INFO 2025-07-01 18:24:33,923 sol_session 685483 127129152950400 Cleaned up SOL session for a70de1f3
+INFO 2025-07-01 18:28:08,372 background_tasks 685418 132253644482240 remote database update: 0 new, 958 updated, 17 inactive
+INFO 2025-07-01 18:28:08,373 background_tasks 685418 132253644482240 Concurrent scan completed for remote subnet
+INFO 2025-07-01 18:28:42,669 background_tasks 685418 132253652874944 local database update: 0 new, 3155 updated, 86 inactive
+INFO 2025-07-01 18:28:42,670 background_tasks 685418 132253652874944 Concurrent scan completed for local subnet
+INFO 2025-07-01 18:28:42,671 background_tasks 685418 132253732566720 Concurrent multi-subnet scan #1 completed

@@ -1,9 +1,17 @@
-from django.contrib.admin import helpers
 from django.shortcuts import render
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from helper import *
+import asyncio
+import subprocess
 from ..form import IpmiForm
+
+def cmdline(cmd):
+    """Execute command line and return output"""
+    try:
+        output = subprocess.check_output(cmd, shell=True).decode('utf-8').strip()
+        return output
+    except subprocess.CalledProcessError as e:
+        return e.output.decode('utf-8').strip() if e.output else f"Command failed with return code {e.returncode}"
 
 async def run_ipmitool(ip,user,pwd,command):
     cmd = f"ipmitool -I lanplus -H {ip} -U {user} -P {pwd} {command}"
