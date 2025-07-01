@@ -639,9 +639,12 @@ def system_details(request, mac):
     
     return render(request, 'features/system_details.html', context)
 
-@login_required
-def system_list(request):
-    """List all available systems categorized by test type"""
+# ------------------------------------------------------------------
+# Helper to build system lists (extracted for reuse by APIs)
+# ------------------------------------------------------------------
+
+def get_systems_data():
+    """Scan BASE_DIR and return dict with categorized systems."""
     systems = {
         'burnin': [],
         'dc': [],
@@ -649,94 +652,16 @@ def system_list(request):
         'other': [],
         'archive': [],
     }
-    
+
     try:
+        # ---------------------------------------------------------
+        # Live systems (everything except archive folder)
+        # ---------------------------------------------------------
         if os.path.exists(BASE_DIR):
-            # Skip the dedicated archive folder while scanning live systems
             for item in os.listdir(BASE_DIR):
                 if item == 'archive':
                     continue
                 item_path = os.path.join(BASE_DIR, item)
-                if os.path.isdir(item_path):
-                    # Extract MAC from folder name
-                    mac_address = extract_mac_from_folder_name(item)
-                    
-                    # Get basic info
-                    system_info = {
-                        'mac': mac_address,
-                        'folder_name': item,
-                        'formatted_mac': mac_address.replace('-', ':').upper(),
-                        'last_updated': None,
-                        'status': 'Unknown',
-                        'test_type': 'Unknown',
-                        'sysconfig': {}
-                    }
-                    
-                    # Determine test type and status
-                    test_info = determine_test_type_and_status(item_path, item)
-                    system_info['test_type'] = test_info['test_type']
-                    system_info['status'] = test_info['status']
-                    system_info['progress'] = test_info['progress']
-                    system_info['test_details'] = test_info['details']
-                    
-                    # Add current running tests for BurnIn
-                    if test_info['test_type'] == 'BurnIn' and 'current_tests' in test_info:
-                        system_info['current_tests'] = test_info['current_tests']
-                        if test_info['current_tests']:
-                            system_info['current_test'] = ', '.join(test_info['current_tests'])
-                    
-                    # Parse sysconfig for BMC and network information
-                    sysconfig_path = os.path.join(item_path, 'sysconfig')
-                    sysconfig_content = get_file_content(sysconfig_path)
-                    if sysconfig_content:
-                        system_info['sysconfig'] = parse_sysconfig(sysconfig_content)
-                    
-                    # Get last update time
-                    try:
-                        update_files = ['display', 'hw_info.json', 'fw_info.json', 'run']
-                        latest_time = None
-                        
-                        for update_file in update_files:
-                            file_path = os.path.join(item_path, update_file)
-                            if os.path.exists(file_path):
-                                try:
-                                    stat = os.stat(file_path)
-                                    file_time = datetime.fromtimestamp(stat.st_mtime)
-                                    if latest_time is None or file_time > latest_time:
-                                        latest_time = file_time
-                                except:
-                                    pass
-                        
-                        if latest_time:
-                            system_info['last_updated'] = latest_time
-                            
-                            # Determine activity status based on how recent the update is
-                            time_diff = datetime.now() - latest_time
-                            if time_diff.total_seconds() < 3600:  # Less than 1 hour
-                                system_info['activity_status'] = 'Online'
-                            elif time_diff.total_seconds() < 86400:  # Less than 24 hours
-                                system_info['activity_status'] = 'Recent'
-                            else:
-                                system_info['activity_status'] = 'Offline'
-                        else:
-                            system_info['activity_status'] = 'Unknown'
-                    except:
-                        system_info['activity_status'] = 'Unknown'
-                    
-                    # Categorize by test type
-                    test_type = test_info['test_type'].lower()
-                    if test_type in systems:
-                        systems[test_type].append(system_info)
-                    else:
-                        systems['other'].append(system_info)
-
-        # -------------------------------------------------------------
-        # Archive directory (historical systems)
-        # -------------------------------------------------------------
-        archive_dir = os.path.join(BASE_DIR, 'archive')
-        if os.path.exists(archive_dir):
-            for item in os.listdir(archive_dir):
-                item_path = os.path.join(archive_dir, item)
                 if not os.path.isdir(item_path):
                     continue
 
@@ -747,32 +672,105 @@ def system_list(request):
                     'folder_name': item,
                     'formatted_mac': mac_address.replace('-', ':').upper(),
                     'last_updated': None,
+                    'status': 'Unknown',
+                    'test_type': 'Unknown',
+                    'sysconfig': {},
+                }
+
+                # Determine test type, progress & status
+                test_info = determine_test_type_and_status(item_path, item)
+                system_info.update({
+                    'test_type': test_info['test_type'],
+                    'status': test_info['status'],
+                    'progress': test_info['progress'],
+                    'test_details': test_info['details'],
+                })
+
+                # Current BurnIn tests
+                if test_info['test_type'] == 'BurnIn' and test_info.get('current_tests'):
+                    system_info['current_tests'] = test_info['current_tests']
+                    system_info['current_test'] = ', '.join(test_info['current_tests'])
+
+                # Sysconfig (BMC, LAN …)
+                sysconfig_path = os.path.join(item_path, 'sysconfig')
+                if (syscontent := get_file_content(sysconfig_path)):
+                    system_info['sysconfig'] = parse_sysconfig(syscontent)
+
+                # Last-updated timestamp & activity status
+                latest_time = None
+                for fname in ['display', 'hw_info.json', 'fw_info.json', 'run']:
+                    fp = os.path.join(item_path, fname)
+                    if os.path.exists(fp):
+                        try:
+                            ts = datetime.fromtimestamp(os.stat(fp).st_mtime)
+                            if not latest_time or ts > latest_time:
+                                latest_time = ts
+                        except Exception:
+                            pass
+
+                if latest_time:
+                    system_info['last_updated'] = latest_time
+                    diff = datetime.now() - latest_time
+                    if diff.total_seconds() < 3600:
+                        system_info['activity_status'] = 'Online'
+                    elif diff.total_seconds() < 86400:
+                        system_info['activity_status'] = 'Recent'
+                    else:
+                        system_info['activity_status'] = 'Offline'
+                else:
+                    system_info['activity_status'] = 'Unknown'
+
+                # Bucket into category
+                category_key = system_info['test_type'].lower()
+                systems.get(category_key, systems['other']).append(system_info)
+
+        # ---------------------------------------------------------
+        # Archive systems
+        # ---------------------------------------------------------
+        archive_dir = os.path.join(BASE_DIR, 'archive')
+        if os.path.exists(archive_dir):
+            for item in os.listdir(archive_dir):
+                item_path = os.path.join(archive_dir, item)
+                if not os.path.isdir(item_path):
+                    continue
+
+                mac_address = extract_mac_from_folder_name(item)
+                sys_info = {
+                    'mac': mac_address,
+                    'folder_name': item,
+                    'formatted_mac': mac_address.replace('-', ':').upper(),
+                    'last_updated': None,
                     'status': 'Archived',
                     'test_type': 'Archived',
                     'sysconfig': {},
                     'activity_status': 'Offline',
                 }
 
-                # Try to parse sysconfig if available
-                sysconfig_path = os.path.join(item_path, 'sysconfig')
-                sysconfig_content = get_file_content(sysconfig_path)
-                if sysconfig_content:
-                    system_info['sysconfig'] = parse_sysconfig(sysconfig_content)
+                sc_path = os.path.join(item_path, 'sysconfig')
+                if (sc_content := get_file_content(sc_path)):
+                    sys_info['sysconfig'] = parse_sysconfig(sc_content)
 
-                # Updated timestamp
                 try:
-                    stat = os.stat(item_path)
-                    system_info['last_updated'] = datetime.fromtimestamp(stat.st_mtime)
-                except:
+                    sys_info['last_updated'] = datetime.fromtimestamp(os.stat(item_path).st_mtime)
+                except Exception:
                     pass
 
-                systems['archive'].append(system_info)
+                systems['archive'].append(sys_info)
 
-    except Exception as e:
+    except Exception:
         pass
-    
-    # Sort each category by last updated (most recent first)
-    for category in systems:
-        systems[category].sort(key=lambda x: x['last_updated'] or datetime.min, reverse=True)
-    
+
+    # Sort by last_updated desc in each bucket
+    for cat in systems:
+        systems[cat].sort(key=lambda x: x['last_updated'] or datetime.min, reverse=True)
+
+    return systems
+
+# ------------------------------------------------------------------
+# Refactored view uses reusable helper
+# ------------------------------------------------------------------
+
+@login_required
+def system_list(request):
+    systems = get_systems_data()
     return render(request, 'features/system_list.html', {'systems': systems}) 

@@ -1,3 +1,5 @@
-Do not run testing, i will test by my own
-use python3 not python
-app directory is /home/devin/rd1web/rd1web
+1. Do not run testing, i will test by my own
+2. use python3 not python
+3. app directory is /home/devin/rd1web/rd1web
+4. always think about whole codebase
+5. dont make any duplicate code with whole codebase

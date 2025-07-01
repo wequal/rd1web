@@ -17,6 +17,7 @@ from .views.remote_control import (
 )
 from .views.archive import archive_system
 from .views.mac_ip_view import mac_ip_results, mac_ip_api
+from .api.system_api import systems_summary, systems_category
 
 
 urlpatterns = [
@@ -25,6 +26,8 @@ urlpatterns = [
     path('ipmitool/', ipmitool, name='ipmitool'),
     path('mac-ip/', mac_ip_results, name='mac_ip_results'),
     path('api/mac-ip/', mac_ip_api, name='mac_ip_api'),
+    path('api/systems/summary/', systems_summary, name='systems_summary'),
+    path('api/systems/<str:category>/', systems_category, name='systems_category'),
     path('systems/', system_list, name='system_list'),
     path('systems/<str:mac>/', system_details, name='system_details'),
     path('systems/<str:folder_name>/kvm/', get_kvm_url, name='get_kvm_url'),
