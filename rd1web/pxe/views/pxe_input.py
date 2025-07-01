@@ -8,6 +8,7 @@ import os
 from fabric import Connection
 
 us_b3 = Connection(host="root@172.31.60.129", connect_kwargs={"password": "superrd1"})
+us_b1 = Connection(host="root@172.31.58.142", connect_kwargs={"password": "superrd1"})
 tw = Connection(host="root@10.135.179.104", connect_kwargs={"password": "superrd1"})
 
 @login_required
@@ -32,6 +33,7 @@ def pxe_input(request):
                     if deleted:
                         result['actions'].append(f"Deleted entry for MAC: {x}")
                         us_b3.run(f"rm -f /var/www/pxe/boot/{formatted_mac}-boot.ipxe")
+                        us_b1.run(f"rm -f /var/www/pxe/boot/{formatted_mac}-boot.ipxe")
                         tw.run(f"rm -f /var/www/pxe/boot/{formatted_mac}-boot.ipxe")
                     else:
                         result['actions'].append(f"No entry found to delete for MAC: {x}")
@@ -56,6 +58,7 @@ def pxe_input(request):
                     action = "Created" if created else "Updated"
                     result['actions'].append(f"{action} entry for MAC: {x} | Image: {image} | Parameters: {parameters}")
                     us_b3.run(f"/srv/share/scripts/pxe_generation {x} {image} {parameters}")
+                    us_b1.run(f"/srv/share/scripts/pxe_generation {x} {image} {parameters}")
                     tw.run(f"/srv/share/scripts/pxe_generation {x} {image} {parameters}")
 
             form=PxeForm()

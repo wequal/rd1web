@@ -76,6 +76,30 @@ def main():
         print("⚠ Install with: pip install channels websockets daphne")
         print("⚠ SOL terminal may not work properly")
     
+    # Check Redis connection for caching and performance
+    try:
+        import redis
+        import django_redis
+        
+        # Test Redis connection
+        from django.core.cache import cache
+        cache.set('health_check', 'ok', 10)
+        if cache.get('health_check') == 'ok':
+            print("✓ Redis cache connection successful")
+            print("✓ High-performance user tracking enabled")
+            cache.delete('health_check')
+        else:
+            raise Exception("Cache test failed")
+            
+    except ImportError as e:
+        print(f"⚠ Warning: Redis packages not installed: {e}")
+        print("⚠ Install with: pip install redis django-redis hiredis")
+        print("⚠ Performance optimizations will be limited")
+    except Exception as e:
+        print(f"⚠ Warning: Redis connection failed: {e}")
+        print("⚠ Make sure Redis server is running: sudo systemctl start redis")
+        print("⚠ Performance optimizations will be limited")
+    
     # Handle Django management commands
     if args.command or len(unknown) > 0:
         # Pass through Django commands (migrate, collectstatic, etc.)
@@ -116,6 +140,7 @@ def main():
     print(f"🔧 Using timeout settings: HTTP=120s, App Close=60s, WebSocket Handshake=10s")
     print(f"✓ SOL terminal functionality will be enabled")
     print(f"📡 Background IP scanner: {scanner_status}")
+    print(f"⚡ Redis caching: User tracking optimized for high performance")
     print(f"🌐 Nginx should proxy external requests from port 80 to these backends")
     print(f"📁 Public access via: http://172.31.60.129/ (through Nginx)")
     print(f"🔌 WebSocket SOL terminals: ws://172.31.60.129/ws/sol/<folder_name>/ (through Nginx)")

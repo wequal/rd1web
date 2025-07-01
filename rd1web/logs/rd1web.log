@@ -1,0 +1,162 @@
+Starting concurrent multi-subnet scan #1
+Started multi-subnet scanner with concurrent scanning (subnets: local: 172.31.0.0/16 (arp-scan), remote: 10.135.0.0/16 (fastapi))
+PXE app ready - Multi-subnet scanner started (primary worker)
+Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+Starting concurrent multi-subnet scan #1
+Started multi-subnet scanner with concurrent scanning (subnets: local: 172.31.0.0/16 (arp-scan), remote: 10.135.0.0/16 (fastapi))
+PXE app ready - Multi-subnet scanner started (primary worker)
+Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+Starting concurrent multi-subnet scan #1
+Started multi-subnet scanner with concurrent scanning (subnets: local: 172.31.0.0/16 (arp-scan), remote: 10.135.0.0/16 (fastapi))
+Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+PXE app ready - Multi-subnet scanner started (primary worker)
+Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+Arp-scan failed for local with return code -2: Unknown error
+Concurrent scan failed for local subnet
+PXE app ready - Multi-subnet scanner disabled (--scanner off)
+PXE app ready - Multi-subnet scanner disabled (--scanner off)
+Starting server at tcp:port=8000:interface=127.0.0.1
+HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+Configuring endpoint tcp:port=8000:interface=127.0.0.1
+Listening on TCP address 127.0.0.1:8000
+PXE app ready - Multi-subnet scanner disabled (--scanner off)
+Starting server at tcp:port=8001:interface=127.0.0.1
+HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+Configuring endpoint tcp:port=8001:interface=127.0.0.1
+Listening on TCP address 127.0.0.1:8001
+PXE app ready - Multi-subnet scanner disabled (--scanner off)
+Starting server at tcp:port=8002:interface=127.0.0.1
+HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+Configuring endpoint tcp:port=8002:interface=127.0.0.1
+Listening on TCP address 127.0.0.1:8002
+PXE app ready - Multi-subnet scanner disabled (--scanner off)
+Starting server at tcp:port=8003:interface=127.0.0.1
+HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+Configuring endpoint tcp:port=8003:interface=127.0.0.1
+Listening on TCP address 127.0.0.1:8003
+PXE app ready - Multi-subnet scanner disabled (--scanner off)
+Internal Server Error: /auth/login/
+Traceback (most recent call last):
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/db/backends/utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/db/backends/sqlite3/base.py", line 360, in execute
+    return super().execute(query, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.IntegrityError: NOT NULL constraint failed: authentication_useractivity.user_id
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/asgiref/sync.py", line 518, in thread_handler
+    raise exc_info[1]
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/core/handlers/exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/asgiref/sync.py", line 518, in thread_handler
+    raise exc_info[1]
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/core/handlers/base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/asgiref/sync.py", line 468, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/asgiref/current_thread_executor.py", line 40, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/asgiref/sync.py", line 522, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/utils/decorators.py", line 192, in _view_wrapper
+    result = _process_exception(request, e)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/utils/decorators.py", line 190, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/rd1web/authentication/views.py", line 66, in login_view
+    UserActivity.objects.create(
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/db/models/manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/db/models/query.py", line 663, in create
+    obj.save(force_insert=True, using=self.db)
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/db/models/base.py", line 902, in save
+    self.save_base(
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/db/models/base.py", line 1008, in save_base
+    updated = self._save_table(
+              ^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/db/models/base.py", line 1169, in _save_table
+    results = self._do_insert(
+              ^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/db/models/base.py", line 1210, in _do_insert
+    return manager._insert(
+           ^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/db/models/manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/db/models/query.py", line 1864, in _insert
+    return query.get_compiler(using=using).execute_sql(returning_fields)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/db/models/sql/compiler.py", line 1882, in execute_sql
+    cursor.execute(sql, params)
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/db/backends/utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/db/backends/utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/db/backends/utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/db/backends/utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/db/utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/db/backends/utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/django/db/backends/sqlite3/base.py", line 360, in execute
+    return super().execute(query, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.IntegrityError: NOT NULL constraint failed: authentication_useractivity.user_id
+Killed 0 pending application instances
+Killed 0 pending application instances
+Killed 0 pending application instances
+Killed 0 pending application instances
+Starting concurrent multi-subnet scan #1
+Started multi-subnet scanner with concurrent scanning (subnets: local: 172.31.0.0/16 (arp-scan), remote: 10.135.0.0/16 (fastapi))
+PXE app ready - Multi-subnet scanner started (primary worker)
+Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+Starting concurrent multi-subnet scan #1
+Started multi-subnet scanner with concurrent scanning (subnets: local: 172.31.0.0/16 (arp-scan), remote: 10.135.0.0/16 (fastapi))
+Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+PXE app ready - Multi-subnet scanner started (primary worker)
+Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+PXE app ready - Multi-subnet scanner disabled (--scanner off)
+Starting server at tcp:port=8000:interface=127.0.0.1
+HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+Configuring endpoint tcp:port=8000:interface=127.0.0.1
+Listening on TCP address 127.0.0.1:8000
+PXE app ready - Multi-subnet scanner disabled (--scanner off)
+Starting server at tcp:port=8001:interface=127.0.0.1
+HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+Configuring endpoint tcp:port=8001:interface=127.0.0.1
+Listening on TCP address 127.0.0.1:8001
+PXE app ready - Multi-subnet scanner disabled (--scanner off)
+Starting server at tcp:port=8002:interface=127.0.0.1
+HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+Configuring endpoint tcp:port=8002:interface=127.0.0.1
+Listening on TCP address 127.0.0.1:8002
+PXE app ready - Multi-subnet scanner disabled (--scanner off)
+Starting server at tcp:port=8003:interface=127.0.0.1
+HTTP/2 support not enabled (install the http2 and tls Twisted extras)
+Configuring endpoint tcp:port=8003:interface=127.0.0.1
+Listening on TCP address 127.0.0.1:8003
+PXE app ready - Multi-subnet scanner disabled (--scanner off)
+Killed 0 pending application instances
+Killed 0 pending application instances
+Killed 0 pending application instances
+Killed 0 pending application instances

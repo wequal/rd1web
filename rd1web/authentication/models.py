@@ -17,6 +17,11 @@ class UserSession(models.Model):
         ordering = ['-login_time']
         verbose_name = "User Session"
         verbose_name_plural = "User Sessions"
+        indexes = [
+            models.Index(fields=['session_key', 'user', 'is_active']),  # For session lookups
+            models.Index(fields=['user', 'is_active']),  # For user session queries
+            models.Index(fields=['last_activity']),  # For activity-based queries
+        ]
     
     def __str__(self):
         return f"{self.user.username} - {self.login_time.strftime('%Y-%m-%d %H:%M')}"
@@ -66,6 +71,12 @@ class UserActivity(models.Model):
         ordering = ['-timestamp']
         verbose_name = "User Activity"
         verbose_name_plural = "User Activities"
+        indexes = [
+            models.Index(fields=['user', 'timestamp']),  # For user activity queries
+            models.Index(fields=['action', 'timestamp']),  # For action-based queries
+            models.Index(fields=['timestamp']),  # For time-based queries
+            models.Index(fields=['user', 'action']),  # For user-action queries
+        ]
     
     def __str__(self):
         return f"{self.user.username} - {self.get_action_display()} - {self.timestamp.strftime('%Y-%m-%d %H:%M')}"
@@ -84,6 +95,10 @@ class UserStats(models.Model):
     class Meta:
         verbose_name = "User Statistics"
         verbose_name_plural = "User Statistics"
+        indexes = [
+            models.Index(fields=['user']),  # For user stats lookups
+            models.Index(fields=['last_activity_date']),  # For activity-based queries
+        ]
     
     def __str__(self):
         return f"{self.user.username} - Stats"

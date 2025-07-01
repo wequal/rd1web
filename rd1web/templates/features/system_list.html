@@ -554,6 +554,43 @@
                 <!-- Archive Tab -->
                 {% if systems.archive %}
                 <div class="tab-pane fade" id="archiveTab" role="tabpanel">
+                    <!-- Archive Search and Filter Section -->
+                    <div class="p-3 border-bottom bg-light archive-search-section">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0">
+                                        <i class="fas fa-search text-muted"></i>
+                                    </span>
+                                    <input type="text" class="form-control border-start-0" 
+                                           id="archiveSearchInput" 
+                                           placeholder="Search archived systems (MAC, folder name, IP...)">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" id="archiveDateFilter">
+                                    <option value="all">All Time</option>
+                                    <option value="7">Last 7 days</option>
+                                    <option value="30">Last 30 days</option>
+                                    <option value="90">Last 3 months</option>
+                                    <option value="365">Last year</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="d-flex justify-content-end align-items-center">
+                                    <span class="text-muted me-2">
+                                        <span id="archiveResultCount">{{ systems.archive|length }}</span> 
+                                        <span id="archiveResultText">systems</span>
+                                    </span>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" 
+                                            onclick="clearArchiveSearch()" id="clearArchiveBtn" style="display: none;">
+                                        <i class="fas fa-times me-1"></i>Clear
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0" id="archiveTable">
                             <thead class="table-light">
@@ -690,6 +727,28 @@
     
     .btn-group .btn:last-child {
         margin-right: 0;
+    }
+    
+    /* Archive search styling */
+    #archiveSearchInput:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    
+    .input-group-text {
+        border-color: #ced4da;
+    }
+    
+    #archiveSearchInput {
+        border-color: #ced4da;
+    }
+    
+    .no-archive-results td {
+        border: none !important;
+    }
+    
+    .archive-search-section {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     }
 </style>
 
@@ -855,5 +914,143 @@ function buildStatusSummaries(){
 }
 
 document.addEventListener('DOMContentLoaded', buildStatusSummaries);
+
+// Archive search functionality
+let allArchiveRows = [];
+
+function initializeArchiveSearch() {
+    const archiveTable = document.getElementById('archiveTable');
+    if (!archiveTable) return;
+    
+    // Store all archive rows for filtering
+    allArchiveRows = Array.from(archiveTable.querySelectorAll('tbody tr'));
+    
+    // Add event listeners
+    const searchInput = document.getElementById('archiveSearchInput');
+    const dateFilter = document.getElementById('archiveDateFilter');
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', filterArchives);
+    }
+    
+    if (dateFilter) {
+        dateFilter.addEventListener('change', filterArchives);
+    }
+}
+
+function filterArchives() {
+    const searchTerm = document.getElementById('archiveSearchInput')?.value.toLowerCase().trim() || '';
+    const dateFilter = document.getElementById('archiveDateFilter')?.value || 'all';
+    const clearBtn = document.getElementById('clearArchiveBtn');
+    const resultCount = document.getElementById('archiveResultCount');
+    const resultText = document.getElementById('archiveResultText');
+    
+    // Show/hide clear button
+    if (clearBtn) {
+        clearBtn.style.display = (searchTerm || dateFilter !== 'all') ? 'inline-block' : 'none';
+    }
+    
+    const now = new Date();
+    let dateThreshold = null;
+    
+    if (dateFilter !== 'all') {
+        const daysBack = parseInt(dateFilter);
+        dateThreshold = new Date(now.getTime() - (daysBack * 24 * 60 * 60 * 1000));
+    }
+    
+    let visibleCount = 0;
+    
+    allArchiveRows.forEach(row => {
+        let shouldShow = true;
+        
+        // Text search
+        if (searchTerm) {
+            const rowText = row.textContent.toLowerCase();
+            shouldShow = rowText.includes(searchTerm);
+        }
+        
+        // Date filter
+        if (shouldShow && dateThreshold) {
+            const dateCell = row.querySelector('td:nth-child(4)'); // Last Updated column
+            if (dateCell) {
+                const dateText = dateCell.textContent.trim();
+                if (dateText && dateText !== 'Never') {
+                    // Try to parse the date (format: "M d, H:i")
+                    const currentYear = now.getFullYear();
+                    const fullDateText = `${dateText} ${currentYear}`;
+                    const rowDate = new Date(fullDateText);
+                    
+                    if (!isNaN(rowDate.getTime())) {
+                        shouldShow = rowDate >= dateThreshold;
+                    }
+                }
+            }
+        }
+        
+        // Show/hide row
+        row.style.display = shouldShow ? '' : 'none';
+        if (shouldShow) visibleCount++;
+    });
+    
+    // Update result count
+    if (resultCount) {
+        resultCount.textContent = visibleCount;
+    }
+    if (resultText) {
+        resultText.textContent = visibleCount === 1 ? 'system' : 'systems';
+    }
+    
+    // Show no results message if needed
+    showArchiveNoResults(visibleCount === 0 && allArchiveRows.length > 0);
+}
+
+function showArchiveNoResults(show) {
+    const archiveTable = document.getElementById('archiveTable');
+    if (!archiveTable) return;
+    
+    let noResultsRow = archiveTable.querySelector('.no-archive-results');
+    
+    if (show && !noResultsRow) {
+        // Create no results row
+        noResultsRow = document.createElement('tr');
+        noResultsRow.className = 'no-archive-results';
+        noResultsRow.innerHTML = `
+            <td colspan="5" class="text-center py-4">
+                <div class="text-muted">
+                    <i class="fas fa-search fa-2x mb-2 text-gray-300"></i>
+                    <h6 class="text-gray-600">No archived systems found</h6>
+                    <p class="mb-0 small">Try adjusting your search criteria or date filter.</p>
+                </div>
+            </td>
+        `;
+        archiveTable.querySelector('tbody').appendChild(noResultsRow);
+    } else if (!show && noResultsRow) {
+        noResultsRow.remove();
+    }
+}
+
+function clearArchiveSearch() {
+    const searchInput = document.getElementById('archiveSearchInput');
+    const dateFilter = document.getElementById('archiveDateFilter');
+    
+    if (searchInput) searchInput.value = '';
+    if (dateFilter) dateFilter.value = 'all';
+    
+    filterArchives();
+}
+
+// Initialize archive search when the archive tab is shown
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize when page loads
+    initializeArchiveSearch();
+    
+    // Re-initialize when archive tab is activated
+    const archiveTab = document.getElementById('archive-tab');
+    if (archiveTab) {
+        archiveTab.addEventListener('shown.bs.tab', function() {
+            initializeArchiveSearch();
+        });
+    }
+});
 </script>
 {% endblock %} 

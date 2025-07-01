@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'channels',
+    'django_redis',  # For Redis caching
     'pxe',
     'authentication',
 ]
@@ -51,8 +52,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'authentication.middleware.UserActivityMiddleware',
-    'authentication.middleware.UserSessionMiddleware',
+    'authentication.optimized_middleware.OptimizedUserActivityMiddleware',
+    'authentication.optimized_middleware.OptimizedUserSessionMiddleware',
 ]
 
 ROOT_URLCONF = 'rd1web.urls'
@@ -99,8 +100,35 @@ DATABASES = {
         'PASSWORD': 'devin123',
         'HOST': '172.31.60.129',
         'PORT': '5432',
+        'CONN_MAX_AGE': 600,  # Connection pooling for 10 minutes
     }
 }
+
+# Redis Cache Configuration
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/1',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'CONNECTION_POOL_KWARGS': {
+                'max_connections': 50,
+                'retry_on_timeout': True,
+            },
+            'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
+            'IGNORE_EXCEPTIONS': True,
+        },
+        'KEY_PREFIX': 'rd1web',
+        'TIMEOUT': 300,  # 5 minutes default
+        'VERSION': 1,
+    }
+}
+
+# Use Redis for session storage for better performance
+SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+SESSION_CACHE_ALIAS = 'default'
+SESSION_COOKIE_AGE = 86400  # 24 hours
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 
 # Password validation
@@ -160,9 +188,10 @@ LOGIN_URL = '/auth/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/auth/login/'
 
-# Session settings
-SESSION_COOKIE_AGE = 86400  # 24 hour
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+# Additional session settings
+SESSION_SAVE_EVERY_REQUEST = False  # Only save when modified for performance
+SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
+SESSION_COOKIE_HTTPONLY = True  # Security setting
 
 # Logging configuration
 LOGGING = {

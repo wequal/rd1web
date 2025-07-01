@@ -51,14 +51,10 @@ def mac_ip_results(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    # Get task status
-    task_status = get_scanner_status()
-    
     # Get subnet statistics
     subnet_stats = ArpScanResult.objects.values('subnet_source').annotate(
         total=Count('id'),
-        active=Count('id', filter=Q(is_active=True)),
-        inactive=Count('id', filter=Q(is_active=False))
+        active=Count('id', filter=Q(is_active=True))
     ).order_by('subnet_source')
     
     # Get available subnet choices for filter dropdown
@@ -70,11 +66,7 @@ def mac_ip_results(request):
         'show_inactive': show_inactive,
         'subnet_filter': subnet_filter,
         'available_subnets': available_subnets,
-        'task_status': task_status,
         'subnet_stats': subnet_stats,
-        'total_count': queryset.count(),
-        'active_count': ArpScanResult.objects.filter(is_active=True).count(),
-        'inactive_count': ArpScanResult.objects.filter(is_active=False).count(),
     }
     
     return render(request, 'features/mac_ip_results.html', context)
@@ -99,18 +91,15 @@ def mac_ip_api(request):
         subnet_stats = {}
         for subnet_data in ArpScanResult.objects.values('subnet_source').annotate(
             total=Count('id'),
-            active=Count('id', filter=Q(is_active=True)),
-            inactive=Count('id', filter=Q(is_active=False))
+            active=Count('id', filter=Q(is_active=True))
         ):
             subnet_name = subnet_data['subnet_source']
             subnet_stats[subnet_name] = {
                 'total': subnet_data['total'],
-                'active': subnet_data['active'],
-                'inactive': subnet_data['inactive']
+                'active': subnet_data['active']
             }
         
         data = {
-            'task_status': get_scanner_status(),
             'results': [
                 {
                     'ip_address': result.ip_address,
@@ -125,9 +114,6 @@ def mac_ip_api(request):
                 for result in recent_results
             ],
             'counts': {
-                'total': ArpScanResult.objects.count(),
-                'active': ArpScanResult.objects.filter(is_active=True).count(),
-                'inactive': ArpScanResult.objects.filter(is_active=False).count(),
                 'by_subnet': subnet_stats
             },
             'filter': {
