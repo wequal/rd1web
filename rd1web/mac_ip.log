@@ -11984,3 +11984,27 @@ INFO 2025-07-08 18:26:29,366 ipmitool 2623361 125385220024000 Response status co
 INFO 2025-07-08 18:26:29,367 ipmitool 2623361 125385220024000 Found CPLD endpoint: Motherboard_CPLD_Misc at 172.31.53.218
 INFO 2025-07-08 18:26:29,368 ipmitool 2623361 125385220024000 Initiating BMC update for BMC 172.31.53.218 using endpoint /redfish/v1/UpdateService/FirmwareInventory/BMC
 INFO 2025-07-08 18:26:50,848 ipmitool 2623361 125385220024000 Firmware update initiated successfully. Task ID: 10
+INFO 2025-07-08 21:20:42,250 apps 2709706 126377276485760 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 21:26:24,125 apps 2712543 138536648929408 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+ERROR 2025-07-08 21:26:50,981 firmware_update 2712543 138536544102080 Network error getting firmware info from 172.31.53.218: HTTPSConnectionPool(host='172.31.53.218', port=443): Max retries exceeded with url: /redfish/v1/UpdateService/FirmwareInventory (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x7dff931de6c0>: Failed to establish a new connection: [Errno 113] No route to host'))
+ERROR 2025-07-08 21:27:14,149 firmware_update 2712543 138536544102080 Network error getting firmware info from 172.31.53.218: HTTPSConnectionPool(host='172.31.53.218', port=443): Max retries exceeded with url: /redfish/v1/UpdateService/FirmwareInventory (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x7dff8c832090>: Failed to establish a new connection: [Errno 113] No route to host'))
+INFO 2025-07-08 21:37:50,447 apps 2718180 134087927681152 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 21:40:21,042 apps 2719456 133073420525696 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 22:03:22,061 firmware_update 2719456 133073316341440 Discovering CPLD endpoint at https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/
+INFO 2025-07-08 22:03:22,061 firmware_update 2719456 133073316341440 Testing endpoint: https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+INFO 2025-07-08 22:03:22,190 firmware_update 2719456 133073316341440 Response status code: 200
+INFO 2025-07-08 22:03:22,191 firmware_update 2719456 133073316341440 Found CPLD endpoint: Motherboard_CPLD_Misc at 172.31.53.218
+INFO 2025-07-08 22:03:22,192 firmware_update 2719456 133073316341440 Initiating BIOS update for BMC 172.31.53.218 using endpoint /redfish/v1/UpdateService/FirmwareInventory/BIOS
+INFO 2025-07-08 22:03:24,382 firmware_update 2719456 133073316341440 Firmware update initiated successfully. Task ID: 1
+INFO 2025-07-08 22:03:40,820 firmware_update 2719456 133073316341440 Discovering CPLD endpoint at https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/
+INFO 2025-07-08 22:03:40,821 firmware_update 2719456 133073316341440 Testing endpoint: https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+INFO 2025-07-08 22:03:40,950 firmware_update 2719456 133073316341440 Response status code: 200
+INFO 2025-07-08 22:03:40,952 firmware_update 2719456 133073316341440 Found CPLD endpoint: Motherboard_CPLD_Misc at 172.31.53.218
+INFO 2025-07-08 22:03:40,952 firmware_update 2719456 133073316341440 Initiating CPLD update for BMC 172.31.53.218 using endpoint /redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+INFO 2025-07-08 22:03:41,940 firmware_update 2719456 133073316341440 Firmware update initiated successfully. Task ID: 2
+INFO 2025-07-08 22:08:07,986 firmware_update 2719456 133073316341440 Discovering CPLD endpoint at https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/
+INFO 2025-07-08 22:08:07,986 firmware_update 2719456 133073316341440 Testing endpoint: https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+INFO 2025-07-08 22:08:08,113 firmware_update 2719456 133073316341440 Response status code: 200
+INFO 2025-07-08 22:08:08,114 firmware_update 2719456 133073316341440 Found CPLD endpoint: Motherboard_CPLD_Misc at 172.31.53.218
+INFO 2025-07-08 22:08:08,115 firmware_update 2719456 133073316341440 Initiating BIOS update for BMC 172.31.53.218 using endpoint /redfish/v1/UpdateService/FirmwareInventory/BIOS
+INFO 2025-07-08 22:08:18,745 firmware_update 2719456 133073316341440 Firmware update initiated successfully. Task ID: 3

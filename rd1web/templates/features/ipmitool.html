@@ -135,6 +135,9 @@
                                 <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setCommand('fru print')">
                                     <i class="fas fa-info me-1"></i>FRU Info
                                 </button>
+                                <button type="button" id="firmwareInfoBtn" class="btn btn-sm btn-outline-dark">
+                                    <i class="fas fa-microchip me-1"></i>Firmware Info
+                                </button>
                             </div>
                         </div>
 
@@ -159,7 +162,7 @@
 
                         <!-- Submit Button -->
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <button type="reset" class="btn btn-outline-secondary me-md-2">
+                            <button type="reset" class="btn btn-outline-secondary me-md-2" onclick="clearAllDisplays()">
                                 <i class="fas fa-undo me-1"></i>Reset
                             </button>
                             <button type="submit" class="btn btn-primary">
@@ -235,7 +238,7 @@
                         </div>
 
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <button type="reset" class="btn btn-outline-secondary me-md-2">
+                            <button type="reset" class="btn btn-outline-secondary me-md-2" onclick="clearAllDisplays()">
                                 <i class="fas fa-undo me-1"></i>Reset
                             </button>
                             <button type="submit" class="btn btn-primary">
@@ -271,6 +274,22 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- Firmware Information Section -->
+    <div class="row mt-4" id="firmwareInfoSection" style="display: none;">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">
+                        <i class="fas fa-microchip me-2"></i>Firmware Information
+                    </h6>
+                </div>
+                <div class="card-body" id="firmwareInfoContent">
+                    <!-- Firmware info will be populated here -->
+                </div>
+            </div>
         </div>
     </div>
 
@@ -379,31 +398,83 @@
 
 <!-- Help Modal -->
 <div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="helpModalLabel">
-                    <i class="fas fa-question-circle me-2"></i>IPMI Tool Help
+                    <i class="fas fa-question-circle me-2"></i>IPMI Management Tool - Help Guide
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <h6>About IPMI</h6>
-                <p>IPMI (Intelligent Platform Management Interface) allows remote management of server hardware including power control, monitoring, and configuration.</p>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-primary"><i class="fas fa-terminal me-2"></i>IPMI Commands</h6>
+                        <p class="small">Execute remote IPMI commands on multiple BMCs simultaneously.</p>
+                        
+                        <h6 class="text-success mt-3"><i class="fas fa-list-ul me-2"></i>Setup Requirements</h6>
+                        <ul class="small">
+                            <li><strong>BMC IP Addresses:</strong> Enter one IP per line for each target BMC</li>
+                            <li><strong>Passwords:</strong> Enter passwords in the same order as IP addresses</li>
+                            <li><strong>Username:</strong> Typically 'ADMIN' or 'root' for most BMCs</li>
+                            <li><strong>Network Access:</strong> Ensure BMC interfaces are reachable</li>
+                        </ul>
+                        
+                        <h6 class="text-info mt-3"><i class="fas fa-bolt me-2"></i>Quick Commands</h6>
+                        <ul class="small">
+                            <li><strong>Power Status:</strong> Check current power state</li>
+                            <li><strong>Power On/Off/Reset:</strong> Control system power</li>
+                            <li><strong>Sensors:</strong> View temperature, voltage, and fan readings</li>
+                            <li><strong>FRU Info:</strong> Display hardware inventory</li>
+                            <li><strong>Firmware Info:</strong> Get firmware versions via Redfish API</li>
+                        </ul>
+                        
+                        <h6 class="text-warning mt-3"><i class="fas fa-desktop me-2"></i>Remote Console</h6>
+                        <ul class="small">
+                            <li><strong>KVM:</strong> Opens graphical console in new window</li>
+                            <li><strong>SOL:</strong> Opens serial-over-LAN terminal</li>
+                            <li>Both use the first BMC IP and password from your lists</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6 class="text-primary"><i class="fas fa-upload me-2"></i>Firmware Updates</h6>
+                        <p class="small">Upload and install firmware updates via Redfish API with real-time progress tracking.</p>
+                        
+                        <h6 class="text-success mt-3"><i class="fas fa-microchip me-2"></i>Supported Firmware Types</h6>
+                        <ul class="small">
+                            <li><strong>BIOS:</strong> System BIOS/UEFI firmware</li>
+                            <li><strong>BMC:</strong> Baseboard Management Controller firmware</li>
+                            <li><strong>CPLD:</strong> Complex Programmable Logic Device firmware</li>
+                            <li><strong>FPGA:</strong> Field Programmable Gate Array firmware</li>
+                        </ul>
+                        
+                        <h6 class="text-info mt-3"><i class="fas fa-cogs me-2"></i>Update Process</h6>
+                        <ol class="small">
+                            <li>Select firmware type and upload file</li>
+                            <li>System discovers appropriate Redfish endpoint</li>
+                            <li>Firmware is uploaded and validated</li>
+                            <li>Progress is tracked in real-time</li>
+                            <li>System automatically resets after BIOS/CPLD/FPGA updates</li>
+                        </ol>
+                        
+                    </div>
+                </div>
                 
-                <h6>Prerequisites</h6>
-                <ul>
-                    <li>BMC must be configured with network settings</li>
-                    <li>Valid username and password for BMC access</li>
-                    <li>Network connectivity to BMC interface</li>
-                </ul>
+                <hr class="my-4">
                 
-                <h6>Security Notes</h6>
-                <ul>
-                    <li>Use strong passwords for BMC accounts</li>
-                    <li>Limit network access to BMC interfaces</li>
-                    <li>Monitor BMC access logs regularly</li>
-                </ul>
+                <div class="row">
+                    <div class="col-12">
+                        <h6 class="text-success"><i class="fas fa-lightbulb me-2"></i>Tips & Troubleshooting</h6>
+                        <ul class="small">
+                            <li><strong>Multiple BMCs:</strong> Commands execute in parallel for efficiency</li>
+                            <li><strong>Connection Issues:</strong> Check network connectivity and credentials</li>
+                            <li><strong>Firmware Failures:</strong> Verify file format and BMC compatibility</li>
+                            <li><strong>Progress Stalled:</strong> Some updates may appear stuck but are processing</li>
+                            <li><strong>Reset Required:</strong> System resets are automatic for most firmware types</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -475,23 +546,34 @@
         };
     }
     
-    // Form validation and UX improvements
-    document.addEventListener('DOMContentLoaded', function() {
-        const form = document.getElementById('ipmiForm');
-        const bmcIpField = document.getElementById('{{ form.bmc_ip.id_for_label }}');
-        const pwdField = document.getElementById('{{ form.pwd.id_for_label }}');
-        
-        // Validate IP and password count match
-        form.addEventListener('submit', function(e) {
-            const ips = bmcIpField.value.split('\n').filter(ip => ip.trim() !== '');
-            const passwords = pwdField.value.split('\n').filter(pwd => pwd.trim() !== '');
+            // Form validation and UX improvements
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('ipmiForm');
+            const bmcIpField = document.getElementById('{{ form.bmc_ip.id_for_label }}');
+            const pwdField = document.getElementById('{{ form.pwd.id_for_label }}');
             
-            if (ips.length !== passwords.length) {
-                e.preventDefault();
-                alert('Number of IP addresses must match number of passwords!');
-                return false;
-            }
-        });
+            // Validate IP and password count match
+            form.addEventListener('submit', function(e) {
+                const ips = bmcIpField.value.split('\n').filter(ip => ip.trim() !== '');
+                const passwords = pwdField.value.split('\n').filter(pwd => pwd.trim() !== '');
+                
+                if (ips.length !== passwords.length) {
+                    e.preventDefault();
+                    alert('Number of IP addresses must match number of passwords!');
+                    return false;
+                }
+                
+                // Clear firmware-related displays when submitting IPMI command
+                const firmwareInfoSection = document.getElementById('firmwareInfoSection');
+                if (firmwareInfoSection) {
+                    firmwareInfoSection.style.display = 'none';
+                }
+                
+                const progressSection = document.getElementById('updateProgress');
+                if (progressSection) {
+                    progressSection.style.display = 'none';
+                }
+            });
         
         // KVM Button functionality
         const kvmBtn = document.getElementById('kvmBtn');
@@ -565,6 +647,51 @@
             });
         });
 
+        // Firmware Info Button functionality
+        const firmwareInfoBtn = document.getElementById('firmwareInfoBtn');
+        firmwareInfoBtn.addEventListener('click', function() {
+            const credentials = getFirstBmcCredentials();
+            if (!credentials) return;
+
+            // Clear progress section when getting firmware info
+            const progressSection = document.getElementById('updateProgress');
+            if (progressSection) {
+                progressSection.style.display = 'none';
+            }
+
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Getting Info...';
+
+            fetch('/ipmitool/firmware/info/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    bmc_ip: credentials.bmc_ip,
+                    username: credentials.username,
+                    password: credentials.password
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-microchip me-1"></i>Firmware Info';
+                
+                if (data.success) {
+                    displayFirmwareInfo(data.firmware_info, credentials.bmc_ip);
+                } else {
+                    displayFirmwareError(data.error, credentials.bmc_ip);
+                }
+            })
+            .catch(error => {
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-microchip me-1"></i>Firmware Info';
+                displayFirmwareError('Network error: ' + error.message, credentials.bmc_ip);
+            });
+        });
+
         // Form switching
         const operationRadios = document.querySelectorAll('input[name="operationType"]');
         const ipmiFormCard = document.getElementById('ipmiFormCard');
@@ -572,6 +699,9 @@
 
         operationRadios.forEach(radio => {
             radio.addEventListener('change', function() {
+                // Clear all previous displays when switching operation types
+                clearAllDisplays();
+                
                 if (this.value === 'ipmi') {
                     ipmiFormCard.style.display = 'block';
                     firmwareFormCard.style.display = 'none';
@@ -582,6 +712,49 @@
             });
         });
 
+        // Function to clear all result displays
+        function clearAllDisplays() {
+            // Hide firmware info section
+            const firmwareInfoSection = document.getElementById('firmwareInfoSection');
+            if (firmwareInfoSection) {
+                firmwareInfoSection.style.display = 'none';
+            }
+            
+            // Hide progress section
+            const progressSection = document.getElementById('updateProgress');
+            if (progressSection) {
+                progressSection.style.display = 'none';
+            }
+            
+            // Reset progress bar
+            const progressBar = document.getElementById('progressBar');
+            if (progressBar) {
+                progressBar.style.width = '0%';
+                progressBar.textContent = '0%';
+                progressBar.setAttribute('aria-valuenow', 0);
+                progressBar.classList.remove('bg-success', 'bg-danger');
+                progressBar.classList.add('progress-bar-animated');
+            }
+            
+            // Clear status message
+            const statusMessage = document.getElementById('statusMessage');
+            if (statusMessage) {
+                statusMessage.textContent = '';
+            }
+            
+            // Clear any firmware info details that might have been added
+            const firmwareInfoContent = document.getElementById('firmwareInfoContent');
+            if (firmwareInfoContent) {
+                firmwareInfoContent.innerHTML = '';
+            }
+            
+            // Re-enable firmware form submit button
+            const firmwareSubmitBtn = firmwareForm.querySelector('button[type="submit"]');
+            if (firmwareSubmitBtn) {
+                firmwareSubmitBtn.disabled = false;
+            }
+        }
+
         // Firmware update progress tracking
         const firmwareForm = document.getElementById('firmwareForm');
         const progressSection = document.getElementById('updateProgress');
@@ -590,6 +763,9 @@
 
         firmwareForm.addEventListener('submit', async function(e) {
             e.preventDefault();
+            
+            // Clear all previous displays when starting new firmware update
+            clearAllDisplays();
             
             const formData = new FormData(this);
             formData.append('operation_type', 'firmware');
@@ -829,6 +1005,71 @@
             if (messageId.includes('Warning')) return 'bg-warning';
             if (messageId.includes('Success')) return 'bg-success';
             return 'bg-info';
+        }
+
+        // Display firmware information
+        function displayFirmwareInfo(firmwareInfo, bmcIp) {
+            const firmwareSection = document.getElementById('firmwareInfoSection');
+            const firmwareContent = document.getElementById('firmwareInfoContent');
+            
+            if (Object.keys(firmwareInfo).length === 0) {
+                firmwareContent.innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        No firmware information found for BMC: ${bmcIp}
+                    </div>
+                `;
+            } else {
+                let tableRows = '';
+                for (const [name, version] of Object.entries(firmwareInfo)) {
+                    tableRows += `
+                        <tr>
+                            <td class="fw-bold">${name}</td>
+                            <td>${version}</td>
+                        </tr>
+                    `;
+                }
+                
+                firmwareContent.innerHTML = `
+                    <div class="alert alert-success mb-3">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Successfully retrieved firmware information from BMC: <strong>${bmcIp}</strong>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th><i class="fas fa-microchip me-1"></i>Firmware Component</th>
+                                    <th><i class="fas fa-tag me-1"></i>Version</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tableRows}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+            
+            firmwareSection.style.display = 'block';
+            firmwareSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Display firmware error
+        function displayFirmwareError(error, bmcIp) {
+            const firmwareSection = document.getElementById('firmwareInfoSection');
+            const firmwareContent = document.getElementById('firmwareInfoContent');
+            
+            firmwareContent.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <strong>Error retrieving firmware information from BMC: ${bmcIp}</strong><br>
+                    ${error}
+                </div>
+            `;
+            
+            firmwareSection.style.display = 'block';
+            firmwareSection.scrollIntoView({ behavior: 'smooth' });
         }
     });
 </script>
