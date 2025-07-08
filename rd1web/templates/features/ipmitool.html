@@ -7,7 +7,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="h3 mb-0 text-gray-800">IPMI Management Tool</h1>
-            <p class="mb-0 text-muted">Execute IPMI commands on remote BMC interfaces</p>
+            <p class="mb-0 text-muted">Execute IPMI commands and perform firmware updates</p>
         </div>
         <div class="d-flex gap-2">
             <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#commandsModal">
@@ -19,10 +19,33 @@
         </div>
     </div>
 
-    <!-- Main Form Card -->
+    <!-- Operation Type Selection -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="operationType" id="ipmiCommand" value="ipmi" checked>
+                        <label class="form-check-label" for="ipmiCommand">
+                            <i class="fas fa-terminal me-1"></i>IPMI Command
+                        </label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="operationType" id="firmwareUpdate" value="firmware">
+                        <label class="form-check-label" for="firmwareUpdate">
+                            <i class="fas fa-upload me-1"></i>Firmware Update
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Form Cards -->
     <div class="row">
         <div class="col-lg-8">
-            <div class="card shadow mb-4">
+            <!-- IPMI Command Form -->
+            <div class="card shadow mb-4" id="ipmiFormCard">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                     <h6 class="m-0 font-weight-bold text-primary">
                         <i class="fas fa-terminal me-2"></i>IPMI Command Execution
@@ -146,6 +169,82 @@
                     </form>
                 </div>
             </div>
+
+            <!-- Firmware Update Form -->
+            <div class="card shadow mb-4" id="firmwareFormCard" style="display: none;">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-upload me-2"></i>Firmware Update
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="firmwareForm" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-4">
+                            <label for="{{ firmware_form.bmc_ip.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-network-wired me-2 text-primary"></i>BMC IP Address
+                            </label>
+                            {{ firmware_form.bmc_ip }}
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="{{ firmware_form.user.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-user me-2 text-success"></i>Username
+                            </label>
+                            {{ firmware_form.user }}
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="{{ firmware_form.pwd.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-key me-2 text-warning"></i>Password
+                            </label>
+                            {{ firmware_form.pwd }}
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="{{ firmware_form.firmware_type.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-microchip me-2 text-info"></i>Firmware Type
+                            </label>
+                            {{ firmware_form.firmware_type }}
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="{{ firmware_form.firmware_file.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-file-code me-2 text-danger"></i>Firmware File
+                            </label>
+                            {{ firmware_form.firmware_file }}
+                        </div>
+
+                        <!-- Progress Tracking -->
+                        <div id="updateProgress" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Update Progress</label>
+                                <div class="progress">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                         role="progressbar" 
+                                         style="width: 0%" 
+                                         id="progressBar"
+                                         aria-valuenow="0" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">0%</div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <div id="statusMessage" class="text-muted"></div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="reset" class="btn btn-outline-secondary me-md-2">
+                                <i class="fas fa-undo me-1"></i>Reset
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload me-1"></i>Upload Firmware
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
 
         <!-- Info Panel -->
@@ -182,24 +281,41 @@
             <div class="card shadow">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-success">
-                        <i class="fas fa-terminal me-2"></i>Command Results
+                        {% if result.upload_result %}
+                            <i class="fas fa-upload me-2"></i>Firmware Upload Results
+                        {% else %}
+                            <i class="fas fa-terminal me-2"></i>Command Results
+                        {% endif %}
                     </h6>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        {% for ip, output in result.items %}
-                            <div class="col-md-6 mb-3">
-                                <div class="border rounded p-3">
-                                    <h6 class="text-primary mb-2">
-                                        <i class="fas fa-server me-1"></i>{{ ip }}
-                                    </h6>
-                                    <div class="bg-dark text-light p-3 rounded" style="font-family: 'Courier New', monospace; font-size: 0.85rem;">
-                                        <pre class="mb-0" style="white-space: pre-wrap; color: #00ff00;">{{ output|default:"No output" }}</pre>
+                    {% if result.upload_result %}
+                        <div class="alert {% if result.error %}alert-danger{% else %}alert-success{% endif %} mb-3">
+                            {% if result.error %}
+                                <i class="fas fa-exclamation-circle me-2"></i>Error: {{ result.error }}
+                            {% else %}
+                                <i class="fas fa-check-circle me-2"></i>Firmware upload initiated successfully
+                            {% endif %}
+                        </div>
+                        <div class="bg-light p-3 rounded">
+                            <pre class="mb-0" style="white-space: pre-wrap;">{{ result.upload_result|pprint }}</pre>
+                        </div>
+                    {% else %}
+                        <div class="row">
+                            {% for ip, output in result.items %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="border rounded p-3">
+                                        <h6 class="text-primary mb-2">
+                                            <i class="fas fa-server me-1"></i>{{ ip }}
+                                        </h6>
+                                        <div class="bg-dark text-light p-3 rounded" style="font-family: 'Courier New', monospace; font-size: 0.85rem;">
+                                            <pre class="mb-0" style="white-space: pre-wrap; color: #00ff00;">{{ output|default:"No output" }}</pre>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        {% endfor %}
-                    </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -448,6 +564,272 @@
                 this.innerHTML = '<i class="fas fa-terminal me-1"></i>Open SOL';
             });
         });
+
+        // Form switching
+        const operationRadios = document.querySelectorAll('input[name="operationType"]');
+        const ipmiFormCard = document.getElementById('ipmiFormCard');
+        const firmwareFormCard = document.getElementById('firmwareFormCard');
+
+        operationRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'ipmi') {
+                    ipmiFormCard.style.display = 'block';
+                    firmwareFormCard.style.display = 'none';
+                } else {
+                    ipmiFormCard.style.display = 'none';
+                    firmwareFormCard.style.display = 'block';
+                }
+            });
+        });
+
+        // Firmware update progress tracking
+        const firmwareForm = document.getElementById('firmwareForm');
+        const progressSection = document.getElementById('updateProgress');
+        const progressBar = document.getElementById('progressBar');
+        const statusMessage = document.getElementById('statusMessage');
+
+        firmwareForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            formData.append('operation_type', 'firmware');
+
+            try {
+                progressSection.style.display = 'block';
+                this.querySelector('button[type="submit"]').disabled = true;
+                statusMessage.textContent = 'Uploading firmware...';
+                
+                // Submit form
+                const response = await fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.task_id) {
+                    statusMessage.textContent = 'Upload successful, starting update...';
+                    
+                    // Display upload details
+                    if (result.upload_details) {
+                        const details = result.upload_details;
+                        const detailsHtml = `
+                            <div class="mt-3 mb-3">
+                                <h6 class="fw-bold">Upload Details:</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered">
+                                        <tbody>
+                                            <tr>
+                                                <td class="fw-bold">Target Firmware</td>
+                                                <td>${details.target_firmware}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold">Target Endpoint</td>
+                                                <td><code>${details.target_endpoint || 'Not specified'}</code></td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold">Task ID</td>
+                                                <td><code>${details.id}</code></td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold">Initial Status</td>
+                                                <td>
+                                                    <span class="badge ${getBadgeClass(details.status)}">
+                                                        ${details.status || 'Pending'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            ${details.messages.length > 0 ? `
+                                            <tr>
+                                                <td class="fw-bold">Initial Messages</td>
+                                                <td>
+                                                    <ul class="list-unstyled mb-0">
+                                                        ${details.messages.map(msg => `
+                                                            <li class="mb-1">
+                                                                <span class="badge ${getMessageBadgeClass(msg.MessageId || '')}">
+                                                                    ${msg.MessageId || 'Info'}
+                                                                </span>
+                                                                ${msg.Message}
+                                                            </li>
+                                                        `).join('')}
+                                                    </ul>
+                                                </td>
+                                            </tr>
+                                            ` : ''}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        `;
+                        statusMessage.insertAdjacentHTML('afterend', detailsHtml);
+                    }
+                    
+                    // Start progress polling
+                    await trackProgress(result.bmc_ip, result.task_id, result.user, result.pwd, result.firmware_type);
+                } else {
+                    progressSection.style.display = 'none';
+                    this.querySelector('button[type="submit"]').disabled = false;
+                    alert('Error: ' + (result.error || 'Unknown error occurred'));
+                }
+            } catch (error) {
+                progressSection.style.display = 'none';
+                this.querySelector('button[type="submit"]').disabled = false;
+                alert('Error: ' + error.message);
+            }
+        });
+
+        async function performSystemReset(bmcIp, username, password) {
+            try {
+                statusMessage.textContent = 'Initiating system reset...';
+                
+                const response = await fetch('/ipmitool/system/reset/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify({
+                        bmc_ip: bmcIp,
+                        username: username,
+                        password: password,
+                        reset_type: 'ForceRestart'
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    statusMessage.textContent = result.message || 'System reset initiated successfully';
+                    return true;
+                } else {
+                    statusMessage.textContent = 'Failed to initiate system reset: ' + (result.error || 'Unknown error');
+                    return false;
+                }
+            } catch (error) {
+                statusMessage.textContent = 'Error during system reset: ' + error.message;
+                return false;
+            }
+        }
+
+        async function trackProgress(bmcIp, taskId, username, password, firmwareType) {
+            let retryCount = 0;
+            const maxRetries = 3;
+            let updateCompleted = false;
+            
+            while (!updateCompleted) {
+                try {
+                    const response = await fetch('/ipmitool/firmware/status/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                        },
+                        body: JSON.stringify({
+                            bmc_ip: bmcIp,
+                            task_id: taskId,
+                            username: username,
+                            password: password
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    
+                    if (!data.success) {
+                        statusMessage.textContent = `Error: ${data.error}`;
+                        break;
+                    }
+                    
+                    const percent = data.percent_complete || 0;
+                    progressBar.style.width = `${percent}%`;
+                    progressBar.textContent = `${percent}%`;
+                    progressBar.setAttribute('aria-valuenow', percent);
+                    
+                    if (data.messages && data.messages.length > 0) {
+                        statusMessage.textContent = data.messages[0].Message;
+                    } else if (data.task_state) {
+                        statusMessage.textContent = `Update in progress: ${percent}% (State: ${data.task_state})`;
+                    } else {
+                        statusMessage.textContent = `Update in progress: ${percent}%`;
+                    }
+                    
+                    if (percent === 100 || data.task_state === 'Completed') {
+                        updateCompleted = true;
+                        statusMessage.textContent = 'Update completed successfully!';
+                        progressBar.classList.remove('progress-bar-animated');
+                        progressBar.classList.add('bg-success');
+                        
+                        // Initiate system reset for BIOS, CPLD, and FPGA updates
+                        if (['BIOS', 'CPLD', 'FPGA'].includes(firmwareType)) {
+                            statusMessage.textContent = `${firmwareType} update completed, initiating system reset...`;
+                            const resetSuccess = await performSystemReset(bmcIp, username, password);
+                            if (resetSuccess) {
+                                statusMessage.textContent = `${firmwareType} update completed and system reset initiated successfully!`;
+                            }
+                        }
+                        break;
+                    } else if (data.task_state === 'Exception' || data.task_state === 'Killed' || data.task_state === 'Cancelled') {
+                        updateCompleted = true;
+                        statusMessage.textContent = data.error || `Update failed: Task State: ${data.task_state}`;
+                        progressBar.classList.remove('progress-bar-animated');
+                        progressBar.classList.remove('bg-primary');
+                        progressBar.classList.add('bg-danger');
+                        break;
+                    }
+                    
+                    // Reset retry count on successful request
+                    retryCount = 0;
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                } catch (error) {
+                    console.error('Progress check error:', error);
+                    retryCount++;
+                    
+                    if (retryCount >= maxRetries) {
+                        statusMessage.textContent = `Error checking progress: ${error.message}. Stopped after ${maxRetries} retries.`;
+                        progressBar.classList.remove('progress-bar-animated');
+                        progressBar.classList.remove('bg-primary');
+                        progressBar.classList.add('bg-danger');
+                        break;
+                    }
+                    
+                    statusMessage.textContent = `Error checking progress: ${error.message}. Retrying... (${retryCount}/${maxRetries})`;
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            }
+            
+            firmwareForm.querySelector('button[type="submit"]').disabled = false;
+        }
+
+        // Helper functions for status badges
+        function getBadgeClass(status) {
+            switch (status) {
+                case 'Running':
+                    return 'bg-primary';
+                case 'Completed':
+                    return 'bg-success';
+                case 'Exception':
+                case 'Killed':
+                case 'Cancelled':
+                    return 'bg-danger';
+                case 'Pending':
+                    return 'bg-warning';
+                default:
+                    return 'bg-secondary';
+            }
+        }
+
+        function getMessageBadgeClass(messageId) {
+            if (messageId.includes('Error')) return 'bg-danger';
+            if (messageId.includes('Warning')) return 'bg-warning';
+            if (messageId.includes('Success')) return 'bg-success';
+            return 'bg-info';
+        }
     });
 </script>
 {% endblock %}

@@ -11864,3 +11864,123 @@ INFO 2025-07-01 21:08:15,239 apps 708831 133006118146176 PXE app ready - Multi-s
 INFO 2025-07-01 21:08:15,753 apps 708838 128518833438848 PXE app ready - Multi-subnet scanner disabled (--scanner off)
 INFO 2025-07-01 21:08:16,220 apps 708849 133774204186752 PXE app ready - Multi-subnet scanner disabled (--scanner off)
 INFO 2025-07-01 21:08:16,713 apps 708857 126047585685632 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-07 23:50:16,674 apps 2197427 125632430137472 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-07 23:57:47,841 apps 2201116 135301791240320 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-07 23:58:10,463 remote_control 2201116 135301687142080 Received remote KVM request
+INFO 2025-07-07 23:58:10,464 remote_control 2201116 135301687142080 Request data: {'bmc_ip': '172.31.53.218', 'username': 'ADMIN', 'password': 'ADMIN'}
+INFO 2025-07-07 23:58:10,464 remote_control 2201116 135301687142080 Remote KVM request – IP=172.31.53.218 user=ADMIN
+INFO 2025-07-07 23:58:10,464 remote_control 2201116 135301687142080 Attempting Redfish request to: https://172.31.53.218/redfish/v1/Managers/1/Oem/Supermicro/IKVM
+INFO 2025-07-07 23:58:10,602 remote_control 2201116 135301687142080 Redfish response status: 200
+INFO 2025-07-07 23:58:10,602 remote_control 2201116 135301687142080 Redfish response data: {'@odata.type': '#IKVM.v1_0_3.IKVM', '@odata.id': '/redfish/v1/Managers/1/Oem/Supermicro/IKVM', 'Id': 'IKVM', 'Name': 'IKVM', 'CurrentInterface': 'HTML 5', 'URI': '/redfish/kpkuQGQ7XmnUrB3.IKVM', '@odata.etag': '"62210d7e29c8f6a737f23a6ded86041b"'}
+INFO 2025-07-07 23:58:10,602 remote_control 2201116 135301687142080 Successfully generated KVM URL: https://172.31.53.218/redfish/kpkuQGQ7XmnUrB3.IKVM
+INFO 2025-07-07 23:59:41,385 apps 2202147 134506305077376 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 00:03:04,678 apps 2203819 128142126940288 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 00:03:31,619 apps 2204167 128617489703040 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 00:06:48,323 apps 2205717 133609953964160 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 00:07:12,535 remote_control 2205717 133609849611968 Received remote KVM request
+INFO 2025-07-08 00:07:12,535 remote_control 2205717 133609849611968 Request data: {'bmc_ip': '172.31.53.218', 'username': 'ADMIN', 'password': 'ADMIN'}
+INFO 2025-07-08 00:07:12,536 remote_control 2205717 133609849611968 Remote KVM request – IP=172.31.53.218 user=ADMIN
+INFO 2025-07-08 00:07:12,536 remote_control 2205717 133609849611968 Attempting Redfish request to: https://172.31.53.218/redfish/v1/Managers/1/Oem/Supermicro/IKVM
+INFO 2025-07-08 00:07:12,661 remote_control 2205717 133609849611968 Redfish response status: 200
+INFO 2025-07-08 00:07:12,661 remote_control 2205717 133609849611968 Redfish response data: {'@odata.type': '#IKVM.v1_0_3.IKVM', '@odata.id': '/redfish/v1/Managers/1/Oem/Supermicro/IKVM', 'Id': 'IKVM', 'Name': 'IKVM', 'CurrentInterface': 'HTML 5', 'URI': '/redfish/NUcIfY3h18ZLVu0.IKVM', '@odata.etag': '"a6675e5a2b269ba893116e1d271ee6b2"'}
+INFO 2025-07-08 00:07:12,661 remote_control 2205717 133609849611968 Successfully generated KVM URL: https://172.31.53.218/redfish/NUcIfY3h18ZLVu0.IKVM
+INFO 2025-07-08 00:47:01,304 apps 2223701 140464235524224 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 00:47:20,273 remote_control 2223701 140464130877120 Received remote KVM request
+INFO 2025-07-08 00:47:20,273 remote_control 2223701 140464130877120 Request data: {'bmc_ip': '172.31.53.218', 'username': 'ADMIN', 'password': 'ADMIN'}
+INFO 2025-07-08 00:47:20,273 remote_control 2223701 140464130877120 Remote KVM request – IP=172.31.53.218 user=ADMIN
+INFO 2025-07-08 00:47:20,274 remote_control 2223701 140464130877120 Attempting Redfish request to: https://172.31.53.218/redfish/v1/Managers/1/Oem/Supermicro/IKVM
+INFO 2025-07-08 00:47:20,399 remote_control 2223701 140464130877120 Redfish response status: 200
+INFO 2025-07-08 00:47:20,399 remote_control 2223701 140464130877120 Redfish response data: {'@odata.type': '#IKVM.v1_0_3.IKVM', '@odata.id': '/redfish/v1/Managers/1/Oem/Supermicro/IKVM', 'Id': 'IKVM', 'Name': 'IKVM', 'CurrentInterface': 'HTML 5', 'URI': '/redfish/OFYAO6nRrnsMQiD.IKVM', '@odata.etag': '"f0b06babf8b8c26606e902100b308dfa"'}
+INFO 2025-07-08 00:47:20,399 remote_control 2223701 140464130877120 Successfully generated KVM URL: https://172.31.53.218/redfish/OFYAO6nRrnsMQiD.IKVM
+INFO 2025-07-08 00:59:40,628 apps 2229549 130892374511744 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 01:06:58,523 apps 2232937 124189885620352 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 16:49:36,188 apps 2582859 123445097906304 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 17:02:52,540 apps 2590604 129176605646976 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 17:09:11,275 apps 2593654 126616219484288 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+WARNING 2025-07-08 17:10:23,867 ipmitool 2593654 126616038536896 No CPLD endpoint found at 172.31.53.218
+ERROR 2025-07-08 17:10:23,868 ipmitool 2593654 126616038536896 No CPLD endpoint found on BMC. Please verify BMC firmware version and CPLD support. for BMC: 172.31.53.218
+ERROR 2025-07-08 17:10:23,868 ipmitool 2593654 126616038536896 Error during firmware upload: No CPLD endpoint found on BMC. Please verify BMC firmware version and CPLD support.
+INFO 2025-07-08 17:11:32,993 apps 2594939 126754277396608 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 17:13:13,386 apps 2595791 137667772739712 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+WARNING 2025-07-08 17:13:28,621 ipmitool 2595791 137667593369280 No CPLD endpoint found at 172.31.53.218
+ERROR 2025-07-08 17:13:28,622 ipmitool 2595791 137667593369280 No CPLD endpoint found on BMC. Please verify BMC firmware version and CPLD support. for BMC: 172.31.53.218
+ERROR 2025-07-08 17:13:28,622 ipmitool 2595791 137667593369280 Error during firmware upload: No CPLD endpoint found on BMC. Please verify BMC firmware version and CPLD support.
+INFO 2025-07-08 17:15:31,269 apps 2597007 138798570582144 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 17:15:52,285 ipmitool 2597007 138798465803968 Discovering CPLD endpoint at https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/
+INFO 2025-07-08 17:15:52,285 ipmitool 2597007 138798465803968 Testing endpoint: https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+INFO 2025-07-08 17:15:52,432 ipmitool 2597007 138798465803968 Response status code: 200
+INFO 2025-07-08 17:15:52,433 ipmitool 2597007 138798465803968 Found CPLD endpoint: Motherboard_CPLD_Misc at 172.31.53.218
+INFO 2025-07-08 17:15:52,434 ipmitool 2597007 138798465803968 Initiating CPLD update for BMC 172.31.53.218 using endpoint /redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+ERROR 2025-07-08 17:15:53,912 ipmitool 2597007 138798465803968 Firmware update request failed with status 202. Response: {"@odata.type":"#Task.v1_7_4.Task","@odata.id":"/redfish/v1/TaskService/Tasks/1","Id":"1","Name":"CPLD Motherboard Misc Update","TaskState":"Running","StartTime":"2025-07-08T17:15:52+00:00","EndTime":"0000-00-00T00:00:00+00:00","PercentComplete":0,"TaskMonitor":"/redfish/v1/TaskMonitor/fa37JncCHryDsbzayy4cBWDxS22JjzhMaiRrV41mtzxlYvKWrO72tK0LK0e1zLO","TaskStatus":"OK","Messages":[],"HidePayload":true,"Oem":{"Supermicro":{"@odata.type":"#SmcTaskExtensions.v1_0_0.Task","UploadedFWVersion":"CPLD_ID: 03E0 Rev: 0F","RunningFWVersion":null}},"@odata.etag":"\"85c28defe66685ad1b0ad003bf7ae410\""}
+ERROR 2025-07-08 17:15:53,913 ipmitool 2597007 138798465803968 Error during firmware upload: Firmware update request failed with status 202
+INFO 2025-07-08 17:19:13,759 ipmitool 2597007 138798465803968 Discovering CPLD endpoint at https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/
+INFO 2025-07-08 17:19:13,760 ipmitool 2597007 138798465803968 Testing endpoint: https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+INFO 2025-07-08 17:19:13,907 ipmitool 2597007 138798465803968 Response status code: 200
+INFO 2025-07-08 17:19:13,908 ipmitool 2597007 138798465803968 Found CPLD endpoint: Motherboard_CPLD_Misc at 172.31.53.218
+INFO 2025-07-08 17:19:13,909 ipmitool 2597007 138798465803968 Initiating CPLD update for BMC 172.31.53.218 using endpoint /redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+ERROR 2025-07-08 17:19:15,325 ipmitool 2597007 138798465803968 Firmware update request failed with status 202. Response: {"@odata.type":"#Task.v1_7_4.Task","@odata.id":"/redfish/v1/TaskService/Tasks/2","Id":"2","Name":"CPLD Motherboard Misc Update","TaskState":"Running","StartTime":"2025-07-08T17:19:14+00:00","EndTime":"0000-00-00T00:00:00+00:00","PercentComplete":0,"TaskMonitor":"/redfish/v1/TaskMonitor/Z2nOXpPIhMFSv8kP07U20o0J90xA0GWXIIwo7J4ogHFZQxwQ2RQ0DRJKRETPVzx","TaskStatus":"OK","Messages":[],"HidePayload":true,"Oem":{"Supermicro":{"@odata.type":"#SmcTaskExtensions.v1_0_0.Task","UploadedFWVersion":"CPLD_ID: 03E0 Rev: 0F","RunningFWVersion":null}},"@odata.etag":"\"c7eac2dba7489f3d515fe6b09f95644d\""}
+ERROR 2025-07-08 17:19:15,325 ipmitool 2597007 138798465803968 Error during firmware upload: Firmware update request failed with status 202
+INFO 2025-07-08 17:19:31,841 apps 2599092 126071218491520 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 17:21:18,604 ipmitool 2599092 126071112459968 Discovering CPLD endpoint at https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/
+INFO 2025-07-08 17:21:18,605 ipmitool 2599092 126071112459968 Testing endpoint: https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+INFO 2025-07-08 17:21:18,752 ipmitool 2599092 126071112459968 Response status code: 200
+INFO 2025-07-08 17:21:18,754 ipmitool 2599092 126071112459968 Found CPLD endpoint: Motherboard_CPLD_Misc at 172.31.53.218
+INFO 2025-07-08 17:21:18,755 ipmitool 2599092 126071112459968 Initiating CPLD update for BMC 172.31.53.218 using endpoint /redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+INFO 2025-07-08 17:21:20,122 ipmitool 2599092 126071112459968 Firmware update initiated successfully. Task ID: 3
+INFO 2025-07-08 17:37:09,414 apps 2607533 125926620803200 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 17:40:06,569 apps 2608978 130164533006464 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 17:40:30,427 ipmitool 2608978 130164352612032 Discovering CPLD endpoint at https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/
+INFO 2025-07-08 17:40:30,427 ipmitool 2608978 130164352612032 Testing endpoint: https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+INFO 2025-07-08 17:40:30,561 ipmitool 2608978 130164352612032 Response status code: 200
+INFO 2025-07-08 17:40:30,563 ipmitool 2608978 130164352612032 Found CPLD endpoint: Motherboard_CPLD_Misc at 172.31.53.218
+INFO 2025-07-08 17:40:30,563 ipmitool 2608978 130164352612032 Initiating CPLD update for BMC 172.31.53.218 using endpoint /redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+INFO 2025-07-08 17:40:32,042 ipmitool 2608978 130164352612032 Firmware update initiated successfully. Task ID: 4
+INFO 2025-07-08 17:40:32,221 ipmitool 2608978 130164352612032 Waiting for CPLD update to complete...
+INFO 2025-07-08 17:40:42,402 ipmitool 2608978 130164352612032 Waiting for CPLD update to complete...
+INFO 2025-07-08 17:40:52,579 ipmitool 2608978 130164352612032 Waiting for CPLD update to complete...
+INFO 2025-07-08 17:41:02,819 ipmitool 2608978 130164352612032 Waiting for CPLD update to complete...
+INFO 2025-07-08 17:41:12,986 ipmitool 2608978 130164352612032 Waiting for CPLD update to complete...
+INFO 2025-07-08 17:41:23,183 ipmitool 2608978 130164352612032 CPLD update completed
+INFO 2025-07-08 17:41:23,184 ipmitool 2608978 130164352612032 Initiating system reset after CPLD update
+INFO 2025-07-08 17:41:23,359 ipmitool 2608978 130164352612032 System reset initiated successfully with type: ForceRestart
+INFO 2025-07-08 17:41:23,361 ipmitool 2608978 130164352612032 System reset initiated successfully
+INFO 2025-07-08 17:45:03,727 apps 2611597 140031883477120 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 17:45:17,338 ipmitool 2611597 140031704430272 Discovering CPLD endpoint at https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/
+INFO 2025-07-08 17:45:17,339 ipmitool 2611597 140031704430272 Testing endpoint: https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+INFO 2025-07-08 17:45:17,474 ipmitool 2611597 140031704430272 Response status code: 200
+INFO 2025-07-08 17:45:17,476 ipmitool 2611597 140031704430272 Found CPLD endpoint: Motherboard_CPLD_Misc at 172.31.53.218
+INFO 2025-07-08 17:45:17,477 ipmitool 2611597 140031704430272 Initiating CPLD update for BMC 172.31.53.218 using endpoint /redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+INFO 2025-07-08 17:45:18,810 ipmitool 2611597 140031704430272 Firmware update initiated successfully. Task ID: 5
+INFO 2025-07-08 17:49:44,438 apps 2614018 132098215313536 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 17:50:01,532 ipmitool 2614018 132098109204160 Discovering CPLD endpoint at https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/
+INFO 2025-07-08 17:50:01,533 ipmitool 2614018 132098109204160 Testing endpoint: https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+INFO 2025-07-08 17:50:01,677 ipmitool 2614018 132098109204160 Response status code: 200
+INFO 2025-07-08 17:50:01,679 ipmitool 2614018 132098109204160 Found CPLD endpoint: Motherboard_CPLD_Misc at 172.31.53.218
+INFO 2025-07-08 17:50:01,680 ipmitool 2614018 132098109204160 Initiating CPLD update for BMC 172.31.53.218 using endpoint /redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+INFO 2025-07-08 17:50:02,988 ipmitool 2614018 132098109204160 Firmware update initiated successfully. Task ID: 6
+INFO 2025-07-08 18:02:39,816 apps 2620515 128141449912448 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 18:03:24,919 ipmitool 2620515 128141345416896 Discovering CPLD endpoint at https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/
+INFO 2025-07-08 18:03:24,919 ipmitool 2620515 128141345416896 Testing endpoint: https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+INFO 2025-07-08 18:03:25,057 ipmitool 2620515 128141345416896 Response status code: 200
+INFO 2025-07-08 18:03:25,058 ipmitool 2620515 128141345416896 Found CPLD endpoint: Motherboard_CPLD_Misc at 172.31.53.218
+INFO 2025-07-08 18:03:25,059 ipmitool 2620515 128141345416896 Initiating CPLD update for BMC 172.31.53.218 using endpoint /redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+INFO 2025-07-08 18:03:26,389 ipmitool 2620515 128141345416896 Firmware update initiated successfully. Task ID: 7
+INFO 2025-07-08 18:07:59,518 apps 2623361 125385325777024 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 18:08:23,454 ipmitool 2623361 125385220024000 Discovering CPLD endpoint at https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/
+INFO 2025-07-08 18:08:23,454 ipmitool 2623361 125385220024000 Testing endpoint: https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+INFO 2025-07-08 18:08:23,591 ipmitool 2623361 125385220024000 Response status code: 200
+INFO 2025-07-08 18:08:23,592 ipmitool 2623361 125385220024000 Found CPLD endpoint: Motherboard_CPLD_Misc at 172.31.53.218
+INFO 2025-07-08 18:08:23,593 ipmitool 2623361 125385220024000 Initiating CPLD update for BMC 172.31.53.218 using endpoint /redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+INFO 2025-07-08 18:08:24,957 ipmitool 2623361 125385220024000 Firmware update initiated successfully. Task ID: 8
+INFO 2025-07-08 18:14:57,291 ipmitool 2623361 125385220024000 Discovering CPLD endpoint at https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/
+INFO 2025-07-08 18:14:57,291 ipmitool 2623361 125385220024000 Testing endpoint: https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+INFO 2025-07-08 18:14:57,422 ipmitool 2623361 125385220024000 Response status code: 200
+INFO 2025-07-08 18:14:57,424 ipmitool 2623361 125385220024000 Found CPLD endpoint: Motherboard_CPLD_Misc at 172.31.53.218
+INFO 2025-07-08 18:14:57,424 ipmitool 2623361 125385220024000 Initiating BIOS update for BMC 172.31.53.218 using endpoint /redfish/v1/UpdateService/FirmwareInventory/BIOS
+INFO 2025-07-08 18:15:08,168 ipmitool 2623361 125385220024000 Firmware update initiated successfully. Task ID: 9
+INFO 2025-07-08 18:26:29,226 ipmitool 2623361 125385220024000 Discovering CPLD endpoint at https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/
+INFO 2025-07-08 18:26:29,226 ipmitool 2623361 125385220024000 Testing endpoint: https://172.31.53.218/redfish/v1/UpdateService/FirmwareInventory/Motherboard_CPLD_Misc
+INFO 2025-07-08 18:26:29,366 ipmitool 2623361 125385220024000 Response status code: 200
+INFO 2025-07-08 18:26:29,367 ipmitool 2623361 125385220024000 Found CPLD endpoint: Motherboard_CPLD_Misc at 172.31.53.218
+INFO 2025-07-08 18:26:29,368 ipmitool 2623361 125385220024000 Initiating BMC update for BMC 172.31.53.218 using endpoint /redfish/v1/UpdateService/FirmwareInventory/BMC
+INFO 2025-07-08 18:26:50,848 ipmitool 2623361 125385220024000 Firmware update initiated successfully. Task ID: 10

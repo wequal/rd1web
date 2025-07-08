@@ -194,3 +194,12 @@ class IpmiForm(forms.Form):
     user=forms.ChoiceField(label='User',widget=forms.Select,choices=[('ADMIN','ADMIN'),('root','root')],required=False)
     pwd=forms.CharField(widget=forms.Textarea(attrs={'class':'form-control','style': 'width: 500px;',}),label='Unique Password',required=False)
 
+class FirmwareUploadForm(forms.Form):
+    bmc_ip=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='BMC IP')
+    user=forms.ChoiceField(label='User',widget=forms.Select,choices=[('ADMIN','ADMIN'),('root','root')],required=False)
+    pwd=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Unique Password',required=False)
+    firmware_type = forms.ChoiceField(
+    choices=[('BIOS', 'BIOS'), ('BMC', 'BMC'), ('CPLD', 'CPLD'), ('FPGA', 'FPGA')],
+    widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    firmware_file = forms.FileField()

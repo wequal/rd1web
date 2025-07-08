@@ -5,6 +5,7 @@ from pxe.form import *
 from ..models import PxeEntry
 import os
 from fabric import Connection
+import asyncio
 
 us_b3 = Connection(host="root@172.31.60.129", connect_kwargs={"password": "superrd1"})
 us_b1 = Connection(host="root@172.31.58.142", connect_kwargs={"password": "superrd1"})
