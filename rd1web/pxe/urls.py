@@ -17,7 +17,7 @@ from .views.remote_control import (
     remote_sol_terminal,
 )
 from .views.archive import archive_system
-from .views.mac_ip_view import mac_ip_results, mac_ip_api
+from .views.mac_ip_view import mac_ip_results, mac_ip_api, manual_scan, scan_status_api
 from .api.system_api import systems_summary, systems_category
 
 
@@ -31,6 +31,8 @@ urlpatterns = [
 
     path('mac-ip/', mac_ip_results, name='mac_ip_results'),
     path('api/mac-ip/', mac_ip_api, name='mac_ip_api'),
+    path('api/mac-ip/scan/', manual_scan, name='manual_scan'),
+    path('api/mac-ip/scan/status/', scan_status_api, name='scan_status_api'),
     path('api/systems/summary/', systems_summary, name='systems_summary'),
     path('api/systems/<str:category>/', systems_category, name='systems_category'),
     path('systems/', system_list, name='system_list'),

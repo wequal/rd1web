@@ -33,6 +33,40 @@
     </div>
     {% endif %}
 
+    <!-- Network Scan Controls -->
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-network-wired me-2"></i>
+                <h6 class="mb-0">Network Scanning</h6>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="text-center">
+                        <p class="text-muted small mb-2">172.31.0.0/16</p>
+                        <button id="scanUSBtn" class="btn btn-primary" onclick="startScan('us')">
+                            <i class="fas fa-search me-2"></i>
+                            <span class="btn-text">Scan US Network</span>
+                        </button>
+                        <div id="usStatus" class="mt-2 text-muted small"></div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-center">
+                        <p class="text-muted small mb-2">10.135.0.0/16</p>
+                        <button id="scanTWBtn" class="btn btn-success" onclick="startScan('tw')">
+                            <i class="fas fa-search me-2"></i>
+                            <span class="btn-text">Scan TW Network</span>
+                        </button>
+                        <div id="twStatus" class="mt-2 text-muted small"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Search and Filter -->
     <div class="card mb-4">
         <div class="card-header bg-light">
@@ -154,19 +188,196 @@
 
 
 
-    <!-- Auto-refresh Notice -->
-    <div class="text-center mt-3">
-        <div class="alert alert-info d-inline-flex align-items-center" role="alert">
-            <i class="fas fa-sync-alt me-2"></i>
-            <small>This page automatically refreshes every 60 seconds to show the latest data</small>
-        </div>
-    </div>
+
 </div>
 
 <script>
-// Auto-refresh the page every 60 seconds
-setTimeout(function() {
-    location.reload();
-}, 60000);
+let scanStatusInterval;
+let activeScans = { us: false, tw: false };
+
+// Check initial scan status when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Check status and start polling if needed
+    fetch('/api/mac-ip/scan/status/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.scan_status) {
+                const usScanning = data.scan_status.us.scanning;
+                const twScanning = data.scan_status.tw.scanning;
+                
+                // Start polling if any scan is active
+                if (usScanning || twScanning) {
+                    startStatusPolling();
+                }
+                
+                // Update UI
+                updateScanStatus('us', data.scan_status.us);
+                updateScanStatus('tw', data.scan_status.tw);
+            }
+        })
+        .catch(error => {
+            console.error('Error checking initial scan status:', error);
+        });
+});
+
+// Clean up interval when leaving page
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        stopStatusPolling();
+    }
+});
+
+function startStatusPolling() {
+    if (!scanStatusInterval) {
+        scanStatusInterval = setInterval(checkScanStatus, 5000);  // Check every 5 seconds
+    }
+}
+
+function stopStatusPolling() {
+    if (scanStatusInterval) {
+        clearInterval(scanStatusInterval);
+        scanStatusInterval = null;
+    }
+}
+
+// Function to start a network scan
+function startScan(network) {
+    const button = document.getElementById(`scan${network.toUpperCase()}Btn`);
+    const status = document.getElementById(`${network}Status`);
+    
+    // Disable button and show loading
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i><span class="btn-text">Scanning...</span>';
+    status.textContent = 'Starting scan...';
+    status.className = 'mt-2 text-info small';
+    
+    // Make API call to start scan
+    fetch('/api/mac-ip/scan/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({network: network})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            status.textContent = `Scanning ${network.toUpperCase()} network...`;
+            status.className = 'mt-2 text-info small';
+            activeScans[network] = true;
+            startStatusPolling();
+        } else {
+            status.textContent = data.error || 'Scan failed to start';
+            status.className = 'mt-2 text-danger small';
+            resetButton(network);
+            activeScans[network] = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error starting scan:', error);
+        status.textContent = 'Error starting scan';
+        status.className = 'mt-2 text-danger small';
+        resetButton(network);
+        activeScans[network] = false;
+    });
+}
+
+// Function to check scan status
+function checkScanStatus() {
+    fetch('/api/mac-ip/scan/status/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.scan_status) {
+                // Update each network's status independently
+                const usScanning = data.scan_status.us.scanning;
+                const twScanning = data.scan_status.tw.scanning;
+                
+                // Update active scans tracking
+                activeScans.us = usScanning;
+                activeScans.tw = twScanning;
+                
+                // Update UI
+                updateScanStatus('us', data.scan_status.us);
+                updateScanStatus('tw', data.scan_status.tw);
+                
+                // Manage polling based on scan status
+                if (usScanning || twScanning) {
+                    startStatusPolling();
+                } else {
+                    stopStatusPolling();
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error checking scan status:', error);
+        });
+}
+
+// Function to update scan status display
+function updateScanStatus(network, status) {
+    const button = document.getElementById(`scan${network.toUpperCase()}Btn`);
+    const statusDiv = document.getElementById(`${network}Status`);
+    
+    if (status.scanning) {
+        // Network is scanning
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i><span class="btn-text">Scanning...</span>';
+        statusDiv.textContent = `Scanning ${network.toUpperCase()} network...`;
+        statusDiv.className = 'mt-2 text-info small';
+    } else {
+        // Not scanning
+        resetButton(network);
+        
+        // Update status message
+        if (status.error) {
+            statusDiv.textContent = `Error: ${status.error}`;
+            statusDiv.className = 'mt-2 text-danger small';
+            scheduleRefresh();
+        } else if (status.last_scan) {
+            const lastScan = new Date(status.last_scan).toLocaleString();
+            statusDiv.textContent = `Last scan: ${lastScan}`;
+            statusDiv.className = 'mt-2 text-success small';
+            scheduleRefresh();
+        } else {
+            statusDiv.textContent = 'Ready to scan';
+            statusDiv.className = 'mt-2 text-muted small';
+            scheduleRefresh();
+        }
+    }
+}
+
+// Function to reset button to default state
+function resetButton(network) {
+    const button = document.getElementById(`scan${network.toUpperCase()}Btn`);
+    button.disabled = false;
+    button.innerHTML = `<i class="fas fa-search me-2"></i><span class="btn-text">Scan ${network.toUpperCase()} Network</span>`;
+}
+
+// Function to get CSRF cookie
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Auto-refresh the page 30 seconds after scan completion
+function scheduleRefresh() {
+    // Only refresh if no scans are active
+    if (!activeScans.us && !activeScans.tw) {
+        setTimeout(function() {
+            location.reload();
+        }, 30000);
+    }
+}
 </script>
 {% endblock %} 
