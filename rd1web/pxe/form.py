@@ -208,7 +208,7 @@ class UniquePasswordForm(forms.Form):
     bmc_mac = forms.CharField(
         widget=forms.Textarea(attrs={
             'class': 'form-control',
-            'style': 'width: 500px; height: 100px;',
+            'style': 'width: 500px;',
             'placeholder': 'Enter BMC MAC addresses (one per line)\nExample:\n7c:c2:55:7b:8c:af\n7c:c2:55:89:01:1f'
         }),
         label='BMC MAC Addresses'
