@@ -199,7 +199,17 @@ class FirmwareUploadForm(forms.Form):
     user=forms.ChoiceField(label='User',widget=forms.Select,choices=[('ADMIN','ADMIN'),('root','root')],required=False)
     pwd=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Unique Password',required=False)
     firmware_type = forms.ChoiceField(
-    choices=[('BIOS', 'BIOS'), ('BMC', 'BMC'), ('CPLD', 'CPLD'), ('FPGA', 'FPGA')],
-    widget=forms.Select(attrs={'class': 'form-control'})
+        choices=[('BIOS', 'BIOS'), ('BMC', 'BMC'), ('CPLD', 'CPLD'), ('FPGA', 'FPGA')],
+        widget=forms.Select(attrs={'class': 'form-control'})
     )
     firmware_file = forms.FileField()
+
+class UniquePasswordForm(forms.Form):
+    bmc_mac=forms.CharField(
+        widget=forms.TextInput(attrs={
+            'class':'form-control',
+            'style': 'width: 500px;',
+            'placeholder': 'Enter BMC MAC address (e.g., 7C:C2:55:7B:8C:AF)'
+        }),
+        label='BMC MAC'
+    )

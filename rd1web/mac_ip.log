@@ -12008,3 +12008,216 @@ INFO 2025-07-08 22:08:08,113 firmware_update 2719456 133073316341440 Response st
 INFO 2025-07-08 22:08:08,114 firmware_update 2719456 133073316341440 Found CPLD endpoint: Motherboard_CPLD_Misc at 172.31.53.218
 INFO 2025-07-08 22:08:08,115 firmware_update 2719456 133073316341440 Initiating BIOS update for BMC 172.31.53.218 using endpoint /redfish/v1/UpdateService/FirmwareInventory/BIOS
 INFO 2025-07-08 22:08:18,745 firmware_update 2719456 133073316341440 Firmware update initiated successfully. Task ID: 3
+INFO 2025-07-08 22:18:17,673 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #1
+INFO 2025-07-08 22:18:17,674 background_tasks 2738229 133847193710720 Started multi-subnet scanner with concurrent scanning (subnets: local: 172.31.0.0/16 (arp-scan), remote: 10.135.0.0/16 (fastapi))
+INFO 2025-07-08 22:18:17,674 apps 2738229 133847193710720 PXE app ready - Multi-subnet scanner started (primary worker)
+INFO 2025-07-08 22:18:17,674 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-08 22:18:17,675 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-08 22:18:29,071 consumers 2738229 133847193710720 Remote SOL WebSocket connect: ip=172.31.53.218 user=ADMIN session=7df15abd
+INFO 2025-07-08 22:18:29,082 sol_session 2738229 133847193710720 Started SOL session for 7df15abd (PID=2738323)
+INFO 2025-07-08 22:22:56,217 background_tasks 2738229 133847079442112 remote database update: 0 new, 940 updated, 9 inactive
+INFO 2025-07-08 22:22:56,217 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-08 22:23:36,733 background_tasks 2738229 133847087834816 local database update: 0 new, 3437 updated, 40 inactive
+INFO 2025-07-08 22:23:36,734 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-08 22:23:36,735 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #1 completed
+INFO 2025-07-08 22:23:46,735 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #2
+INFO 2025-07-08 22:23:46,736 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-08 22:23:46,736 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-08 22:28:25,388 background_tasks 2738229 133847079442112 remote database update: 0 new, 944 updated, 13 inactive
+INFO 2025-07-08 22:28:25,389 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-08 22:29:02,869 background_tasks 2738229 133847087834816 local database update: 0 new, 3392 updated, 80 inactive
+INFO 2025-07-08 22:29:02,871 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-08 22:29:02,871 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #2 completed
+INFO 2025-07-08 22:29:12,872 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #3
+INFO 2025-07-08 22:29:12,872 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-08 22:29:12,873 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-08 22:33:51,682 background_tasks 2738229 133847079442112 remote database update: 0 new, 941 updated, 11 inactive
+INFO 2025-07-08 22:33:51,683 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-08 22:34:26,391 background_tasks 2738229 133847087834816 local database update: 0 new, 3384 updated, 50 inactive
+INFO 2025-07-08 22:34:26,392 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-08 22:34:26,392 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #3 completed
+INFO 2025-07-08 22:34:36,393 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #4
+INFO 2025-07-08 22:34:36,394 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-08 22:34:36,394 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-08 22:39:14,988 background_tasks 2738229 133847079442112 remote database update: 0 new, 940 updated, 12 inactive
+INFO 2025-07-08 22:39:14,989 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-08 22:39:48,660 background_tasks 2738229 133847087834816 local database update: 2 new, 3427 updated, 21 inactive
+INFO 2025-07-08 22:39:48,661 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-08 22:39:48,662 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #4 completed
+INFO 2025-07-08 22:39:58,663 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #5
+INFO 2025-07-08 22:39:58,663 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-08 22:39:58,664 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-08 22:44:37,005 background_tasks 2738229 133847079442112 remote database update: 0 new, 925 updated, 21 inactive
+INFO 2025-07-08 22:44:37,006 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-08 22:45:13,402 background_tasks 2738229 133847087834816 local database update: 0 new, 3413 updated, 44 inactive
+INFO 2025-07-08 22:45:13,403 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-08 22:45:13,403 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #5 completed
+INFO 2025-07-08 22:45:23,404 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #6
+INFO 2025-07-08 22:45:23,405 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-08 22:45:23,405 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-08 22:50:02,837 background_tasks 2738229 133847079442112 remote database update: 0 new, 942 updated, 7 inactive
+INFO 2025-07-08 22:50:02,837 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-08 22:50:40,301 background_tasks 2738229 133847087834816 local database update: 0 new, 3412 updated, 38 inactive
+INFO 2025-07-08 22:50:40,302 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-08 22:50:40,303 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #6 completed
+INFO 2025-07-08 22:50:50,303 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #7
+INFO 2025-07-08 22:50:50,304 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-08 22:50:50,305 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-08 22:55:29,271 background_tasks 2738229 133847079442112 remote database update: 0 new, 943 updated, 11 inactive
+INFO 2025-07-08 22:55:29,271 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-08 22:56:04,298 background_tasks 2738229 133847087834816 local database update: 0 new, 3403 updated, 46 inactive
+INFO 2025-07-08 22:56:04,299 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-08 22:56:04,300 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #7 completed
+INFO 2025-07-08 22:56:14,301 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #8
+INFO 2025-07-08 22:56:14,301 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-08 22:56:14,302 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-08 23:00:52,818 background_tasks 2738229 133847079442112 remote database update: 0 new, 934 updated, 10 inactive
+INFO 2025-07-08 23:00:52,819 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-08 23:01:27,407 background_tasks 2738229 133847087834816 local database update: 0 new, 3396 updated, 49 inactive
+INFO 2025-07-08 23:01:27,408 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-08 23:01:27,409 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #8 completed
+INFO 2025-07-08 23:01:37,409 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #9
+INFO 2025-07-08 23:01:37,410 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-08 23:01:37,411 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-08 23:03:13,013 apps 2758549 135680565125248 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 23:06:15,836 background_tasks 2738229 133847079442112 remote database update: 0 new, 939 updated, 8 inactive
+INFO 2025-07-08 23:06:15,837 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-08 23:06:52,684 background_tasks 2738229 133847087834816 local database update: 0 new, 3367 updated, 66 inactive
+INFO 2025-07-08 23:06:52,685 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-08 23:06:52,685 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #9 completed
+INFO 2025-07-08 23:07:02,686 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #10
+INFO 2025-07-08 23:07:02,687 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-08 23:07:02,688 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-08 23:11:41,580 background_tasks 2738229 133847079442112 remote database update: 0 new, 939 updated, 10 inactive
+INFO 2025-07-08 23:11:41,580 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-08 23:12:16,094 background_tasks 2738229 133847087834816 local database update: 1 new, 3381 updated, 36 inactive
+INFO 2025-07-08 23:12:16,095 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-08 23:12:16,095 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #10 completed
+INFO 2025-07-08 23:12:26,096 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #11
+INFO 2025-07-08 23:12:26,097 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-08 23:12:26,097 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-08 23:17:04,531 background_tasks 2738229 133847079442112 remote database update: 0 new, 934 updated, 15 inactive
+INFO 2025-07-08 23:17:04,532 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-08 23:17:41,652 background_tasks 2738229 133847087834816 local database update: 1 new, 3382 updated, 46 inactive
+INFO 2025-07-08 23:17:41,653 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-08 23:17:41,654 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #11 completed
+INFO 2025-07-08 23:17:51,655 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #12
+INFO 2025-07-08 23:17:51,655 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-08 23:17:51,656 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-08 23:22:30,448 background_tasks 2738229 133847079442112 remote database update: 0 new, 930 updated, 19 inactive
+INFO 2025-07-08 23:22:30,449 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-08 23:22:56,460 background_tasks 2738229 133847087834816 local database update: 0 new, 3394 updated, 18 inactive
+INFO 2025-07-08 23:22:56,461 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-08 23:22:56,462 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #12 completed
+INFO 2025-07-08 23:23:06,463 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #13
+INFO 2025-07-08 23:23:06,463 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-08 23:23:06,464 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-08 23:27:45,293 background_tasks 2738229 133847079442112 remote database update: 0 new, 937 updated, 8 inactive
+INFO 2025-07-08 23:27:45,294 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-08 23:28:21,017 background_tasks 2738229 133847087834816 local database update: 0 new, 3378 updated, 36 inactive
+INFO 2025-07-08 23:28:21,018 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-08 23:28:21,019 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #13 completed
+INFO 2025-07-08 23:28:31,019 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #14
+INFO 2025-07-08 23:28:31,020 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-08 23:28:31,020 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-08 23:33:09,515 background_tasks 2738229 133847079442112 remote database update: 0 new, 938 updated, 12 inactive
+INFO 2025-07-08 23:33:09,516 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-08 23:33:45,572 background_tasks 2738229 133847087834816 local database update: 0 new, 3374 updated, 37 inactive
+INFO 2025-07-08 23:33:45,573 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-08 23:33:45,574 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #14 completed
+INFO 2025-07-08 23:33:55,574 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #15
+INFO 2025-07-08 23:33:55,575 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-08 23:33:55,575 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-08 23:38:34,130 background_tasks 2738229 133847079442112 remote database update: 0 new, 933 updated, 13 inactive
+INFO 2025-07-08 23:38:34,131 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-08 23:39:07,218 background_tasks 2738229 133847087834816 local database update: 1 new, 3318 updated, 82 inactive
+INFO 2025-07-08 23:39:07,219 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-08 23:39:07,219 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #15 completed
+INFO 2025-07-08 23:39:17,220 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #16
+INFO 2025-07-08 23:39:17,221 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-08 23:39:17,221 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-08 23:40:13,847 apps 2776307 140395829665920 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 23:43:55,748 background_tasks 2738229 133847079442112 remote database update: 0 new, 938 updated, 12 inactive
+INFO 2025-07-08 23:43:55,749 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-08 23:44:31,212 background_tasks 2738229 133847087834816 local database update: 1 new, 3365 updated, 29 inactive
+INFO 2025-07-08 23:44:31,213 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-08 23:44:31,214 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #16 completed
+INFO 2025-07-08 23:44:41,214 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #17
+INFO 2025-07-08 23:44:41,215 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-08 23:44:41,216 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-08 23:46:39,944 apps 2779459 139250763120768 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 23:49:20,050 background_tasks 2738229 133847079442112 remote database update: 0 new, 938 updated, 9 inactive
+INFO 2025-07-08 23:49:20,051 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-08 23:49:54,831 background_tasks 2738229 133847087834816 local database update: 1 new, 3354 updated, 66 inactive
+INFO 2025-07-08 23:49:54,832 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-08 23:49:54,832 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #17 completed
+INFO 2025-07-08 23:50:04,833 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #18
+INFO 2025-07-08 23:50:04,834 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-08 23:50:04,835 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-08 23:52:52,976 apps 2782647 132902604992640 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-08 23:54:43,253 background_tasks 2738229 133847079442112 remote database update: 0 new, 933 updated, 15 inactive
+INFO 2025-07-08 23:54:43,254 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-08 23:55:19,250 background_tasks 2738229 133847087834816 local database update: 3 new, 3309 updated, 88 inactive
+INFO 2025-07-08 23:55:19,251 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-08 23:55:19,252 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #18 completed
+INFO 2025-07-08 23:55:29,252 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #19
+INFO 2025-07-08 23:55:29,253 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-08 23:55:29,254 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-08 23:58:02,236 apps 2785169 131947165544576 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-09 00:00:08,456 background_tasks 2738229 133847079442112 remote database update: 0 new, 940 updated, 11 inactive
+INFO 2025-07-09 00:00:08,457 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-09 00:00:38,760 background_tasks 2738229 133847087834816 local database update: 0 new, 3382 updated, 17 inactive
+INFO 2025-07-09 00:00:38,760 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-09 00:00:38,761 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #19 completed
+INFO 2025-07-09 00:00:48,762 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #20
+INFO 2025-07-09 00:00:48,762 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-09 00:00:48,763 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-09 00:01:22,053 apps 2786909 124524823167104 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-09 00:04:07,336 apps 2788254 140053422563456 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-09 00:05:27,317 background_tasks 2738229 133847079442112 remote database update: 0 new, 935 updated, 11 inactive
+INFO 2025-07-09 00:05:27,318 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-09 00:06:01,348 background_tasks 2738229 133847087834816 local database update: 1 new, 3367 updated, 47 inactive
+INFO 2025-07-09 00:06:01,349 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-09 00:06:01,349 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #20 completed
+INFO 2025-07-09 00:06:11,350 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #21
+INFO 2025-07-09 00:06:11,351 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-09 00:06:11,352 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-09 00:08:41,912 apps 2790622 129832009449600 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-09 00:10:29,591 apps 2791734 140514436128896 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-09 00:10:49,878 background_tasks 2738229 133847079442112 remote database update: 0 new, 941 updated, 4 inactive
+INFO 2025-07-09 00:10:49,879 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-09 00:11:12,271 background_tasks 2738229 133847087834816 local database update: 0 new, 3353 updated, 51 inactive
+INFO 2025-07-09 00:11:12,272 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-09 00:11:12,272 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #21 completed
+INFO 2025-07-09 00:11:22,273 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #22
+INFO 2025-07-09 00:11:22,273 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-09 00:11:22,274 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-09 00:12:40,474 apps 2792936 137804362784896 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-09 00:16:00,794 background_tasks 2738229 133847079442112 remote database update: 0 new, 938 updated, 15 inactive
+INFO 2025-07-09 00:16:00,794 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-09 00:16:29,005 background_tasks 2738229 133847087834816 local database update: 2 new, 3362 updated, 38 inactive
+INFO 2025-07-09 00:16:29,006 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-09 00:16:29,007 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #22 completed
+INFO 2025-07-09 00:16:39,007 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #23
+INFO 2025-07-09 00:16:39,008 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-09 00:16:39,009 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-09 00:21:17,411 background_tasks 2738229 133847079442112 remote database update: 0 new, 934 updated, 10 inactive
+INFO 2025-07-09 00:21:17,411 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-09 00:21:53,766 background_tasks 2738229 133847087834816 local database update: 0 new, 3384 updated, 23 inactive
+INFO 2025-07-09 00:21:53,768 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-09 00:21:53,768 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #23 completed
+INFO 2025-07-09 00:22:03,769 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #24
+INFO 2025-07-09 00:22:03,769 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-09 00:22:03,770 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-09 00:26:26,871 apps 2799296 124080645578880 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-09 00:26:42,830 background_tasks 2738229 133847079442112 remote database update: 0 new, 942 updated, 12 inactive
+INFO 2025-07-09 00:26:42,831 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-09 00:27:08,566 background_tasks 2738229 133847087834816 local database update: 0 new, 3358 updated, 53 inactive
+INFO 2025-07-09 00:27:08,567 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-09 00:27:08,568 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #24 completed
+INFO 2025-07-09 00:27:18,568 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #25
+INFO 2025-07-09 00:27:18,569 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-09 00:27:18,569 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-09 00:31:43,737 apps 2801864 129777278001280 PXE app ready - Multi-subnet scanner disabled (--scanner off)
+INFO 2025-07-09 00:31:57,101 background_tasks 2738229 133847079442112 remote database update: 0 new, 937 updated, 12 inactive
+INFO 2025-07-09 00:31:57,102 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
