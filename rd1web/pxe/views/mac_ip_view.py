@@ -56,28 +56,46 @@ SUBNET_TO_UI_MAP = {
     'remote': 'tw'
 }
 
-# Thread-safe status tracking
-status_lock = threading.Lock()
-scan_status = {
-    'local': {'scanning': False, 'last_scan': None, 'error': None},
-    'remote': {'scanning': False, 'last_scan': None, 'error': None}
-}
+def get_status_key(subnet_name):
+    """Get Redis key for scan status"""
+    return f'scan_status_{subnet_name}'
+
+def get_lock_key(subnet_name):
+    """Get Redis key for scan lock"""
+    return f'scan_lock_{subnet_name}'
 
 def update_scan_status(subnet_name, status_update):
-    """Thread-safe update of scan status"""
-    with status_lock:
-        scan_status[subnet_name].update(status_update)
+    """Update scan status in Redis"""
+    status_key = get_status_key(subnet_name)
+    current_status = cache.get(status_key) or {'scanning': False, 'last_scan': None, 'error': None}
+    current_status.update(status_update)
+    
+    # Convert datetime to ISO format for JSON serialization
+    if current_status.get('last_scan'):
+        if isinstance(current_status['last_scan'], str):
+            # Already converted
+            pass
+        else:
+            current_status['last_scan'] = current_status['last_scan'].isoformat()
+    
+    cache.set(status_key, current_status, timeout=3600)  # 1 hour timeout
 
 def get_scan_status(subnet_name=None):
-    """Thread-safe read of scan status"""
-    with status_lock:
-        if subnet_name:
-            return scan_status[subnet_name].copy()
-        return {k: v.copy() for k, v in scan_status.items()}
+    """Get scan status from Redis"""
+    if subnet_name:
+        status_key = get_status_key(subnet_name)
+        return cache.get(status_key) or {'scanning': False, 'last_scan': None, 'error': None}
+    
+    # Return all statuses
+    result = {}
+    for subnet in ['local', 'remote']:
+        status_key = get_status_key(subnet)
+        result[subnet] = cache.get(status_key) or {'scanning': False, 'last_scan': None, 'error': None}
+    return result
 
 def acquire_scan_lock(subnet_name):
     """Try to acquire a Redis-based lock for scanning a subnet"""
-    lock_key = f'scan_lock_{subnet_name}'
+    lock_key = get_lock_key(subnet_name)
     if cache.add(lock_key, True, timeout=600):  # 10 minute timeout
         update_scan_status(subnet_name, {'scanning': True, 'error': None})
         return True
@@ -85,8 +103,9 @@ def acquire_scan_lock(subnet_name):
 
 def release_scan_lock(subnet_name, error=None):
     """Release the Redis-based scan lock and update status"""
-    lock_key = f'scan_lock_{subnet_name}'
+    lock_key = get_lock_key(subnet_name)
     cache.delete(lock_key)
+    
     status_update = {
         'scanning': False,
         'last_scan': timezone.now() if not error else None
@@ -294,8 +313,6 @@ def scan_status_api(request):
         
         # Return status for specific network
         status = get_scan_status(subnet_source)
-        if status['last_scan']:
-            status['last_scan'] = status['last_scan'].isoformat()
         return JsonResponse({
             'network': network,
             'status': status
@@ -306,9 +323,7 @@ def scan_status_api(request):
         all_status = get_scan_status()
         for subnet_source, status in all_status.items():
             ui_name = SUBNET_TO_UI_MAP[subnet_source]
-            result[ui_name] = status.copy()
-            if result[ui_name]['last_scan']:
-                result[ui_name]['last_scan'] = result[ui_name]['last_scan'].isoformat()
+            result[ui_name] = status
         
         return JsonResponse({'scan_status': result})
 
