@@ -205,11 +205,20 @@ class FirmwareUploadForm(forms.Form):
     firmware_file = forms.FileField()
 
 class UniquePasswordForm(forms.Form):
-    bmc_mac=forms.CharField(
-        widget=forms.TextInput(attrs={
-            'class':'form-control',
-            'style': 'width: 500px;',
-            'placeholder': 'Enter BMC MAC address (e.g., 7C:C2:55:7B:8C:AF)'
+    bmc_mac = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'style': 'width: 500px; height: 100px;',
+            'placeholder': 'Enter BMC MAC addresses (one per line)\nExample:\n7c:c2:55:7b:8c:af\n7c:c2:55:89:01:1f'
         }),
-        label='BMC MAC'
+        label='BMC MAC Addresses'
     )
+
+    def clean_bmc_mac(self):
+        """Validate MAC addresses format"""
+        macs = self.cleaned_data['bmc_mac'].split('\n')
+        # Filter out empty lines and strip whitespace
+        macs = [mac.strip() for mac in macs if mac.strip()]
+        if not macs:
+            raise forms.ValidationError("Please enter at least one MAC address")
+        return macs

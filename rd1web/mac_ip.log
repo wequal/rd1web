@@ -12221,3 +12221,25 @@ INFO 2025-07-09 00:27:18,569 background_tasks 2738229 133847079442112 Scanning r
 INFO 2025-07-09 00:31:43,737 apps 2801864 129777278001280 PXE app ready - Multi-subnet scanner disabled (--scanner off)
 INFO 2025-07-09 00:31:57,101 background_tasks 2738229 133847079442112 remote database update: 0 new, 937 updated, 12 inactive
 INFO 2025-07-09 00:31:57,102 background_tasks 2738229 133847079442112 Concurrent scan completed for remote subnet
+INFO 2025-07-09 00:32:33,535 background_tasks 2738229 133847087834816 local database update: 1 new, 3393 updated, 35 inactive
+INFO 2025-07-09 00:32:33,536 background_tasks 2738229 133847087834816 Concurrent scan completed for local subnet
+INFO 2025-07-09 00:32:33,537 background_tasks 2738229 133847096227520 Concurrent multi-subnet scan #25 completed
+INFO 2025-07-09 00:32:43,537 background_tasks 2738229 133847096227520 Starting concurrent multi-subnet scan #26
+INFO 2025-07-09 00:32:43,538 background_tasks 2738229 133847087834816 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-09 00:32:43,538 background_tasks 2738229 133847079442112 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-09 00:33:03,855 background_tasks 2802898 125601486730944 Starting concurrent multi-subnet scan #1
+INFO 2025-07-09 00:33:03,856 background_tasks 2802898 125601583186048 Started multi-subnet scanner with concurrent scanning (subnets: local: 172.31.0.0/16 (arp-scan), remote: 10.135.0.0/16 (fastapi))
+INFO 2025-07-09 00:33:03,856 apps 2802898 125601583186048 PXE app ready - Multi-subnet scanner started (primary worker)
+INFO 2025-07-09 00:33:03,857 background_tasks 2802898 125601478338240 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-09 00:33:03,857 background_tasks 2802898 125601469945536 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-09 00:33:16,914 consumers 2802898 125601583186048 Remote SOL WebSocket connect: ip=172.31.53.218 user=ADMIN session=7df15abd
+INFO 2025-07-09 00:33:16,923 sol_session 2802898 125601583186048 Started SOL session for 7df15abd (PID=2803056)
+INFO 2025-07-09 00:37:41,714 background_tasks 2802898 125601469945536 remote database update: 1 new, 939 updated, 14 inactive
+INFO 2025-07-09 00:37:41,715 background_tasks 2802898 125601469945536 Concurrent scan completed for remote subnet
+INFO 2025-07-09 00:38:14,394 background_tasks 2802898 125601478338240 local database update: 1 new, 3316 updated, 109 inactive
+INFO 2025-07-09 00:38:14,395 background_tasks 2802898 125601478338240 Concurrent scan completed for local subnet
+INFO 2025-07-09 00:38:14,396 background_tasks 2802898 125601486730944 Concurrent multi-subnet scan #1 completed
+INFO 2025-07-09 00:38:24,396 background_tasks 2802898 125601486730944 Starting concurrent multi-subnet scan #2
+INFO 2025-07-09 00:38:24,397 background_tasks 2802898 125601478338240 Scanning local subnet: 172.31.0.0/16 (method: arp-scan)
+INFO 2025-07-09 00:38:24,398 background_tasks 2802898 125601469945536 Scanning remote subnet: 10.135.0.0/16 (method: fastapi)
+INFO 2025-07-09 00:40:09,031 apps 2806288 126037365289088 PXE app ready - Multi-subnet scanner disabled (--scanner off)

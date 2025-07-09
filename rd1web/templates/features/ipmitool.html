@@ -279,8 +279,23 @@
                         <!-- Password Result Display -->
                         <div id="passwordResult" style="display: none;">
                             <div class="mb-3">
-                                <label class="form-label fw-bold">Password Lookup Result</label>
-                                <div id="passwordResultContent" class="alert"></div>
+                                <label class="form-label fw-bold">Password Lookup Results</label>
+                                <div id="passwordResultSummary" class="alert mb-3"></div>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-hover" id="passwordResultTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th><i class="fas fa-network-wired me-1"></i>MAC Address</th>
+                                                <th><i class="fas fa-key me-1"></i>Password</th>
+                                                <th><i class="fas fa-info-circle me-1"></i>Status</th>
+                                                <th><i class="fas fa-copy me-1"></i>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Results will be populated here -->
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
 
@@ -1183,48 +1198,75 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    passwordResultContent.innerHTML = `
-                        <div class="mb-3">
-                            <h6 class="fw-bold text-success">
-                                <i class="fas fa-check-circle me-2"></i>Password Found Successfully
-                            </h6>
-                            <div class="table-responsive">
-                                <table class="table table-sm table-bordered">
-                                    <tbody>
-                                        <tr>
-                                            <td class="fw-bold">Unique Password</td>
-                                            <td>
-                                                <div class="input-group">
-                                                    <input type="text" class="form-control" id="uniquePasswordResult" value="${result.password}" readonly>
-                                                    <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('uniquePasswordResult')">
-                                                        <i class="fas fa-copy"></i>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    `;
-                    passwordResultContent.className = 'alert alert-success';
+                    // Display summary
+                    const summaryDiv = document.getElementById('passwordResultSummary');
+                    summaryDiv.className = 'alert alert-info';
+                    summaryDiv.innerHTML = `<i class="fas fa-info-circle me-2"></i>${result.summary}`;
+                    
+                    // Clear and populate results table
+                    const tableBody = document.querySelector('#passwordResultTable tbody');
+                    tableBody.innerHTML = '';
+                    
+                    result.results.forEach((item, index) => {
+                        const row = document.createElement('tr');
+                        row.className = item.success ? '' : 'table-warning';
+                        
+                        const passwordId = `uniquePassword_${index}`;
+                        
+                        row.innerHTML = `
+                            <td>${item.mac_address}</td>
+                            <td>
+                                ${item.success ? 
+                                    `<div class="input-group">
+                                        <input type="text" class="form-control" id="${passwordId}" value="${item.password}" readonly>
+                                        <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('${passwordId}')">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>` : 
+                                    '<span class="text-danger">Not available</span>'
+                                }
+                            </td>
+                            <td>
+                                ${item.success ? 
+                                    '<span class="text-success"><i class="fas fa-check-circle me-1"></i>Success</span>' : 
+                                    `<span class="text-danger"><i class="fas fa-exclamation-circle me-1"></i>${item.message}</span>`
+                                }
+                            </td>
+                            <td>
+                                ${item.success ? 
+                                    `<button class="btn btn-sm btn-outline-primary" onclick="copyToClipboard('${passwordId}')">
+                                        <i class="fas fa-copy me-1"></i>Copy
+                                    </button>` :
+                                    '-'
+                                }
+                            </td>
+                        `;
+                        
+                        tableBody.appendChild(row);
+                    });
+                    
+                    passwordResult.style.display = 'block';
+                    passwordResult.scrollIntoView({ behavior: 'smooth' });
+                    
                 } else {
-                    passwordResultContent.innerHTML = `
+                    const summaryDiv = document.getElementById('passwordResultSummary');
+                    summaryDiv.className = 'alert alert-danger';
+                    summaryDiv.innerHTML = `
                         <div class="mb-3">
                             <h6 class="fw-bold text-danger">
                                 <i class="fas fa-exclamation-circle me-2"></i>Password Lookup Failed
                             </h6>
-                            <p class="mb-2"><strong>Error:</strong> ${result.error}</p>
+                            <p class="mb-0">${result.message}</p>
                         </div>
                     `;
-                    passwordResultContent.className = 'alert alert-danger';
+                    passwordResult.style.display = 'block';
+                    passwordResult.scrollIntoView({ behavior: 'smooth' });
                 }
                 
-                passwordResult.style.display = 'block';
-                passwordResult.scrollIntoView({ behavior: 'smooth' });
-                
             } catch (error) {
-                passwordResultContent.innerHTML = `
+                const summaryDiv = document.getElementById('passwordResultSummary');
+                summaryDiv.className = 'alert alert-danger';
+                summaryDiv.innerHTML = `
                     <div class="mb-3">
                         <h6 class="fw-bold text-danger">
                             <i class="fas fa-exclamation-circle me-2"></i>Network Error
@@ -1232,7 +1274,6 @@
                         <p class="mb-0">Failed to connect to the server: ${error.message}</p>
                     </div>
                 `;
-                passwordResultContent.className = 'alert alert-danger';
                 passwordResult.style.display = 'block';
                 passwordResult.scrollIntoView({ behavior: 'smooth' });
             } finally {

@@ -5,6 +5,7 @@ import re
 import requests
 import xml.etree.ElementTree as ET
 from ..form import UniquePasswordForm
+from concurrent.futures import ThreadPoolExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +14,7 @@ def normalize_mac_address(mac_address):
     # Remove any separators and convert to lowercase
     mac = re.sub(r'[^a-fA-F0-9]', '', mac_address.lower())
     if len(mac) != 12:
-        raise ValueError("Invalid MAC address length")
+        raise ValueError(f"Invalid MAC address length: {mac_address}")
     return mac
 
 def get_unique_password(bmc_mac):
@@ -48,38 +49,50 @@ def get_unique_password(bmc_mac):
             
             if proc_st == 'S' and password:
                 return {
+                    'mac_address': bmc_mac,
                     'success': True,
                     'password': password,
                     'message': proc_msg or 'Password retrieved successfully'
                 }
             else:
                 return {
+                    'mac_address': bmc_mac,
                     'success': False,
                     'message': proc_msg or 'Failed to retrieve password from Supermicro API'
                 }
         else:
             return {
+                'mac_address': bmc_mac,
                 'success': False,
                 'message': f'API request failed with status code: {response.status_code}'
             }
             
     except ValueError as e:
         return {
+            'mac_address': bmc_mac,
             'success': False,
             'message': str(e)
         }
     except ET.ParseError as e:
-        logger.error(f"Error parsing XML response: {str(e)}")
+        logger.error(f"Error parsing XML response for MAC {bmc_mac}: {str(e)}")
         return {
+            'mac_address': bmc_mac,
             'success': False,
             'message': 'Failed to parse API response'
         }
     except Exception as e:
-        logger.error(f"Error in unique password lookup: {str(e)}")
+        logger.error(f"Error in unique password lookup for MAC {bmc_mac}: {str(e)}")
         return {
+            'mac_address': bmc_mac,
             'success': False,
             'message': 'An unexpected error occurred'
         }
+
+def get_passwords_parallel(mac_addresses, max_workers=5):
+    """Get unique passwords for multiple MAC addresses in parallel"""
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        results = list(executor.map(get_unique_password, mac_addresses))
+    return results
 
 @login_required
 def handle_unique_password_request(request):
@@ -96,12 +109,29 @@ def handle_unique_password_request(request):
         })
         
     try:
-        bmc_mac = unique_password_form.cleaned_data['bmc_mac']
-        password_result = get_unique_password(bmc_mac)
-        return JsonResponse(password_result)
+        # Get list of MAC addresses from form
+        mac_addresses = unique_password_form.cleaned_data['bmc_mac']
+        
+        # Get passwords in parallel
+        results = get_passwords_parallel(mac_addresses)
+        
+        # Count successes and failures
+        successes = sum(1 for r in results if r['success'])
+        failures = len(results) - successes
+        
+        # Prepare summary message
+        summary = f"Successfully retrieved {successes} password(s)"
+        if failures > 0:
+            summary += f", {failures} failed"
+        
+        return JsonResponse({
+            'success': True,
+            'results': results,
+            'summary': summary
+        })
         
     except Exception as e:
-        logger.error(f"Error in unique password lookup: {str(e)}")
+        logger.error(f"Error in batch password lookup: {str(e)}")
         return JsonResponse({
             'success': False,
             'message': 'An unexpected error occurred'
