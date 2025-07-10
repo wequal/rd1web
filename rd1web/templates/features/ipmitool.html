@@ -212,35 +212,20 @@
                         </div>
 
                         <div class="mb-4">
-                            <label for="{{ firmware_form.firmware_type.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas fa-microchip me-2 text-info"></i>Firmware Type
-                            </label>
-                            {{ firmware_form.firmware_type }}
-                        </div>
-
-                        <div class="mb-4">
                             <label for="{{ firmware_form.firmware_file.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas fa-file-code me-2 text-danger"></i>Firmware File
+                                <i class="fas fa-file-code me-2 text-danger"></i>Firmware Files
                             </label>
                             {{ firmware_form.firmware_file }}
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                {{ firmware_form.firmware_file.help_text }}
+                            </small>
                         </div>
 
                         <!-- Progress Tracking -->
                         <div id="updateProgress" style="display: none;">
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Update Progress</label>
-                                <div class="progress">
-                                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                                         role="progressbar" 
-                                         style="width: 0%" 
-                                         id="progressBar"
-                                         aria-valuenow="0" 
-                                         aria-valuemin="0" 
-                                         aria-valuemax="100">0%</div>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <div id="statusMessage" class="text-muted"></div>
+                            <div id="updateResults" class="mt-3">
+                                <!-- Results will be populated here -->
                             </div>
                         </div>
 
@@ -286,9 +271,9 @@
                                     <table class="table table-bordered table-hover" id="passwordResultTable">
                                         <thead class="table-light">
                                             <tr>
-                                                                                <th><i class="fas fa-network-wired me-1"></i>MAC Address</th>
-                                <th><i class="fas fa-key me-1"></i>Password</th>
-                                <th><i class="fas fa-info-circle me-1"></i>Status</th>
+                                                <th><i class="fas fa-network-wired me-1"></i>MAC Address</th>
+                                                <th><i class="fas fa-key me-1"></i>Password</th>
+                                                <th><i class="fas fa-info-circle me-1"></i>Status</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -809,36 +794,10 @@
                 passwordResult.style.display = 'none';
             }
             
-            // Reset progress bar
-            const progressBar = document.getElementById('progressBar');
-            if (progressBar) {
-                progressBar.style.width = '0%';
-                progressBar.textContent = '0%';
-                progressBar.setAttribute('aria-valuenow', 0);
-                progressBar.classList.remove('bg-success', 'bg-danger');
-                progressBar.classList.add('progress-bar-animated');
-            }
-            
-            // Clear status message
-            const statusMessage = document.getElementById('statusMessage');
-            if (statusMessage) {
-                statusMessage.textContent = '';
-                statusMessage.innerHTML = '';
-                statusMessage.classList.remove('text-danger', 'text-success', 'text-warning');
-                statusMessage.classList.add('text-muted');
-            }
-            
-            // Clear any firmware info details that might have been added
-            const firmwareInfoContent = document.getElementById('firmwareInfoContent');
-            if (firmwareInfoContent) {
-                firmwareInfoContent.innerHTML = '';
-            }
-            
-            // Clear password result content
-            const passwordResultContent = document.getElementById('passwordResultContent');
-            if (passwordResultContent) {
-                passwordResultContent.innerHTML = '';
-                passwordResultContent.className = 'alert';
+            // Clear update results table
+            const updateResults = document.getElementById('updateResults');
+            if (updateResults) {
+                updateResults.innerHTML = '';
             }
             
             // Re-enable firmware form submit button
@@ -857,13 +816,11 @@
         // Firmware update progress tracking
         const firmwareForm = document.getElementById('firmwareForm');
         const progressSection = document.getElementById('updateProgress');
-        const progressBar = document.getElementById('progressBar');
-        const statusMessage = document.getElementById('statusMessage');
+        const updateResults = document.getElementById('updateResults');
 
         firmwareForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            // Clear all previous displays when starting new firmware update
             clearAllDisplays();
             
             const formData = new FormData(this);
@@ -872,9 +829,8 @@
             try {
                 progressSection.style.display = 'block';
                 this.querySelector('button[type="submit"]').disabled = true;
-                statusMessage.textContent = 'Uploading firmware...';
+                updateResults.innerHTML = `<div class="alert alert-info">Uploading firmware files...</div>`;
                 
-                // Submit form
                 const response = await fetch(window.location.href, {
                     method: 'POST',
                     body: formData,
@@ -885,242 +841,101 @@
                 
                 const result = await response.json();
                 
-                if (result.success && result.task_id) {
-                    statusMessage.textContent = 'Upload successful, starting update...';
-                    
-                    // Display upload details
-                    if (result.upload_details) {
-                        const details = result.upload_details;
-                        const detailsHtml = `
-                            <div class="mt-3 mb-3">
-                                <h6 class="fw-bold">Upload Details:</h6>
-                                <div class="table-responsive">
-                                    <table class="table table-sm table-bordered">
-                                        <tbody>
-                                            <tr>
-                                                <td class="fw-bold">Firmware Type</td>
-                                                <td>${result.firmware_type}</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="fw-bold">BMC IP</td>
-                                                <td><code>${result.bmc_ip}</code></td>
-                                            </tr>
-                                            <tr>
-                                                <td class="fw-bold">Task ID</td>
-                                                <td><code>${details.Id || result.task_id}</code></td>
-                                            </tr>
-                                            <tr>
-                                                <td class="fw-bold">Initial Status</td>
-                                                <td>
-                                                    <span class="badge ${getBadgeClass(details.TaskState || details.status)}">
-                                                        ${details.TaskState || details.status || 'Pending'}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                            ${details.Messages && details.Messages.length > 0 ? `
-                                            <tr>
-                                                <td class="fw-bold">Initial Messages</td>
-                                                <td>
-                                                    <ul class="list-unstyled mb-0">
-                                                        ${details.Messages.map(msg => `
-                                                            <li class="mb-1">
-                                                                <span class="badge ${getMessageBadgeClass(msg.MessageId || '')}">
-                                                                    ${msg.MessageId || 'Info'}
-                                                                </span>
-                                                                ${msg.Message}
-                                                            </li>
-                                                        `).join('')}
-                                                    </ul>
-                                                </td>
-                                            </tr>
-                                            ` : ''}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        `;
-                        statusMessage.insertAdjacentHTML('afterend', detailsHtml);
-                    }
-                    
-                    // Start progress polling
-                    await trackProgress(result.bmc_ip, result.task_id, result.user, result.pwd, result.firmware_type);
+                if (result.success && result.sequence_id) {
+                    pollSequenceStatus(result.sequence_id);
                 } else {
-                    progressSection.style.display = 'none';
-                    this.querySelector('button[type="submit"]').disabled = false;
-                    statusMessage.textContent = 'Upload failed: ' + (result.error || 'Unknown error occurred');
-                    statusMessage.classList.add('text-danger');
-                    
-                    // Show error details in the progress section
-                    const errorHtml = `
-                        <div class="alert alert-danger">
-                            <i class="fas fa-exclamation-circle me-2"></i>
-                            <strong>Firmware Upload Failed</strong><br>
-                            ${result.error || 'Unknown error occurred'}
-                        </div>
-                    `;
-                    statusMessage.innerHTML = errorHtml;
-                    progressSection.style.display = 'block';
+                    displayError(result.error || 'Unknown error during upload.');
                 }
             } catch (error) {
-                progressSection.style.display = 'none';
-                this.querySelector('button[type="submit"]').disabled = false;
-                statusMessage.textContent = 'Network error: ' + error.message;
-                statusMessage.classList.add('text-danger');
-                
-                // Show error details in the progress section
-                const errorHtml = `
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-circle me-2"></i>
-                        <strong>Network Error</strong><br>
-                        ${error.message}
-                    </div>
-                `;
-                statusMessage.innerHTML = errorHtml;
-                progressSection.style.display = 'block';
+                displayError('Network error: ' + error.message);
             }
         });
 
-        async function performSystemReset(bmcIp, username, password) {
-            try {
-                statusMessage.textContent = 'Initiating system reset...';
-                
-                const response = await fetch('/ipmitool/system/reset/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                    },
-                    body: JSON.stringify({
-                        bmc_ip: bmcIp,
-                        username: username,
-                        password: password,
-                        reset_type: 'ForceRestart'
-                    })
-                });
+        function pollSequenceStatus(sequenceId) {
+            const intervalId = setInterval(async () => {
+                try {
+                    const response = await fetch(`/ipmitool/firmware/sequence_status/?sequence_id=${sequenceId}`);
+                    const status = await response.json();
 
-                const result = await response.json();
-                
-                if (result.success) {
-                    statusMessage.textContent = result.message || 'System reset initiated successfully';
-                    return true;
-                } else {
-                    statusMessage.textContent = 'Failed to initiate system reset: ' + (result.error || 'Unknown error');
-                    return false;
+                    if (!status.success) {
+                        displayError(status.error || 'Failed to get status.');
+                        clearInterval(intervalId);
+                        firmwareForm.querySelector('button[type="submit"]').disabled = false;
+                        return;
+                    }
+
+                    updateDisplay(status);
+                    
+                    // Check if all files are done (Completed or Failed)
+                    const allFiles = Object.values(status.files);
+                    const isFinished = allFiles.every(f => f.status === 'Completed' || f.status === 'Failed' || f.status.includes('reset'));
+
+                    if (isFinished) {
+                        clearInterval(intervalId);
+                        firmwareForm.querySelector('button[type="submit"]').disabled = false;
                 }
             } catch (error) {
-                statusMessage.textContent = 'Error during system reset: ' + error.message;
-                return false;
-            }
+                    displayError('Error polling for status: ' + error.message);
+                    clearInterval(intervalId);
+                    firmwareForm.querySelector('button[type="submit"]').disabled = false;
+                }
+            }, 3000); // Poll every 3 seconds
         }
 
-        async function trackProgress(bmcIp, taskId, username, password, firmwareType) {
-            let retryCount = 0;
-            const maxRetries = 3;
-            let updateCompleted = false;
-            
-            while (!updateCompleted) {
-                try {
-                    const response = await fetch('/ipmitool/firmware/status/', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                        },
-                        body: JSON.stringify({
-                            bmc_ip: bmcIp,
-                            task_id: taskId,
-                            username: username,
-                            password: password
-                        })
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-
-                    const data = await response.json();
-                    
-                    if (!data.success) {
-                        statusMessage.textContent = `Error: ${data.error}`;
-                        break;
-                    }
-                    
-                    const percent = data.percent_complete || 0;
-                    progressBar.style.width = `${percent}%`;
-                    progressBar.textContent = `${percent}%`;
-                    progressBar.setAttribute('aria-valuenow', percent);
-                    
-                    if (data.messages && data.messages.length > 0) {
-                        statusMessage.textContent = data.messages[0].Message;
-                    } else if (data.task_state) {
-                        statusMessage.textContent = `Update in progress: ${percent}% (State: ${data.task_state})`;
-                    } else {
-                        statusMessage.textContent = `Update in progress: ${percent}%`;
-                    }
-                    
-                    if (percent === 100 || data.task_state === 'Completed') {
-                        updateCompleted = true;
-                        statusMessage.textContent = 'Update completed successfully!';
-                        progressBar.classList.remove('progress-bar-animated');
-                        progressBar.classList.add('bg-success');
-                        
-                        // Initiate system reset for BIOS, CPLD, and FPGA updates
-                        if (['BIOS', 'CPLD', 'FPGA'].includes(firmwareType)) {
-                            statusMessage.textContent = `${firmwareType} update completed, initiating system reset...`;
-                            const resetSuccess = await performSystemReset(bmcIp, username, password);
-                            if (resetSuccess) {
-                                statusMessage.textContent = `${firmwareType} update completed and system reset initiated successfully!`;
-                            }
-                        }
-                        break;
-                    } else if (data.task_state === 'Exception' || data.task_state === 'Killed' || data.task_state === 'Cancelled') {
-                        updateCompleted = true;
-                        statusMessage.textContent = data.error || `Update failed: Task State: ${data.task_state}`;
-                        progressBar.classList.remove('progress-bar-animated');
-                        progressBar.classList.remove('bg-primary');
-                        progressBar.classList.add('bg-danger');
-                        break;
-                    }
-                    
-                    // Reset retry count on successful request
-                    retryCount = 0;
-                    await new Promise(resolve => setTimeout(resolve, 5000));
-                } catch (error) {
-                    console.error('Progress check error:', error);
-                    retryCount++;
-                    
-                    if (retryCount >= maxRetries) {
-                        statusMessage.textContent = `Error checking progress: ${error.message}. Stopped after ${maxRetries} retries.`;
-                        progressBar.classList.remove('progress-bar-animated');
-                        progressBar.classList.remove('bg-primary');
-                        progressBar.classList.add('bg-danger');
-                        break;
-                    }
-                    
-                    statusMessage.textContent = `Error checking progress: ${error.message}. Retrying... (${retryCount}/${maxRetries})`;
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                }
+        function updateDisplay(status) {
+            let overallStatusHtml = '';
+            if (status.overall_status) {
+                overallStatusHtml = `<div class="alert alert-info mt-3 fw-bold"><i class="fas fa-info-circle me-2"></i>${status.overall_status}</div>`;
             }
-            
+
+            let tableHtml = `
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>File</th>
+                            <th>Status</th>
+                            <th>Progress</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            for (const file in status.files) {
+                const details = status.files[file];
+                tableHtml += `
+                    <tr>
+                        <td>${details.original_name}</td>
+                        <td><span class="badge ${getBadgeClass(details.status)}">${details.status}</span></td>
+                        <td>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar" role="progressbar" style="width: ${details.progress}%;" aria-valuenow="${details.progress}" aria-valuemin="0" aria-valuemax="100">${details.progress}%</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+
+            tableHtml += `</tbody></table>`;
+            updateResults.innerHTML = overallStatusHtml + tableHtml;
+
+            if (status.error) {
+                updateResults.innerHTML += `<div class="alert alert-danger mt-3">Error: ${status.error}</div>`;
+            }
+        }
+        
+        function displayError(errorMessage) {
+            updateResults.innerHTML = `<div class="alert alert-danger">${errorMessage}</div>`;
             firmwareForm.querySelector('button[type="submit"]').disabled = false;
         }
 
         // Helper functions for status badges
         function getBadgeClass(status) {
-            switch (status) {
-                case 'Running':
+            status = status.toLowerCase();
+            if (status.includes('completed')) return 'bg-success';
+            if (status.includes('failed') || status.includes('error') || status.includes('exception')) return 'bg-danger';
+            if (status.includes('updating') || status.includes('rebooting') || status.includes('starting')) return 'bg-info';
+            if (status.includes('pending')) return 'bg-secondary';
                     return 'bg-primary';
-                case 'Completed':
-                    return 'bg-success';
-                case 'Exception':
-                case 'Killed':
-                case 'Cancelled':
-                    return 'bg-danger';
-                case 'Pending':
-                    return 'bg-warning';
-                default:
-                    return 'bg-secondary';
-            }
         }
 
         function getMessageBadgeClass(messageId) {

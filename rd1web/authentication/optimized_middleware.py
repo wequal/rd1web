@@ -1,10 +1,51 @@
 import threading
 from django.utils import timezone
 from django.core.cache import cache
-from django.db import transaction, models
-from django.contrib.auth.models import User
+from django.db import transaction, models, connection
+from django.contrib.auth.models import User, AnonymousUser
 from .models import UserSession, UserActivity, UserStats
 from rd1web.utils import get_client_ip, get_user_agent
+from django.utils.deprecation import MiddlewareMixin
+from django.utils.functional import SimpleLazyObject
+from django.contrib.auth import get_user
+
+
+class OptimizedAuthenticationMiddleware(MiddlewareMixin):
+    # Add paths to be excluded from this middleware
+    EXCLUDE_PATHS = [
+        '/ipmitool/firmware/sequence_status/'
+    ]
+
+    def __call__(self, request):
+        # For excluded paths, we attach an AnonymousUser so that downstream
+        # middleware that accesses request.user does not fail with an AttributeError.
+        if request.path_info in self.EXCLUDE_PATHS:
+            request.user = AnonymousUser()
+            return self.get_response(request)
+
+        # For all other paths, attach the user object to the request, just like
+        # Django's default AuthenticationMiddleware. This is a lazy object,
+        # so the database is only hit if request.user is actually accessed by the view.
+        request.user = SimpleLazyObject(lambda: get_user(request))
+
+        response = self.get_response(request)
+
+        # The original logic of this middleware was to update the user's
+        # last_activity timestamp. We'll do this after the response is prepared.
+        if hasattr(request, 'user') and request.user.is_authenticated:
+            now = timezone.now()
+
+            # Check if last_activity attribute exists to avoid errors
+            last_activity = getattr(request.user, 'last_activity', None)
+
+            # Update last activity timestamp if more than 60 seconds have passed
+            if last_activity and (now - last_activity).total_seconds() > 60:
+                # Update in the database
+                User.objects.filter(pk=request.user.pk).update(last_activity=now)
+                # Also update the user object on the request
+                request.user.last_activity = now
+
+        return response
 
 class OptimizedUserActivityMiddleware:
     """High-performance user activity tracking middleware"""
@@ -159,6 +200,12 @@ class OptimizedUserActivityMiddleware:
                 
         except Exception as e:
             print(f"Error processing activity queue: {e}")
+        
+        finally:
+            # Manually close the database connection for this thread.
+            # This is crucial for long-running background threads to prevent
+            # connection leaks and to ensure connections are returned to the pool.
+            connection.close()
 
     def get_session_id(self, session_key, user_id):
         """Get session ID with caching"""

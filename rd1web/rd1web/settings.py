@@ -47,11 +47,12 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'authentication.connection_middleware.DBConnectionMiddleware',  # Explicitly close DB connections
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'authentication.optimized_middleware.OptimizedAuthenticationMiddleware', # Custom auth
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'authentication.optimized_middleware.OptimizedUserActivityMiddleware',
@@ -174,6 +175,10 @@ STATICFILES_DIRS = [
 
 # Static files will be collected here for production
 STATIC_ROOT = os.path.join(BASE_DIR.parent, 'staticfiles')
+
+# Redis Configuration
+REDIS_HOST = 'localhost'
+REDIS_PORT = 6379
 
 # Security settings for proxy
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

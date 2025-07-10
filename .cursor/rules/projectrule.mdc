@@ -1,0 +1,10 @@
+---
+alwaysApply: true
+---
+1. use python3 not python.
+2. dont make any duplicate code with whole codebase.
+3. think question first then read relates files in the codebase, then write the plan in tasks/todo.md.
+4. this plan should has a to do list when finished you should add check mark to it.
+5. before job start confirm with me first i need to review the paln.
+6. every step give me high level of description tell me what have you changed.
+7. each task and each code change make sure no big code change or make it too complicate, it should make minumum inpact to the original codebase.

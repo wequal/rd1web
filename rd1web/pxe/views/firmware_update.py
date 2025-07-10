@@ -5,6 +5,9 @@ import json
 import os
 import logging
 from requests.auth import HTTPBasicAuth
+import time
+import redis
+from django.conf import settings
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -53,6 +56,28 @@ def discover_cpld_endpoint(ip_address, credentials):
     
     logger.warning(f"No CPLD endpoint found at {ip_address}")
     return None
+
+def determine_firmware_type(filename):
+    """Determine firmware type from filename"""
+    filename = filename.upper()
+    if 'BMC' in filename:
+        return 'BMC'
+    elif 'BIOS' in filename:
+        return 'BIOS'
+    elif 'CPLD' in filename:
+        return 'CPLD'
+    elif 'FPGA' in filename:
+        return 'FPGA'
+    return None
+
+def sort_firmware_files(files):
+    """Sort firmware files in correct update order: BMC, BIOS, CPLD, FPGA"""
+    order = {'BMC': 0, 'BIOS': 1, 'CPLD': 2, 'FPGA': 3}
+    def get_order(file_tuple):
+        firmware_type = determine_firmware_type(file_tuple[0])
+        # Always return an integer - 999 for unknown types
+        return order[firmware_type] if firmware_type in order else 999
+    return sorted(files, key=get_order)
 
 def perform_firmware_update(ip_address, credentials, firmware_type, file_path):
     """Convert curl command to requests"""
@@ -144,6 +169,117 @@ def perform_firmware_update(ip_address, credentials, firmware_type, file_path):
             logger.error(error_msg)
             raise ValueError(error_msg)
 
+def perform_sequential_updates(sequence_id, ip_address, credentials, firmware_files):
+    """Perform firmware updates in sequence and update status in Redis."""
+    redis_client = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0)
+    
+    # The initial status is now set in the main view. This function just updates it.
+    
+    # Sort files
+    sorted_files = sort_firmware_files(firmware_files)
+    
+    needs_reset = False
+    
+    for original_name, file_path in sorted_files:
+        firmware_type = determine_firmware_type(original_name)
+        if not firmware_type:
+            logger.warning(f"Could not determine firmware type for {original_name}, skipping.")
+            continue
+
+        try:
+            # Update file status to 'Updating'
+            current_status = json.loads(redis_client.get(f"firmware_sequence:{sequence_id}"))
+            current_status['files'][os.path.basename(file_path)]['status'] = 'Updating'
+            redis_client.set(f"firmware_sequence:{sequence_id}", json.dumps(current_status), ex=3600)
+
+            # Start firmware update
+            update_result = perform_firmware_update(ip_address, credentials, firmware_type, file_path)
+            
+            task_id = update_result.get('Id')
+            if not task_id:
+                raise ValueError("Redfish task ID not found in response.")
+
+            # Poll for task completion
+            while True:
+                status_result = firmware_status(ip_address, credentials, task_id)
+                if not status_result['success']:
+                    raise ValueError(f"Failed to get task status: {status_result.get('error')}")
+
+                task_data = status_result['data']
+                progress = task_data.get('PercentComplete', 0)
+                task_state = task_data.get('TaskState')
+
+                # Update progress in Redis
+                current_status = json.loads(redis_client.get(f"firmware_sequence:{sequence_id}"))
+                current_status['files'][os.path.basename(file_path)]['progress'] = progress
+                redis_client.set(f"firmware_sequence:{sequence_id}", json.dumps(current_status), ex=3600)
+
+                if task_state == 'Completed':
+                    break
+                elif task_state in ['Exception', 'Killed', 'Cancelled']:
+                    error_message = task_data.get('Messages', [{}])[0].get('Message', f'Task failed with state: {task_state}')
+                    raise ValueError(error_message)
+
+                time.sleep(5) # Poll every 5 seconds
+
+            # Update file status to 'Completed'
+            current_status = json.loads(redis_client.get(f"firmware_sequence:{sequence_id}"))
+            current_status['files'][os.path.basename(file_path)]['status'] = 'Completed'
+            current_status['files'][os.path.basename(file_path)]['progress'] = 100
+            redis_client.set(f"firmware_sequence:{sequence_id}", json.dumps(current_status), ex=3600)
+
+            if firmware_type in ['BIOS', 'CPLD', 'FPGA']:
+                needs_reset = True
+
+            # Wait for 3 minutes after BMC update and check reachability
+            if firmware_type == 'BMC':
+                current_status = json.loads(redis_client.get(f"firmware_sequence:{sequence_id}"))
+                current_status['files'][os.path.basename(file_path)]['status'] = 'BMC Rebooting (3 min wait)'
+                redis_client.set(f"firmware_sequence:{sequence_id}", json.dumps(current_status), ex=3600)
+                time.sleep(180)
+
+                # Check if BMC is back online by testing a known Redfish endpoint
+                logger.info(f"Checking if BMC {ip_address} is back online after update...")
+                redfish_base_url = f"https://{ip_address}/redfish/v1/"
+                is_reachable = test_endpoint_exists(redfish_base_url, credentials)
+                
+                current_status = json.loads(redis_client.get(f"firmware_sequence:{sequence_id}"))
+                if is_reachable:
+                    logger.info(f"BMC {ip_address} is reachable after update.")
+                    current_status['files'][os.path.basename(file_path)]['status'] = 'Completed'
+                else:
+                    logger.error(f"BMC {ip_address} is unreachable after update.")
+                    error_msg = f"BMC {ip_address} did not come back online after 3 minutes."
+                    current_status['files'][os.path.basename(file_path)]['status'] = 'Failed (BMC Unreachable)'
+                    current_status['error'] = error_msg
+                    redis_client.set(f"firmware_sequence:{sequence_id}", json.dumps(current_status), ex=3600)
+                    raise ValueError(error_msg)
+                
+                redis_client.set(f"firmware_sequence:{sequence_id}", json.dumps(current_status), ex=3600)
+
+
+        except Exception as e:
+            logger.error(f"Error updating {firmware_type} from {original_name}: {e}")
+            # Update status for the failed file
+            current_status = json.loads(redis_client.get(f"firmware_sequence:{sequence_id}"))
+            current_status['files'][os.path.basename(file_path)]['status'] = 'Failed'
+            current_status['error'] = str(e)
+            redis_client.set(f"firmware_sequence:{sequence_id}", json.dumps(current_status), ex=3600)
+            return # Stop the sequence on failure
+
+        finally:
+            # Clean up temp file
+            try:
+                os.remove(file_path)
+            except OSError as e:
+                logger.warning(f"Could not remove temp file {file_path}: {e}")
+    
+    # Mark the sequence as needing a reset if applicable
+    if needs_reset:
+        final_status = json.loads(redis_client.get(f"firmware_sequence:{sequence_id}"))
+        final_status['needs_reset'] = True
+        redis_client.set(f"firmware_sequence:{sequence_id}", json.dumps(final_status), ex=3600)
+        
 def firmware_status(ip_address, credentials, task_id):
     """Get firmware update task status"""
     try:
@@ -239,27 +375,8 @@ def system_reset(request):
                 'error': 'Missing required parameters'
             })
         
-        url = f"https://{bmc_ip}/redfish/v1/Systems/1/Actions/ComputerSystem.Reset"
-        reset_data = {"ResetType": reset_type}
-        
-        response = requests.post(
-            url,
-            json=reset_data,
-            auth=(username, password),
-            verify=False,
-            timeout=30
-        )
-        
-        if response.status_code in [200, 202, 204]:
-            return JsonResponse({
-                'success': True,
-                'message': 'System reset initiated successfully'
-            })
-        else:
-            return JsonResponse({
-                'success': False,
-                'error': f"System reset failed with status {response.status_code}"
-            })
+        result = system_reset_sync(bmc_ip, {'username': username, 'password': password}, reset_type)
+        return JsonResponse(result)
             
     except Exception as e:
         logger.error(f"Error during system reset: {str(e)}")
@@ -267,6 +384,38 @@ def system_reset(request):
             'success': False,
             'error': str(e)
         }) 
+
+def system_reset_sync(bmc_ip, credentials, reset_type='ForceRestart'):
+    """Synchronous function to perform system reset"""
+    url = f"https://{bmc_ip}/redfish/v1/Systems/1/Actions/ComputerSystem.Reset"
+    reset_data = {"ResetType": reset_type}
+    
+    try:
+        response = requests.post(
+            url,
+            json=reset_data,
+            auth=(credentials['username'], credentials['password']),
+            verify=False,
+            timeout=30
+        )
+        
+        if response.status_code in [200, 202, 204]:
+            return {
+                'success': True,
+                'message': 'System reset initiated successfully'
+            }
+        else:
+            return {
+                'success': False,
+                'error': f"System reset failed with status {response.status_code}. Response: {response.text}"
+            }
+            
+    except Exception as e:
+        logger.error(f"Error during system_reset_sync: {str(e)}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
 
 def get_firmware_info(bmc_ip, bmc_user, bmc_password):
     """Get firmware information from BMC via Redfish"""

@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 class PxeForm(forms.Form):
     mac=forms.CharField(widget=forms.Textarea(attrs={'class':'form-control','style': 'width: 300px;',}),label='MAC')
     image=forms.ChoiceField(choices=[('ubuntu2204-arm64','Ubuntu2204-ARM64'),('ubuntu2204-x86','Ubuntu2204-X86'),],label='Image')
+    location=forms.ChoiceField(choices=[('us_b3','US-B3'),('us_b1','US-B1'),('tw','TW')],label='Location')
     
     test_type = forms.ChoiceField(
         choices=[
@@ -194,15 +195,38 @@ class IpmiForm(forms.Form):
     user=forms.ChoiceField(label='User',widget=forms.Select,choices=[('ADMIN','ADMIN'),('root','root')],required=False)
     pwd=forms.CharField(widget=forms.Textarea(attrs={'class':'form-control','style': 'width: 500px;',}),label='Unique Password',required=False)
 
+class MultipleFileInput(forms.FileInput):
+    allow_multiple_selected = True
+
+
+class MultipleFileField(forms.FileField):
+    widget = MultipleFileInput
+
+    def clean(self, data, initial=None):
+        if not data:
+            if self.required:
+                raise forms.ValidationError(self.error_messages["required"])
+            else:
+                return []
+
+        if isinstance(data, (list, tuple)):
+            return [super().clean(d, initial) for d in data]
+        else:
+            return [super().clean(data, initial)]
+
+
 class FirmwareUploadForm(forms.Form):
     bmc_ip=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='BMC IP')
     user=forms.ChoiceField(label='User',widget=forms.Select,choices=[('ADMIN','ADMIN'),('root','root')],required=False)
     pwd=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Unique Password',required=False)
-    firmware_type = forms.ChoiceField(
-        choices=[('BIOS', 'BIOS'), ('BMC', 'BMC'), ('CPLD', 'CPLD'), ('FPGA', 'FPGA')],
-        widget=forms.Select(attrs={'class': 'form-control'})
+    firmware_file = MultipleFileField(
+        widget=MultipleFileInput(attrs={
+            'class': 'form-control'
+        }),
+        label='Firmware Files',
+        help_text='Upload multiple firmware files. File names should contain firmware type (BMC/BIOS/CPLD/FPGA)',
+        required=False
     )
-    firmware_file = forms.FileField()
 
 class UniquePasswordForm(forms.Form):
     bmc_mac = forms.CharField(

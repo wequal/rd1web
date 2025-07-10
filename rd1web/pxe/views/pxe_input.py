@@ -7,9 +7,11 @@ import os
 from fabric import Connection
 import asyncio
 
-us_b3 = Connection(host="root@172.31.60.129", connect_kwargs={"password": "superrd1"})
-us_b1 = Connection(host="root@172.31.58.142", connect_kwargs={"password": "superrd1"})
-tw = Connection(host="root@10.135.179.104", connect_kwargs={"password": "superrd1"})
+remote_dict = {
+    'us_b3': Connection(host="root@172.31.60.129", connect_kwargs={"password": "superrd1"}),
+    'us_b1': Connection(host="root@172.31.58.142", connect_kwargs={"password": "superrd1"}),
+    'tw': Connection(host="root@10.135.179.104", connect_kwargs={"password": "superrd1"})
+}
 
 @login_required
 def pxe_input(request):
@@ -20,6 +22,7 @@ def pxe_input(request):
             # Build parameters from form data
             parameters = bound_form.build_parameters_string()
             mac= [x.strip().replace(":","").replace("-","").lower() for x in bound_form.cleaned_data['mac'].splitlines() if x!='']
+            location = bound_form.cleaned_data.get('location', '')
             image = bound_form.cleaned_data.get('image', '')
             remove=bound_form.cleaned_data.get('remove', False)
             check=bound_form.cleaned_data.get('check', False)
@@ -32,9 +35,7 @@ def pxe_input(request):
                     deleted,_= PxeEntry.objects.filter(mac=x).delete()
                     if deleted:
                         result['actions'].append(f"Deleted entry for MAC: {x}")
-                        us_b3.run(f"rm -f /var/www/pxe/boot/{formatted_mac}-boot.ipxe")
-                        us_b1.run(f"rm -f /var/www/pxe/boot/{formatted_mac}-boot.ipxe")
-                        tw.run(f"rm -f /var/www/pxe/boot/{formatted_mac}-boot.ipxe")
+                        remote_dict[location].run(f"rm -f /var/www/pxe/boot/{formatted_mac}-boot.ipxe")
                     else:
                         result['actions'].append(f"No entry found to delete for MAC: {x}")
             
@@ -57,9 +58,7 @@ def pxe_input(request):
                     )
                     action = "Created" if created else "Updated"
                     result['actions'].append(f"{action} entry for MAC: {x} | Image: {image} | Parameters: {parameters}")
-                    us_b3.run(f"/srv/share/scripts/pxe_generation {x} {image} {parameters}")
-                    us_b1.run(f"/srv/share/scripts/pxe_generation {x} {image} {parameters}")
-                    tw.run(f"/srv/share/scripts/pxe_generation {x} {image} {parameters}")
+                    remote_dict[location].run(f"/srv/share/scripts/pxe_generation {x} {image} {parameters}")
 
             form=PxeForm()
         else:
