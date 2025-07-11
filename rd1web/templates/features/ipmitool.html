@@ -486,7 +486,7 @@
                     
                     <div class="col-md-6">
                         <h6 class="text-primary"><i class="fas fa-upload me-2"></i>Firmware Updates</h6>
-                        <p class="small">Upload and install firmware updates via Redfish API with real-time progress tracking.</p>
+                        <p class="small">Upload and install single or multiple firmware files. Updates are applied sequentially with real-time progress tracking.</p>
                         
                         <h6 class="text-success mt-3"><i class="fas fa-microchip me-2"></i>Supported Firmware Types</h6>
                         <ul class="small">
@@ -496,13 +496,12 @@
                             <li><strong>FPGA:</strong> Field Programmable Gate Array firmware</li>
                         </ul>
                         
-                        <h6 class="text-info mt-3"><i class="fas fa-cogs me-2"></i>Update Process</h6>
+                        <h6 class="text-info mt-3"><i class="fas fa-cogs me-2"></i>Update Process for Multiple Files</h6>
                         <ol class="small">
-                            <li>Select firmware type and upload file</li>
-                            <li>System discovers appropriate Redfish endpoint</li>
-                            <li>Firmware is uploaded and validated</li>
-                            <li>Progress is tracked in real-time</li>
-                            <li>System automatically resets after BIOS/CPLD/FPGA updates</li>
+                            <li><strong>Select Files:</strong> Choose one or more firmware files to upload at the same time.</li>
+                            <li><strong>Sequential Updates:</strong> Each firmware component is updated one by one in the determined sequence.</li>
+                            <li><strong>Real-Time Tracking:</strong> Monitor the live status and progress for each individual file update.</li>
+                            <li><strong>Automatic System Reset:</strong> A system reset is automatically performed at the end if any component (like BIOS) requires it.</li>
                         </ol>
                         
                         <h6 class="text-warning mt-3"><i class="fas fa-key me-2"></i>Unique Password Lookup</h6>
