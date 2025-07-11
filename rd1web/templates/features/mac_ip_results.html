@@ -192,64 +192,45 @@
 </div>
 
 <script>
-let scanStatusInterval;
-let activeScans = { us: false, tw: false };
+// No global timer variable or state tracking needed.
 
-// Check initial scan status when page loads
+// Check initial scan status when page loads. If a scan is already running, polling will start.
 document.addEventListener('DOMContentLoaded', function() {
-    // Check status and start polling if needed
+    pollForStatus();
+});
+
+// This function is the single source of truth for polling.
+// It checks the status, updates the UI, and re-schedules itself if a scan is active.
+function pollForStatus() {
     fetch('/api/mac-ip/scan/status/')
         .then(response => response.json())
         .then(data => {
-            if (data.scan_status) {
-                const usScanning = data.scan_status.us.scanning;
-                const twScanning = data.scan_status.tw.scanning;
-                
-                // Start polling if any scan is active
-                if (usScanning || twScanning) {
-                    startStatusPolling();
-                }
-                
-                // Update UI
-                updateScanStatus('us', data.scan_status.us);
-                updateScanStatus('tw', data.scan_status.tw);
+            if (!data.scan_status) return;
+
+            const usScanning = updateScanUi('us', data.scan_status.us);
+            const twScanning = updateScanUi('tw', data.scan_status.tw);
+
+            // If either scan is active, schedule the next poll.
+            if (usScanning || twScanning) {
+                setTimeout(pollForStatus, 5000);
             }
         })
         .catch(error => {
-            console.error('Error checking initial scan status:', error);
+            console.error('Error checking scan status:', error);
+            // Stop polling on error.
         });
-});
-
-// Clean up interval when leaving page
-document.addEventListener('visibilitychange', function() {
-    if (document.hidden) {
-        stopStatusPolling();
-    }
-});
-
-function startStatusPolling() {
-    if (!scanStatusInterval) {
-        scanStatusInterval = setInterval(checkScanStatus, 5000);  // Check every 5 seconds
-    }
-}
-
-function stopStatusPolling() {
-    if (scanStatusInterval) {
-        clearInterval(scanStatusInterval);
-        scanStatusInterval = null;
-    }
 }
 
 // Function to start a network scan
 function startScan(network) {
     const button = document.getElementById(`scan${network.toUpperCase()}Btn`);
-    const status = document.getElementById(`${network}Status`);
+    const statusEl = document.getElementById(`${network}Status`);
     
-    // Disable button and show loading
+    // Disable button and show loading state immediately
     button.disabled = true;
     button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i><span class="btn-text">Scanning...</span>';
-    status.textContent = 'Starting scan...';
-    status.className = 'mt-2 text-info small';
+    statusEl.textContent = 'Starting scan...';
+    statusEl.className = 'mt-2 text-info small';
     
     // Make API call to start scan
     fetch('/api/mac-ip/scan/', {
@@ -263,98 +244,71 @@ function startScan(network) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            status.textContent = `Scanning ${network.toUpperCase()} network...`;
-            status.className = 'mt-2 text-info small';
-            activeScans[network] = true;
-            startStatusPolling();
+            // The scan started successfully. Kick off the polling loop.
+            pollForStatus();
         } else {
-            status.textContent = data.error || 'Scan failed to start';
-            status.className = 'mt-2 text-danger small';
+            // The scan failed to start. Revert the UI.
+            statusEl.textContent = data.error || 'Scan failed to start';
+            statusEl.className = 'mt-2 text-danger small';
             resetButton(network);
-            activeScans[network] = false;
         }
     })
     .catch(error => {
         console.error('Error starting scan:', error);
-        status.textContent = 'Error starting scan';
-        status.className = 'mt-2 text-danger small';
+        statusEl.textContent = 'Error starting scan';
+        statusEl.className = 'mt-2 text-danger small';
         resetButton(network);
-        activeScans[network] = false;
     });
 }
 
-// Function to check scan status
-function checkScanStatus() {
-    fetch('/api/mac-ip/scan/status/')
-        .then(response => response.json())
-        .then(data => {
-            if (data.scan_status) {
-                // Update each network's status independently
-                const usScanning = data.scan_status.us.scanning;
-                const twScanning = data.scan_status.tw.scanning;
-                
-                // Update active scans tracking
-                activeScans.us = usScanning;
-                activeScans.tw = twScanning;
-                
-                // Update UI
-                updateScanStatus('us', data.scan_status.us);
-                updateScanStatus('tw', data.scan_status.tw);
-                
-                // Manage polling based on scan status
-                if (usScanning || twScanning) {
-                    startStatusPolling();
-                } else {
-                    stopStatusPolling();
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error checking scan status:', error);
-        });
-}
+// This function updates the UI for a single network based on the status
+// and returns true if the network is still scanning, false otherwise.
+function updateScanUi(network, status) {
+    if (!status) return false;
 
-// Function to update scan status display
-function updateScanStatus(network, status) {
     const button = document.getElementById(`scan${network.toUpperCase()}Btn`);
-    const statusDiv = document.getElementById(`${network}Status`);
-    
+    const statusEl = document.getElementById(`${network}Status`);
+    const wasScanning = button.disabled; // Check if the UI was previously in a scanning state.
+
     if (status.scanning) {
-        // Network is scanning
         button.disabled = true;
         button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i><span class="btn-text">Scanning...</span>';
-        statusDiv.textContent = `Scanning ${network.toUpperCase()} network...`;
-        statusDiv.className = 'mt-2 text-info small';
+        statusEl.className = 'mt-2 text-info small';
+        statusEl.textContent = `Scan in progress... Last update: ${new Date().toLocaleTimeString()}`;
+        return true; // Still scanning.
     } else {
-        // Not scanning
-        resetButton(network);
-        
-        // Update status message
-        if (status.error) {
-            statusDiv.textContent = `Error: ${status.error}`;
-            statusDiv.className = 'mt-2 text-danger small';
-            scheduleRefresh();
-        } else if (status.last_scan) {
-            const lastScan = new Date(status.last_scan).toLocaleString();
-            statusDiv.textContent = `Last scan: ${lastScan}`;
-            statusDiv.className = 'mt-2 text-success small';
-            scheduleRefresh();
-        } else {
-            statusDiv.textContent = 'Ready to scan';
-            statusDiv.className = 'mt-2 text-muted small';
-            scheduleRefresh();
+        // Scan is NOT running on the backend.
+        if (wasScanning) {
+            // The scan has just finished. Reload the page to show the new data.
+            location.reload();
+            return false; // Page is reloading, so further polling is irrelevant.
         }
+
+        // This path is for when the page loads and no scan is running.
+        resetButton(network);
+        statusEl.className = 'mt-2 text-muted small';
+        
+        if (status.error) {
+            statusEl.textContent = `Error: ${status.error}`;
+            statusEl.className = 'mt-2 text-danger small';
+        } else if (status.last_scan) {
+            const lastScanDate = new Date(status.last_scan);
+            statusEl.textContent = `Last scan: ${lastScanDate.toLocaleString()}`;
+        } else {
+            statusEl.textContent = 'Ready to scan.';
+        }
+        return false; // Not scanning.
     }
 }
 
-// Function to reset button to default state
+// Function to reset button state
 function resetButton(network) {
     const button = document.getElementById(`scan${network.toUpperCase()}Btn`);
     button.disabled = false;
-    button.innerHTML = `<i class="fas fa-search me-2"></i><span class="btn-text">Scan ${network.toUpperCase()} Network</span>`;
+    const networkName = network.toUpperCase();
+    button.innerHTML = `<i class="fas fa-search me-2"></i><span class="btn-text">Scan ${networkName} Network</span>`;
 }
 
-// Function to get CSRF cookie
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -368,16 +322,6 @@ function getCookie(name) {
         }
     }
     return cookieValue;
-}
-
-// Auto-refresh the page 30 seconds after scan completion
-function scheduleRefresh() {
-    // Only refresh if no scans are active
-    if (!activeScans.us && !activeScans.tw) {
-        setTimeout(function() {
-            location.reload();
-        }, 30000);
-    }
 }
 </script>
 {% endblock %} 

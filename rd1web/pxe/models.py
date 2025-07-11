@@ -13,7 +13,7 @@ class PxeEntry(models.Model):
 
 
 class ArpScanResult(models.Model):
-    ip_address = models.GenericIPAddressField(unique=True)
+    ip_address = models.GenericIPAddressField()
     mac_address = models.CharField(max_length=18)
     hostname = models.CharField(max_length=255, blank=True, null=True)
     first_seen = models.DateTimeField(auto_now_add=True)
@@ -24,6 +24,7 @@ class ArpScanResult(models.Model):
     
     class Meta:
         ordering = ['subnet_source', 'ip_address']
+        unique_together = ('mac_address', 'subnet_source')
     
     def __str__(self):
         return f"{self.ip_address} ({self.mac_address}) [{self.subnet_source}]"

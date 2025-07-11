@@ -8,3 +8,4 @@ alwaysApply: true
 5. before job start confirm with me first i need to review the paln.
 6. every step give me high level of description tell me what have you changed.
 7. each task and each code change make sure no big code change or make it too complicate, it should make minumum inpact to the original codebase.
+8. if need to run django command run command line by line to activate virtual enviornment"source venv/bin/activate" "python3 rd1web/manage.py" do not use &

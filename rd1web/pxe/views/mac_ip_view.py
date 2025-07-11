@@ -3,15 +3,7 @@
 Views for displaying MAC-IP results from multiple subnets.
 """
 
-from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from django.core.paginator import Paginator
-from django.db.models import Q, Count
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
-from django.utils import timezone
-from ..models import ArpScanResult
+from __future__ import annotations
 import logging
 import threading
 import time
@@ -20,8 +12,19 @@ import requests
 import subprocess
 import os
 import re
+import tempfile
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.core.paginator import Paginator
+from django.db.models import Q, Count, Value
+from django.db.models.functions import Replace
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.utils import timezone
 from django.db import transaction
 from django.core.cache import cache
+from ..models import ArpScanResult
 
 logger = logging.getLogger(__name__)
 
@@ -117,135 +120,140 @@ def release_scan_lock(subnet_name, error=None):
 def manual_scan_worker(subnet_name, subnet_config):
     """Worker function for manual network scanning"""
     try:
-        # Try to acquire scan lock
         if not acquire_scan_lock(subnet_name):
             logger.warning(f"Scan already in progress for {subnet_name}, skipping")
             update_scan_status(subnet_name, {'error': "Another scan is already in progress"})
             return
         
         logger.info(f"Starting manual scan for {subnet_name} network")
+
+        processed_hosts = []
         
-        # Run the scan based on the scan method
+        # Data Gathering Phase
         if subnet_config['scan_method'] == 'fastapi':
-            # Make HTTP request to FastAPI endpoint
             api_url = subnet_config.get('api_url')
             if not api_url:
                 raise Exception("No API URL configured")
                 
-            response = requests.get(api_url, timeout=300)  # 5 minute timeout
-            if response.status_code != 200:
-                raise Exception(f"FastAPI endpoint returned status {response.status_code}")
-                
-            data = response.json()
-            hosts = data.get('hosts', [])
+            response = requests.get(api_url, timeout=300)
+            response.raise_for_status()
+            hosts = response.json().get('hosts', [])
             
-            # Convert FastAPI format to arp-scan format and save to file
-            output_file = f"/tmp/ip_{subnet_name}"
-            with open(output_file, 'w') as f:
-                f.write(f"Interface: {subnet_config['interface']}, type: EN10MB\\n")
-                f.write(f"Starting arp-scan 1.10.0 with {len(hosts)} hosts\\n")
-                
-                for host in hosts:
-                    ip = host.get('IP Address', '')
-                    mac = host.get('MAC Address', '')
-                    hostname = host.get('Hostname', '(Unknown)')
-                    
-                    if ip and mac:
-                        f.write(f"{ip}\\t{mac}\\t{hostname}\\n")
-                
-                f.write(f"\\n{len(hosts)} packets received by filter\\n")
-                f.write(f"{len(hosts)} packets captured by pcap\\n")
-            
-            scan_success = True
-            
-        else:  # arp-scan method
-            output_file = f"/tmp/ip_{subnet_name}"
-            command = f'arp-scan -I {subnet_config["interface"]} {subnet_config["network"]}'
-            
-            # Run arp-scan and redirect output to file
-            with open(output_file, 'w') as f:
-                result = subprocess.run(
-                    command.split(),
-                    stdout=f,
-                    stderr=subprocess.PIPE,
-                    timeout=300,  # 5 minute timeout
-                    text=True
-                )
-            
-            # Check if we got output
-            scan_success = os.path.exists(output_file) and os.path.getsize(output_file) > 0
-            if not scan_success:
-                error_msg = result.stderr if result.stderr else 'No output generated'
-                raise Exception(f"Arp-scan failed: {error_msg}")
+            for host in hosts:
+                ip = host.get('IP Address')
+                mac = host.get('MAC Address')
+                hostname = host.get('Hostname', '(Unknown)')
+                if ip and mac:
+                    processed_hosts.append({'ip': ip, 'mac': mac, 'hostname': hostname})
         
-        # Update database with scan results
-        if scan_success:
-            current_ips = set()
-            new_entries = 0
-            updated_entries = 0
+        else:  # arp-scan method
+            output_file = None
+            try:
+                with tempfile.NamedTemporaryFile(mode='w+', delete=False, prefix=f"ip_{subnet_name}_", suffix=".tmp") as f:
+                    output_file = f.name
+                    command = f'arp-scan -I {subnet_config["interface"]} {subnet_config["network"]}'
+                    result = subprocess.run(
+                        command.split(),
+                        stdout=f,
+                        stderr=subprocess.PIPE,
+                        timeout=300,
+                        text=True
+                    )
+                    if result.returncode != 0:
+                        raise Exception(f"Arp-scan failed with exit code {result.returncode}: {result.stderr}")
+                
+                if os.path.getsize(output_file) > 0:
+                    with open(output_file, 'r') as f:
+                        for line in f:
+                            if not line or line.startswith('Interface:') or line.startswith('Starting') or 'packets' in line:
+                                continue
+                            match = re.match(r'^(\d+\.\d+\.\d+\.\d+)\s+([0-9a-fA-F:-]+)\s*(.*?)$', line)
+                            if match:
+                                ip = match.group(1)
+                                mac = match.group(2)
+                                hostname = match.group(3).strip()
+                                processed_hosts.append({'ip': ip, 'mac': mac, 'hostname': hostname})
+            finally:
+                if output_file and os.path.exists(output_file):
+                    os.remove(output_file)
+
+        # Data Processing and Database Update Phase
+        current_macs = set()
+        to_create = []
+        to_update = []
+        
+        # Pre-fetch existing results for this subnet to optimize
+        existing_results = {
+            result.mac_address: result 
+            for result in ArpScanResult.objects.filter(subnet_source=subnet_name)
+        }
+
+        # Keep track of MACs processed in this scan to handle duplicates from the scanner
+        processed_macs_in_scan = set()
+
+        for host in processed_hosts:
+            ip_address = host['ip']
+            mac_raw = host['mac']
+            hostname = host['hostname'] or None
             
-            with open(output_file, 'r') as f:
-                for line in f:
-                    line = line.strip()
-                    
-                    # Skip empty lines and header/footer lines
-                    if not line or line.startswith('Interface:') or line.startswith('Starting') or line.startswith('packets'):
-                        continue
-                        
-                    # Parse lines: IP_ADDRESS    MAC_ADDRESS    HOSTNAME
-                    match = re.match(r'^(\\d+\\.\\d+\\.\\d+\\.\\d+)\\s+([0-9a-fA-F:]{17})\\s*(.*?)$', line)
-                    
-                    if match:
-                        ip_address = match.group(1)
-                        mac_address = match.group(2).lower()
-                        hostname = match.group(3).strip()
-                        
-                        if hostname in ['', '(Unknown)', '(unknown)']:
-                            hostname = None
-                            
-                        current_ips.add(ip_address)
-                        
-                        # Update or create database entry
-                        with transaction.atomic():
-                            obj, created = ArpScanResult.objects.update_or_create(
-                                ip_address=ip_address,
-                                defaults={
-                                    'mac_address': mac_address,
-                                    'hostname': hostname,
-                                    'is_active': True,
-                                    'last_seen': timezone.now(),
-                                    'subnet_source': subnet_name,
-                                    'scan_interface': subnet_config['interface']
-                                }
-                            )
-                            
-                            if created:
-                                new_entries += 1
-                            else:
-                                updated_entries += 1
+            # Normalize MAC address to a consistent format
+            normalized_mac = mac_raw.replace(':', '').replace('-', '').lower()
+            if len(normalized_mac) != 12 or not all(c in '0123456789abcdef' for c in normalized_mac):
+                logger.warning(f"Skipping invalid MAC address found in scan: {mac_raw}")
+                continue
+            mac_address = ':'.join(normalized_mac[i:i+2] for i in range(0, 12, 2))
             
-            # Mark entries not in current scan as inactive
-            if current_ips:
-                with transaction.atomic():
-                    inactive_entries = ArpScanResult.objects.filter(
-                        is_active=True,
-                        subnet_source=subnet_name
-                    ).exclude(ip_address__in=current_ips)
-                    
-                    inactive_count = 0
-                    for entry in inactive_entries:
-                        entry.is_active = False
-                        entry.save()
-                        inactive_count += 1
+            # If we've already processed this MAC in this scan, skip it
+            if mac_address in processed_macs_in_scan:
+                continue
+            processed_macs_in_scan.add(mac_address)
             
-            logger.info(f"Manual scan completed successfully for {subnet_name} - {new_entries} new, {updated_entries} updated")
-            release_scan_lock(subnet_name)  # Success case
+            current_macs.add(mac_address)
             
-        # Clean up output file
-        try:
-            os.remove(output_file)
-        except OSError:
-            pass
+            if hostname in ['(Unknown)', '(unknown)']:
+                hostname = None
+
+            instance_data = {
+                'ip_address': ip_address,
+                'hostname': hostname,
+                'is_active': True,
+                'last_seen': timezone.now(),
+                'subnet_source': subnet_name,
+                'scan_interface': subnet_config['interface']
+            }
+            
+            existing = existing_results.get(mac_address)
+            if existing:
+                # Check for changes before adding to update list
+                if (existing.ip_address != ip_address or
+                    existing.hostname != hostname or
+                    not existing.is_active):
+                    for key, value in instance_data.items():
+                        setattr(existing, key, value)
+                    to_update.append(existing)
+                else:
+                    # Even if no data changed, we should update the last_seen timestamp
+                    existing.last_seen = instance_data['last_seen']
+                    to_update.append(existing)
+            else:
+                to_create.append(ArpScanResult(mac_address=mac_address, **instance_data))
+        
+        # Bulk database operations
+        with transaction.atomic():
+            if to_create:
+                ArpScanResult.objects.bulk_create(to_create, batch_size=500)
+            if to_update:
+                update_fields = ['ip_address', 'hostname', 'is_active', 'last_seen', 'scan_interface']
+                ArpScanResult.objects.bulk_update(to_update, update_fields, batch_size=500)
+            
+            # Mark entries not in the current scan as inactive
+            if current_macs:
+                ArpScanResult.objects.filter(
+                    is_active=True, subnet_source=subnet_name
+                ).exclude(mac_address__in=current_macs).update(is_active=False)
+
+        logger.info(f"Manual scan completed successfully for {subnet_name} - {len(to_create)} new, {len(to_update)} updated")
+        release_scan_lock(subnet_name)
             
     except Exception as e:
         logger.error(f"Error in manual scan for {subnet_name}: {str(e)}")
@@ -345,12 +353,25 @@ def mac_ip_results(request):
         queryset = queryset.filter(subnet_source=subnet_filter)
     
     if search_query:
-        queryset = queryset.filter(
-            Q(ip_address__icontains=search_query) |
-            Q(mac_address__icontains=search_query) |
-            Q(hostname__icontains=search_query)
-        )
-    
+        # Base query for IP and hostname
+        base_query = Q(ip_address__icontains=search_query) | Q(hostname__icontains=search_query)
+        
+        # Also include the original search query to match against MACs with separators
+        mac_query = Q(mac_address__icontains=search_query)
+
+        # Normalize the search query by removing separators for flexible matching.
+        normalized_search = ''.join(filter(str.isalnum, search_query)).lower()
+        
+        if normalized_search:
+            # Annotate the queryset with a normalized version of the mac_address field
+            # (by removing colons) and search against the normalized query.
+            queryset = queryset.annotate(
+                normalized_mac=Replace('mac_address', Value(':'), Value(''))
+            )
+            mac_query |= Q(normalized_mac__icontains=normalized_search)
+
+        queryset = queryset.filter(base_query | mac_query)
+
     queryset = queryset.order_by('subnet_source', '-is_active', 'ip_address')
     
     # Pagination

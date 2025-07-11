@@ -57,7 +57,7 @@ class UserActivity(models.Model):
         ('admin_access', 'Admin Panel Access'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activities')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activities', null=True, blank=True)
     session = models.ForeignKey(UserSession, on_delete=models.CASCADE, null=True, blank=True)
     action = models.CharField(max_length=20, choices=ACTION_CHOICES)
     description = models.TextField(blank=True)
