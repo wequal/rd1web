@@ -353,31 +353,66 @@ def mac_ip_results(request):
         queryset = queryset.filter(subnet_source=subnet_filter)
     
     if search_query:
-        # Base query for IP and hostname
+        # =============================================================================
+        # ENHANCED SEARCH FUNCTIONALITY
+        # =============================================================================
+        # This section implements flexible search across IP addresses, hostnames, and 
+        # MAC addresses with support for multiple formats and multiple search terms.
+        
+        # Base query for searching IP addresses and hostnames
+        # Uses case-insensitive 'icontains' to match partial strings anywhere in the field
         base_query = Q(ip_address__icontains=search_query) | Q(hostname__icontains=search_query)
         
-        # Initialize MAC query
+        # Initialize empty MAC address query - will be built up with OR conditions
         mac_query = Q()
         
-        # Split search query by space or comma to support multiple MAC addresses
+        # =============================================================================
+        # MULTIPLE MAC ADDRESS SUPPORT
+        # =============================================================================
+        # Parse search input to support multiple MAC addresses separated by spaces or commas
+        # Examples: "00:09:0f:09:ac:12 00090f09ac13" or "mac1,mac2,mac3"
         search_terms = [term.strip() for term in search_query.replace(',', ' ').split() if term.strip()]
         
-        # Process each search term
+        # Process each individual search term to build comprehensive MAC query
         for term in search_terms:
-            # Direct search against original MAC address field (preserves separator matching)
+            # =============================================================================
+            # DIRECT MAC ADDRESS MATCHING
+            # =============================================================================
+            # First, search against the stored MAC address format directly
+            # This preserves exact matching for users who know the stored format (with colons)
+            # Example: searching "00:09" will match "00:09:0f:09:ac:12"
             mac_query |= Q(mac_address__icontains=term)
             
-            # Normalize the search term by removing separators for flexible matching
+            # =============================================================================
+            # FLEXIBLE MAC FORMAT NORMALIZATION
+            # =============================================================================
+            # Remove all non-hex characters to create a normalized search term
+            # This enables searching across different MAC address formats:
+            # - "00:09:0f:09:ac:12" -> "00090f09ac12"
+            # - "0009-0f-09-ac-12" -> "00090f09ac12" 
+            # - "00090f09ac12"      -> "00090f09ac12"
             normalized_search = re.sub(r'[^a-fA-F0-9]', '', term).lower()
             
-            if normalized_search and len(normalized_search) >= 2:  # Minimum 2 chars for meaningful search
-                # Annotate the queryset with a normalized version of the mac_address field
-                # (by removing both colons and dashes) and search against the normalized query.
+            # Only perform normalized search if we have meaningful content (min 2 hex chars)
+            if normalized_search and len(normalized_search) >= 2:
+                # =============================================================================
+                # DATABASE-LEVEL MAC NORMALIZATION
+                # =============================================================================
+                # Use Django's Replace function to normalize stored MAC addresses at database level
+                # This creates a temporary field that removes both colons and dashes for comparison
+                # Nested Replace calls: first removes ':', then removes '-' from the result
+                # Stored "00:09:0f:09:ac:12" becomes "00090f09ac12" for comparison
                 queryset = queryset.annotate(
                     normalized_mac=Replace(Replace('mac_address', Value(':'), Value('')), Value('-'), Value(''))
                 )
+                # Add this normalized comparison to our MAC query with OR logic
                 mac_query |= Q(normalized_mac__icontains=normalized_search)
 
+        # =============================================================================
+        # FINAL QUERY COMBINATION
+        # =============================================================================
+        # Combine all search conditions with OR logic:
+        # (IP matches OR hostname matches) OR (any MAC format matches)
         queryset = queryset.filter(base_query | mac_query)
 
     queryset = queryset.order_by('subnet_source', '-is_active', 'ip_address')
