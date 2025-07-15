@@ -356,19 +356,27 @@ def mac_ip_results(request):
         # Base query for IP and hostname
         base_query = Q(ip_address__icontains=search_query) | Q(hostname__icontains=search_query)
         
-        # Also include the original search query to match against MACs with separators
-        mac_query = Q(mac_address__icontains=search_query)
-
-        # Normalize the search query by removing separators for flexible matching.
-        normalized_search = ''.join(filter(str.isalnum, search_query)).lower()
+        # Initialize MAC query
+        mac_query = Q()
         
-        if normalized_search:
-            # Annotate the queryset with a normalized version of the mac_address field
-            # (by removing colons) and search against the normalized query.
-            queryset = queryset.annotate(
-                normalized_mac=Replace('mac_address', Value(':'), Value(''))
-            )
-            mac_query |= Q(normalized_mac__icontains=normalized_search)
+        # Split search query by space or comma to support multiple MAC addresses
+        search_terms = [term.strip() for term in search_query.replace(',', ' ').split() if term.strip()]
+        
+        # Process each search term
+        for term in search_terms:
+            # Direct search against original MAC address field (preserves separator matching)
+            mac_query |= Q(mac_address__icontains=term)
+            
+            # Normalize the search term by removing separators for flexible matching
+            normalized_search = re.sub(r'[^a-fA-F0-9]', '', term).lower()
+            
+            if normalized_search and len(normalized_search) >= 2:  # Minimum 2 chars for meaningful search
+                # Annotate the queryset with a normalized version of the mac_address field
+                # (by removing both colons and dashes) and search against the normalized query.
+                queryset = queryset.annotate(
+                    normalized_mac=Replace(Replace('mac_address', Value(':'), Value('')), Value('-'), Value(''))
+                )
+                mac_query |= Q(normalized_mac__icontains=normalized_search)
 
         queryset = queryset.filter(base_query | mac_query)
 

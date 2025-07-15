@@ -20,3 +20,26 @@
     - [x] Adjust pre-fetch and matching to use MAC instead of IP.
 - [x] **Generate and Apply Migration**
     - [x] Run `makemigrations` and `migrate` to update the database schema. 
+
+### Plan to Enhance MAC Address Search Formats
+
+- [x] **Analyze Current Implementation (`rd1web/pxe/views/mac_ip_view.py`)**
+    - [x] Review current search logic in `mac_ip_results` function (lines 331-371)
+    - [x] Understand current normalization approach that only handles colons
+    
+- [x] **Update Search Normalization Logic**
+    - [x] Add support for multiple MAC addresses separated by space or comma
+    - [x] Modify the search query normalization to handle both colons and dashes
+    - [x] Update the database annotation to remove both `:` and `-` separators
+    - [x] Ensure backward compatibility with existing formats
+    
+- [ ] **Test MAC Address Format Support**
+    - [ ] Verify support for "00:09:0f:09:ac:12" (current format with colons)
+    - [ ] Verify support for "00090f09ac12" (no separators - already works)  
+    - [ ] Verify support for "0009-0f-09-ac-12" (new format with dashes)
+    - [ ] Test multiple MAC addresses: "00:09:0f:09:ac:12 00090f09ac13" and "00:09:0f:09:ac:12,0009-0f-09-ac-13"
+    - [ ] Test mixed case scenarios and edge cases
+    
+- [x] **Update Documentation**
+    - [x] Update the search placeholder text to mention supported formats and multiple MAC support
+    - [ ] Add help text showing example formats if needed 
