@@ -43,3 +43,26 @@
 - [x] **Update Documentation**
     - [x] Update the search placeholder text to mention supported formats and multiple MAC support
     - [ ] Add help text showing example formats if needed 
+
+### Plan to Fix Django Admin UserActivity Error
+
+**Problem:** Django admin crashes when accessing UserActivity page due to `AttributeError: 'NoneType' object has no attribute 'username'` in the model's `__str__` method.
+
+**Root Cause:** The UserActivity model's user field can be null (`null=True, blank=True`), but the `__str__` method tries to access `self.user.username` without checking if `self.user` exists.
+
+**Tasks:**
+
+- [ ] **Fix UserActivity Model (`rd1web/authentication/models.py`)**
+    - [ ] Update the `__str__` method in UserActivity model to handle null user gracefully
+    - [ ] Use conditional check to display "Anonymous" or similar when user is None
+    - [ ] Ensure minimal impact to existing functionality
+
+- [ ] **Test Fix**
+    - [ ] Verify Django admin UserActivity page loads without errors
+    - [ ] Confirm that records with null users display properly
+    - [ ] Test that normal records with users still display correctly
+
+- [ ] **Validation**
+    - [ ] Run the Django development server and access admin
+    - [ ] Navigate to UserActivity admin page to confirm no more errors
+    - [ ] Check both null and non-null user records display properly 

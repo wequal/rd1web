@@ -79,7 +79,8 @@ class UserActivity(models.Model):
         ]
     
     def __str__(self):
-        return f"{self.user.username} - {self.get_action_display()} - {self.timestamp.strftime('%Y-%m-%d %H:%M')}"
+        username = self.user.username if self.user else "Anonymous"
+        return f"{username} - {self.get_action_display()} - {self.timestamp.strftime('%Y-%m-%d %H:%M')}"
 
 class UserStats(models.Model):
     """Aggregate user statistics for performance"""
