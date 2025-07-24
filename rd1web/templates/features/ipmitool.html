@@ -1056,7 +1056,14 @@
                             <td>${item.mac_address}</td>
                             <td>
                                 ${item.success ? 
-                                    `<code class="text-dark">${item.password}</code>` : 
+                                    `<div class="d-flex align-items-center">
+                                        <code class="text-dark me-2">${item.password}</code>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm copy-password-btn" 
+                                                data-password="${item.password}" 
+                                                title="Copy password">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>` : 
                                     '<span class="text-danger">Not available</span>'
                                 }
                             </td>
@@ -1108,6 +1115,84 @@
             }
         });
 
+        // Add copy functionality for password buttons
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.copy-password-btn')) {
+                e.preventDefault(); // Prevent any default button behavior
+                e.stopPropagation(); // Stop event bubbling
+                
+                const button = e.target.closest('.copy-password-btn');
+                const password = button.getAttribute('data-password');
+                const icon = button.querySelector('i');
+                
+                // Store original button state
+                const originalIcon = icon.className;
+                const originalTitle = button.title;
+                
+                try {
+                    console.log('Attempting to copy password:', password); // Debug
+                    
+                    // Create a temporary textarea element
+                    const textarea = document.createElement('textarea');
+                    textarea.value = password;
+                    textarea.style.position = 'fixed';
+                    textarea.style.left = '-9999px';
+                    textarea.style.top = '0';
+                    textarea.style.opacity = '0';
+                    textarea.style.pointerEvents = 'none';
+                    textarea.readOnly = true;
+                    document.body.appendChild(textarea);
+                    
+                    // Focus and select the text
+                    textarea.focus();
+                    textarea.select();
+                    textarea.setSelectionRange(0, password.length);
+                    
+                    // Try to copy
+                    const successful = document.execCommand('copy');
+                    console.log('Copy command result:', successful); // Debug
+                    
+                    // Clean up
+                    document.body.removeChild(textarea);
+                    
+                    if (successful) {
+                        console.log('Copy successful!'); // Debug
+                        // Success feedback
+                        icon.className = 'fas fa-check text-success';
+                        button.title = 'Copied!';
+                        button.classList.remove('btn-outline-secondary');
+                        button.classList.add('btn-outline-success');
+                        
+                        // Reset button after 2 seconds
+                        setTimeout(function() {
+                            icon.className = originalIcon;
+                            button.title = originalTitle;
+                            button.classList.remove('btn-outline-success');
+                            button.classList.add('btn-outline-secondary');
+                        }, 2000);
+                    } else {
+                        throw new Error('Copy command returned false');
+                    }
+                } catch (err) {
+                    console.error('Copy failed with error:', err); // Debug
+                    // Error feedback
+                    icon.className = 'fas fa-exclamation-triangle text-danger';
+                    button.title = 'Copy failed';
+                    button.classList.remove('btn-outline-secondary');
+                    button.classList.add('btn-outline-danger');
+                    
+                    // Reset button after 3 seconds
+                    setTimeout(function() {
+                        icon.className = originalIcon;
+                        button.title = originalTitle;
+                        button.classList.remove('btn-outline-danger');
+                        button.classList.add('btn-outline-secondary');
+                    }, 3000);
+                    
+                    console.error('Failed to copy password: ', err.message);
+                }
+            }
+        });
 
     });
 </script>
