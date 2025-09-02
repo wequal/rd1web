@@ -338,7 +338,7 @@
                 <div class="card-body">
                     <div class="mb-3">
                         <h6 class="text-warning"><i class="fas fa-fire me-1"></i>BurnIn Tests</h6>
-                        <p class="small text-muted mb-2">Select one or more tests: SAT, IPERF, STRESS, DCGM, FIO. Duration required for SAT, IPERF, STRESS, and FIO.</p>
+                        <p class="small text-muted mb-2">Select one or more tests: SAT, IPERF, STRESS, DCGM, FIO, NV_GPU. Duration required for SAT, IPERF, STRESS, and FIO.</p>
                     </div>
                     <div class="mb-3">
                         <h6 class="text-info"><i class="fas fa-bolt me-1"></i>DC Test</h6>
@@ -417,6 +417,7 @@
                         <li><strong>IPERF</strong> - Network performance test (requires duration)</li>
                         <li><strong>STRESS</strong> - System stress test (requires duration)</li>
                         <li><strong>DCGM</strong> - GPU monitoring test</li>
+                        <li><strong>NV_GPU</strong> - NVIDIA GPU benchmark test</li>
                         <li><strong>FIO</strong> - I/O performance test (requires duration)</li>
                     </ul>
                 </div>
@@ -526,7 +527,7 @@
                 const durationField = document.getElementById(testName);
                 
                 if (durationField) {
-                    if (this.checked && testName !== 'dcgm') {
+                    if (this.checked && testName !== 'dcgm' && testName !== 'nv_gpu') {
                         durationField.style.display = 'block';
                     } else {
                         durationField.style.display = 'none';

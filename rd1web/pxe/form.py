@@ -25,7 +25,8 @@ class PxeForm(forms.Form):
             ('IPERF', 'IPERF'),
             ('STRESS', 'STRESS'),
             ('DCGM', 'DCGM'),
-            ('FIO', 'FIO')
+            ('FIO', 'FIO'),
+            ('NV_GPU', 'NV_GPU'),
         ],
         widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
         label='BurnIn Tests',
@@ -163,6 +164,8 @@ class PxeForm(forms.Form):
                     parameters.append(f"FIO={duration}")
                 elif test == 'DCGM':
                     parameters.append("DCGM")
+                elif test == 'NV_GPU':
+                    parameters.append("NV_GPU")
             
             return f"TEST_TYPE=BURNIN {' '.join(parameters)}"
         

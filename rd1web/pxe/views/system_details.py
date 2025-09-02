@@ -231,7 +231,7 @@ def determine_test_type_and_status(log_dir, folder_name):
                 test_info['status'] = 'UNKNOWN'
         
         # Also check individual log files for more detailed status
-        burnin_files = ['SAT.log', 'iperf.log', 'stress.log', 'fio.log', 'dcgm.log']
+        burnin_files = ['SAT.log', 'iperf.log', 'stress.log', 'fio.log', 'dcgm.log', 'NV_GPU.log']
         log_status = {}
         
         for test_file in burnin_files:
