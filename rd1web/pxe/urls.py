@@ -18,6 +18,8 @@ from .views.remote_control import (
 )
 from .views.archive import archive_system
 from .views.mac_ip_view import mac_ip_results, mac_ip_api, manual_scan, scan_status_api
+from .views.rma_pxe import rma_pxe
+from .views.rma_logs import rma_log
 from .api.system_api import systems_summary, systems_category
 
 
@@ -53,4 +55,8 @@ urlpatterns = [
     path('remote-control/kvm/', remote_kvm, name='remote_kvm'),
     path('remote-control/sol/', remote_start_sol, name='remote_start_sol'),
     path('remote-control/sol_terminal/', remote_sol_terminal, name='remote_sol_terminal'),
+    
+    # RMA Management URLs
+    path('rma/pxe/', rma_pxe, name='rma_pxe'),
+    path('rma/logs/', rma_log, name='rma_log'),
 ]

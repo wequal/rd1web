@@ -34,7 +34,20 @@
                 <div class="sb-nav-link-icon"><i class="fas fa-network-wired"></i></div>
                 MAC to IP
             </a>
+
+            <!-- RMA Management -->
+            <div class="sb-sidenav-menu-heading">RMA Management</div>
             
+            <a class="nav-link" href="{% url 'rma_log' %}">
+                <div class="sb-nav-link-icon"><i class="fas fa-server"></i></div>
+                RMA Logs
+            </a>
+
+            <a class="nav-link" href="{% url 'rma_pxe' %}">
+                <div class="sb-nav-link-icon"><i class="fas fa-server"></i></div>
+                RMA PXE
+            </a>
+
         </div>
     </div>
     

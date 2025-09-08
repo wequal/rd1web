@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+{% block title %}RMA Logs{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">RMA Logs</h1>
+            <p class="mb-0 text-muted">View and monitor RMA system logs and activities</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-primary" onclick="location.reload()">
+                <i class="fas fa-sync-alt me-1"></i>Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Log Sources Overview -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-folder-open me-2"></i>Available Log Sources
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for log in logs_available %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card border-left-{% if log.exists %}{% if log.error %}warning{% else %}success{% endif %}{% else %}danger{% endif %}">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center">
+                                        <div class="mr-3">
+                                            {% if log.exists %}
+                                                {% if log.error %}
+                                                    <i class="fas fa-exclamation-triangle text-warning fa-2x"></i>
+                                                {% else %}
+                                                    <i class="fas fa-check-circle text-success fa-2x"></i>
+                                                {% endif %}
+                                            {% else %}
+                                                <i class="fas fa-times-circle text-danger fa-2x"></i>
+                                            {% endif %}
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="card-title mb-1">{{ log.path }}</h6>
+                                            {% if log.exists %}
+                                                {% if log.type == 'directory' %}
+                                                    <p class="card-text small text-muted mb-0">
+                                                        Directory: {{ log.file_count }} files
+                                                    </p>
+                                                {% elif log.type == 'file' %}
+                                                    <p class="card-text small text-muted mb-0">
+                                                        File size: {{ log.size|filesizeformat }}
+                                                    </p>
+                                                {% endif %}
+                                                {% if log.error %}
+                                                    <p class="card-text small text-warning mb-0">
+                                                        <i class="fas fa-exclamation me-1"></i>{{ log.error }}
+                                                    </p>
+                                                {% endif %}
+                                            {% else %}
+                                                <p class="card-text small text-danger mb-0">Not available</p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Logs -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-info">
+                        <i class="fas fa-list me-2"></i>Recent RMA-Related Log Entries
+                    </h6>
+                    <small class="text-muted">Last 10 entries</small>
+                </div>
+                <div class="card-body">
+                    {% if recent_logs %}
+                        <div class="log-container">
+                            {% for log_entry in recent_logs %}
+                                <div class="log-entry mb-2">
+                                    <code class="d-block p-2 bg-light rounded text-dark">{{ log_entry }}</code>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-file-alt fa-3x mb-3"></i>
+                            <p>No recent RMA logs available</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Instructions -->
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-warning">
+                        <i class="fas fa-info-circle me-2"></i>Log Monitoring Tips
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li class="mb-2">RMA activities are logged to <code>/var/log/rma/</code> if available</li>
+                        <li class="mb-2">PXE boot events appear in <code>/var/log/pxe/</code> and system logs</li>
+                        <li class="mb-2">System-wide RMA events are recorded in <code>/var/log/syslog</code></li>
+                        <li class="mb-2">Use the refresh button to get the latest log entries</li>
+                        <li class="mb-0">Logs older than 30 days may be archived automatically</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-search me-2"></i>Search Keywords
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">Common terms to look for in RMA logs:</p>
+                    <div class="row">
+                        <div class="col-6">
+                            <ul class="small mb-0">
+                                <li><code>RMA</code> - RMA activities</li>
+                                <li><code>PXE</code> - Boot events</li>
+                                <li><code>DHCP</code> - Network assignment</li>
+                                <li><code>TFTP</code> - Boot file transfer</li>
+                            </ul>
+                        </div>
+                        <div class="col-6">
+                            <ul class="small mb-0">
+                                <li><code>ERROR</code> - Error conditions</li>
+                                <li><code>FAILED</code> - Failed operations</li>
+                                <li><code>SUCCESS</code> - Successful operations</li>
+                                <li><code>TIMEOUT</code> - Timeout events</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card-header {
+        background-color: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .shadow {
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+    }
+    
+    .border-left-success {
+        border-left: 0.25rem solid #10b981 !important;
+    }
+    
+    .border-left-warning {
+        border-left: 0.25rem solid #f59e0b !important;
+    }
+    
+    .border-left-danger {
+        border-left: 0.25rem solid #dc2626 !important;
+    }
+    
+    .log-container {
+        max-height: 500px;
+        overflow-y: auto;
+    }
+    
+    .log-entry code {
+        font-family: 'Courier New', monospace;
+        font-size: 0.875rem;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+    
+    .text-gray-800 {
+        color: #1e293b !important;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Auto-refresh logs every 30 seconds
+    setInterval(function() {
+        // Only auto-refresh if user hasn't been active for 10 seconds
+        if (document.hidden === false) {
+            const lastActivity = parseInt(localStorage.getItem('lastActivity') || '0');
+            const now = Date.now();
+            
+            if (now - lastActivity > 10000) { // 10 seconds
+                console.log('Auto-refreshing RMA logs...');
+                location.reload();
+            }
+        }
+    }, 30000); // 30 seconds
+    
+    // Track user activity
+    document.addEventListener('click', function() {
+        localStorage.setItem('lastActivity', Date.now().toString());
+    });
+    
+    document.addEventListener('keypress', function() {
+        localStorage.setItem('lastActivity', Date.now().toString());
+    });
+    
+    // Initialize activity tracker
+    localStorage.setItem('lastActivity', Date.now().toString());
+</script>
+{% endblock %}
