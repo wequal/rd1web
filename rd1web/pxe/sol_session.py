@@ -40,6 +40,7 @@ class SOLSession:
 
             cmd = [
                 "ipmitool", "-I", "lanplus",
+                "-C", "3",
                 "-H", self.bmc_ip,
                 "-U", self.bmc_user,
                 "-P", self.bmc_pwd,

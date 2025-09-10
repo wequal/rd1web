@@ -26,7 +26,7 @@ def cmdline(cmd):
         return e.output.decode('utf-8').strip() if e.output else f"Command failed with return code {e.returncode}"
 
 async def run_ipmitool(ip,user,pwd,command):
-    cmd_1 = f"ipmitool -I lanplus -H {ip} -U {user} -P {pwd} {command}"
+    cmd_1 = f"ipmitool -I lanplus -C 3 -H {ip} -U {user} -P {pwd} {command}"
     cmd_2 = f"ipmitool -H {ip} -U {user} -P {pwd} {command}"
     
     output = await asyncio.to_thread(cmdline, cmd_1)

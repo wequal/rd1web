@@ -1,51 +1,28 @@
-# RMA Management Implementation Plan
+# RMA PXE Cooling Field Update Plan
 
-## Project Overview
-Create RMA (Return Merchandise Authorization) management system with:
-- Left sidebar RMA Management section (already added)
-- RMA Logs page (template log view)
-- RMA PXE page (similar to PXE Boot Manager but using RmaForm)
+## Task: Update RMA PXE HTML template to include cooling field
 
-## Task List
+### Background:
+- The RMA form (`RmaForm` in `form.py`) has been updated with a `cooling` field with choices: LC and AC
+- The view (`rma_pxe.py`) is already handling the cooling field in the form processing
+- The HTML template (`rma_pxe.html`) needs to be updated to display the cooling field
 
-### 1. Create RMA PXE View and URL Pattern
-- [x] Create RMA PXE view function in views module
-- [x] Add RMA PXE URL pattern to urls.py
-- [x] Test RMA PXE functionality
+### Tasks:
+- [x] Add cooling field to the RMA PXE HTML template
+- [x] Position the cooling field appropriately in the form layout
+- [x] Ensure consistent styling with other form fields
+- [x] Add proper icons and labels for the cooling field
+- [x] Update the info panel to include cooling information
+- [x] Test the form to ensure proper functionality
 
-### 2. Create RMA PXE Template
-- [x] Create RMA PXE HTML template based on PXE template
-- [x] Adapt form fields for RmaForm (Base SN, RMA Number, MAC, Image, Tests)
-- [x] Update styling and labels for RMA context
-- [x] Test template rendering
+### Implementation Details:
+- Add the cooling field after the tests field (around line 126)
+- Use consistent styling with other choice fields
+- Include proper FontAwesome icon (thermometer or snowflake)
+- Add helpful description text
+- Update the sidebar info panel with cooling information
 
-### 3. Create RMA Logs View and Template
-- [x] Create RMA logs view function
-- [x] Create RMA logs template (simple log viewing page)
-- [x] Add RMA logs URL pattern
-- [x] Test RMA logs functionality
-
-### 4. Update URL Configuration
-- [x] Add both rma_log and rma_pxe URLs to main urls.py
-- [x] Ensure URL names match sidebar links
-- [x] Test all URL routing
-
-### 5. Testing and Validation
-- [x] Test all RMA pages load correctly
-- [x] Test RMA PXE form submission
-- [x] Test navigation between pages
-- [x] Check for any lint errors
-
-## Implementation Notes
-- RmaForm has fields: base_sn, rma_number, mac, image, remove, check, tests
-- Use PXE template as base but simplify for RMA-specific fields
-- RMA Logs will be a simple template log viewer page
-- Keep minimal impact on existing codebase
-- No complex logic changes needed
-
-## Files to Create/Modify
-- `rd1web/pxe/views/rma_pxe.py` (new)
-- `rd1web/pxe/views/rma_logs.py` (new)  
-- `rd1web/templates/features/rma_pxe.html` (new)
-- `rd1web/templates/features/rma_logs.html` (new)
-- `rd1web/pxe/urls.py` (modify)
+### Minimal Impact:
+- Only adding new form field display
+- No changes to existing functionality
+- No backend changes needed (already implemented)

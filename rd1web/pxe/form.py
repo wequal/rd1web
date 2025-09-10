@@ -258,6 +258,7 @@ class RmaForm(forms.Form):
     remove=forms.BooleanField(required=False,label="Remove",initial=False)
     check=forms.BooleanField(required=False,label="Check",initial=False)
     tests=forms.ChoiceField(choices=[('generic','Generic'),('coreweave','Coreweave'),],label='Tests')
+    cooling=forms.ChoiceField(choices=[('lc','LC'),('ac','AC')],label='Cooling')
 
 
         

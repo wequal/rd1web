@@ -36,7 +36,7 @@ class SOLSession:
             
             # First deactivate any existing SOL sessions
             deactivate_cmd = [
-                'ipmitool', '-I', 'lanplus',
+                'ipmitool', '-I', 'lanplus', '-C', '3',
                 '-H', bmc_ip, '-U', bmc_user, '-P', bmc_pwd,
                 'sol', 'deactivate'
             ]
@@ -44,7 +44,7 @@ class SOLSession:
             
             # Start SOL session
             cmd = [
-                'ipmitool', '-I', 'lanplus',
+                'ipmitool', '-I', 'lanplus', '-C', '3',
                 '-H', bmc_ip, '-U', bmc_user, '-P', bmc_pwd,
                 'sol', 'activate'
             ]
