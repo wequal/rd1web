@@ -38,14 +38,36 @@ class SOLSession:
             # Create a new pseudo-terminal pair
             self.master_fd, self.slave_fd = pty.openpty()
 
+            # First, ensure any existing SOL sessions are properly terminated
+            deactivate_cmd = [
+                "ipmitool", "-I", "lanplus",
+                "-C", "3",  # Ensure deactivation also uses cipher suite 3
+                "-H", self.bmc_ip,
+                "-U", self.bmc_user,
+                "-P", self.bmc_pwd,
+                "sol", "deactivate",
+            ]
+            
+            try:
+                # Run deactivate command with timeout
+                result = subprocess.run(deactivate_cmd, capture_output=True, timeout=10, text=True)
+                logger.info(f"SOL deactivate result for {self.folder_name}: {result.stdout} {result.stderr}")
+            except subprocess.TimeoutExpired:
+                logger.warning(f"SOL deactivate timeout for {self.folder_name}")
+            except Exception as e:
+                logger.warning(f"SOL deactivate failed for {self.folder_name}: {e}")
+
+            # Now start the SOL session with explicit cipher suite
             cmd = [
                 "ipmitool", "-I", "lanplus",
-                "-C", "3",
+                "-C", "3",  # Explicitly use cipher suite 3 for IPMI v2.0
                 "-H", self.bmc_ip,
                 "-U", self.bmc_user,
                 "-P", self.bmc_pwd,
                 "sol", "activate",
             ]
+            
+            logger.info(f"Starting SOL session for {self.folder_name} with command: {' '.join(cmd)}")
 
             self.process = subprocess.Popen(
                 cmd,
@@ -65,8 +87,8 @@ class SOLSession:
             self.running = True
             logger.info("Started SOL session for %s (PID=%s)", self.folder_name, self.process.pid)
             return True
-        except Exception:
-            logger.exception("Failed to start SOL process")
+        except Exception as e:
+            logger.exception("Failed to start SOL process for %s: %s", self.folder_name, str(e))
             self.cleanup()
             return False
 
