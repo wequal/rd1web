@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from ..models import PxeEntry
 
 remote_dict = {
-    'rma': Connection(host="root@172.31.32.24", connect_kwargs={"password": "superrd1"}),
+    'rma': Connection(host="root@172.31.35.191", connect_kwargs={"password": "superrd1"}),
 
 }
 
