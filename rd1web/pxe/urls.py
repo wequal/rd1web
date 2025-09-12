@@ -19,7 +19,7 @@ from .views.remote_control import (
 from .views.archive import archive_system
 from .views.mac_ip_view import mac_ip_results, mac_ip_api, manual_scan, scan_status_api
 from .views.rma_pxe import rma_pxe
-from .views.rma_logs import rma_log
+from .views.rma_logs import rma_log, rma_view_file
 from .api.system_api import systems_summary, systems_category
 
 
@@ -59,4 +59,6 @@ urlpatterns = [
     # RMA Management URLs
     path('rma/pxe/', rma_pxe, name='rma_pxe'),
     path('rma/logs/', rma_log, name='rma_log'),
+    path('rma/logs/<path:path>/', rma_log, name='rma_log_browse'),
+    path('rma/view/<path:path>/', rma_view_file, name='rma_view_file'),
 ]

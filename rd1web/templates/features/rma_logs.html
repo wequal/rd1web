@@ -7,7 +7,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="h3 mb-0 text-gray-800">RMA Logs</h1>
-            <p class="mb-0 text-muted">View and monitor RMA system logs and activities</p>
+            <p class="mb-0 text-muted">Browse RMA directories from /srv/rma</p>
         </div>
         <div class="d-flex gap-2">
             <button type="button" class="btn btn-outline-primary" onclick="location.reload()">
@@ -16,143 +16,192 @@
         </div>
     </div>
 
-    <!-- Log Sources Overview -->
+    <!-- Search Function -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form method="GET" class="d-flex align-items-center">
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text" 
+                                   class="form-control" 
+                                   name="search" 
+                                   value="{{ search_query|default:'' }}" 
+                                   placeholder="Search by Base SN or RMA Number..."
+                                   autocomplete="off">
+                            <button class="btn btn-primary" type="submit">
+                                <i class="fas fa-search me-1"></i>Search
+                            </button>
+                            {% if search_query %}
+                                <a href="{% url 'rma_log' %}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times me-1"></i>Clear
+                                </a>
+                            {% endif %}
+                        </div>
+                    </form>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        {% if search_query %}
+                            <small class="text-muted">
+                                Found {{ filtered_count }} of {{ total_directories }} directories matching "{{ search_query }}"
+                            </small>
+                        {% else %}
+                            <small class="text-muted">
+                                Showing {{ total_directories }} RMA directories
+                            </small>
+                        {% endif %}
+                        {% if paginator.num_pages > 1 %}
+                            <small class="text-muted">
+                                Page {{ page_obj.number }} of {{ paginator.num_pages }}
+                                ({{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ filtered_count }})
+                            </small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RMA Directories -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card shadow">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-folder-open me-2"></i>Available Log Sources
+                        <i class="fas fa-folder-open me-2"></i>RMA Directories
                     </h6>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        {% for log in logs_available %}
-                        <div class="col-md-6 col-lg-4 mb-3">
-                            <div class="card border-left-{% if log.exists %}{% if log.error %}warning{% else %}success{% endif %}{% else %}danger{% endif %}">
-                                <div class="card-body">
-                                    <div class="d-flex align-items-center">
-                                        <div class="mr-3">
-                                            {% if log.exists %}
-                                                {% if log.error %}
-                                                    <i class="fas fa-exclamation-triangle text-warning fa-2x"></i>
-                                                {% else %}
-                                                    <i class="fas fa-check-circle text-success fa-2x"></i>
-                                                {% endif %}
-                                            {% else %}
-                                                <i class="fas fa-times-circle text-danger fa-2x"></i>
-                                            {% endif %}
-                                        </div>
-                                        <div class="flex-grow-1">
-                                            <h6 class="card-title mb-1">{{ log.path }}</h6>
-                                            {% if log.exists %}
-                                                {% if log.type == 'directory' %}
-                                                    <p class="card-text small text-muted mb-0">
-                                                        Directory: {{ log.file_count }} files
-                                                    </p>
-                                                {% elif log.type == 'file' %}
-                                                    <p class="card-text small text-muted mb-0">
-                                                        File size: {{ log.size|filesizeformat }}
-                                                    </p>
-                                                {% endif %}
-                                                {% if log.error %}
-                                                    <p class="card-text small text-warning mb-0">
-                                                        <i class="fas fa-exclamation me-1"></i>{{ log.error }}
-                                                    </p>
-                                                {% endif %}
-                                            {% else %}
-                                                <p class="card-text small text-danger mb-0">Not available</p>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                    <!-- Loading Spinner -->
+                    <div id="loading-spinner" class="text-center py-5" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
                         </div>
-                        {% endfor %}
+                        <p class="mt-2 text-muted">Loading RMA directories...</p>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Recent Logs -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 font-weight-bold text-info">
-                        <i class="fas fa-list me-2"></i>Recent RMA-Related Log Entries
-                    </h6>
-                    <small class="text-muted">Last 10 entries</small>
-                </div>
-                <div class="card-body">
-                    {% if recent_logs %}
-                        <div class="log-container">
-                            {% for log_entry in recent_logs %}
-                                <div class="log-entry mb-2">
-                                    <code class="d-block p-2 bg-light rounded text-dark">{{ log_entry }}</code>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <div class="text-center text-muted py-4">
-                            <i class="fas fa-file-alt fa-3x mb-3"></i>
-                            <p>No recent RMA logs available</p>
+                    <!-- Directory Table -->
+                    <div id="directory-content">
+                        {% if rma_directories %}
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="directories-table">
+                                    <thead>
+                                        <tr>
+                                            <th><i class="fas fa-folder me-1"></i>Directory</th>
+                                            <th><i class="fas fa-barcode me-1"></i>Base SN</th>
+                                            <th><i class="fas fa-hashtag me-1"></i>RMA Number</th>
+                                            <th><i class="fas fa-file me-1"></i>Files</th>
+                                            <th><i class="fas fa-hdd me-1"></i>Size</th>
+                                            <th><i class="fas fa-clock me-1"></i>Modified</th>
+                                            <th><i class="fas fa-cog me-1"></i>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="directories-tbody">
+                                        {% for rma_dir in rma_directories %}
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <i class="fas fa-folder text-warning me-2"></i>
+                                                        <span class="fw-bold">{{ rma_dir.name }}</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-info">{{ rma_dir.base_sn }}</span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-primary">{{ rma_dir.rma_number }}</span>
+                                                </td>
+                                                <td>
+                                                    <span class="text-muted">{{ rma_dir.file_count }}</span>
+                                                </td>
+                                                <td>
+                                                    <span class="text-muted">{{ rma_dir.total_size }}</span>
+                                                </td>
+                                                <td>
+                                                    <small class="text-muted">{{ rma_dir.mtime }}</small>
+                                                </td>
+                                                <td>
+                                                    <a href="{% url 'rma_log_browse' path=rma_dir.path %}" class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-folder-open me-1"></i>Browse
+                                                    </a>
+                                                    {% if rma_dir.error %}
+                                                        <span class="text-warning ms-2" title="{{ rma_dir.error }}">
+                                                            <i class="fas fa-exclamation-triangle"></i>
+                                                        </span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="text-center text-muted py-4" id="no-results">
+                                <i class="fas fa-folder-open fa-3x mb-3"></i>
+                                {% if search_query %}
+                                    <p>No RMA directories found matching "{{ search_query }}"</p>
+                                    <small>Try searching with a different Base SN or RMA Number</small>
+                                {% else %}
+                                    <p>No RMA directories found in /srv/rma</p>
+                                    <small>Looking for directories matching pattern: {base_sn}_{rma_number}</small>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Pagination Controls -->
+                    {% if paginator.num_pages > 1 %}
+                        <div class="d-flex justify-content-between align-items-center mt-4" id="pagination-container">
+                            <div>
+                                <small class="text-muted">
+                                    Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ filtered_count }} entries
+                                </small>
+                            </div>
+                            <nav aria-label="RMA directories pagination">
+                                <ul class="pagination pagination-sm mb-0">
+                                    {% if page_obj.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="#" data-page="1" onclick="loadPage(1); return false;">
+                                                <i class="fas fa-angle-double-left"></i>
+                                            </a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="#" data-page="{{ page_obj.previous_page_number }}" onclick="loadPage({{ page_obj.previous_page_number }}); return false;">
+                                                <i class="fas fa-angle-left"></i>
+                                            </a>
+                                        </li>
+                                    {% endif %}
+
+                                    {% for num in paginator.page_range %}
+                                        {% if page_obj.number == num %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ num }}</span>
+                                            </li>
+                                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="#" data-page="{{ num }}" onclick="loadPage({{ num }}); return false;">{{ num }}</a>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+
+                                    {% if page_obj.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="#" data-page="{{ page_obj.next_page_number }}" onclick="loadPage({{ page_obj.next_page_number }}); return false;">
+                                                <i class="fas fa-angle-right"></i>
+                                            </a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="#" data-page="{{ paginator.num_pages }}" onclick="loadPage({{ paginator.num_pages }}); return false;">
+                                                <i class="fas fa-angle-double-right"></i>
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
                         </div>
                     {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Log Instructions -->
-    <div class="row">
-        <div class="col-lg-6">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-warning">
-                        <i class="fas fa-info-circle me-2"></i>Log Monitoring Tips
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <ul class="mb-0">
-                        <li class="mb-2">RMA activities are logged to <code>/var/log/rma/</code> if available</li>
-                        <li class="mb-2">PXE boot events appear in <code>/var/log/pxe/</code> and system logs</li>
-                        <li class="mb-2">System-wide RMA events are recorded in <code>/var/log/syslog</code></li>
-                        <li class="mb-2">Use the refresh button to get the latest log entries</li>
-                        <li class="mb-0">Logs older than 30 days may be archived automatically</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-lg-6">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-success">
-                        <i class="fas fa-search me-2"></i>Search Keywords
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <p class="mb-2">Common terms to look for in RMA logs:</p>
-                    <div class="row">
-                        <div class="col-6">
-                            <ul class="small mb-0">
-                                <li><code>RMA</code> - RMA activities</li>
-                                <li><code>PXE</code> - Boot events</li>
-                                <li><code>DHCP</code> - Network assignment</li>
-                                <li><code>TFTP</code> - Boot file transfer</li>
-                            </ul>
-                        </div>
-                        <div class="col-6">
-                            <ul class="small mb-0">
-                                <li><code>ERROR</code> - Error conditions</li>
-                                <li><code>FAILED</code> - Failed operations</li>
-                                <li><code>SUCCESS</code> - Successful operations</li>
-                                <li><code>TIMEOUT</code> - Timeout events</li>
-                            </ul>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -169,62 +218,320 @@
         box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
     }
     
-    .border-left-success {
-        border-left: 0.25rem solid #10b981 !important;
-    }
-    
-    .border-left-warning {
-        border-left: 0.25rem solid #f59e0b !important;
-    }
-    
-    .border-left-danger {
-        border-left: 0.25rem solid #dc2626 !important;
-    }
-    
-    .log-container {
-        max-height: 500px;
-        overflow-y: auto;
-    }
-    
-    .log-entry code {
-        font-family: 'Courier New', monospace;
-        font-size: 0.875rem;
-        white-space: pre-wrap;
-        word-break: break-all;
-    }
-    
     .text-gray-800 {
         color: #1e293b !important;
     }
+    
+    .input-group .btn {
+        border-left: none;
+    }
+    
+    .input-group .form-control:focus {
+        box-shadow: none;
+        border-color: #86b7fe;
+    }
+    
+    .table th {
+        background-color: #f8f9fa;
+        border-top: none;
+        font-weight: 600;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: rgba(0, 0, 0, 0.03);
+    }
+    
+    .badge {
+        font-size: 0.75em;
+    }
+    
+    .spinner-border {
+        width: 3rem;
+        height: 3rem;
+    }
+    
+    .pagination .page-link {
+        color: #007bff;
+        border-color: #dee2e6;
+    }
+    
+    .pagination .page-item.active .page-link {
+        background-color: #007bff;
+        border-color: #007bff;
+    }
+    
+    .pagination .page-link:hover {
+        color: #0056b3;
+        background-color: #f8f9fa;
+        border-color: #dee2e6;
+    }
 </style>
-{% endblock %}
 
-{% block scripts %}
 <script>
-    // Auto-refresh logs every 30 seconds
-    setInterval(function() {
-        // Only auto-refresh if user hasn't been active for 10 seconds
-        if (document.hidden === false) {
-            const lastActivity = parseInt(localStorage.getItem('lastActivity') || '0');
-            const now = Date.now();
-            
-            if (now - lastActivity > 10000) { // 10 seconds
-                console.log('Auto-refreshing RMA logs...');
-                location.reload();
-            }
+let currentPage = {{ page_obj.number|default:1 }};
+let currentSearch = '{{ search_query|default:"" }}';
+let isLoading = false;
+
+// Function to load a specific page
+function loadPage(page) {
+    if (isLoading) return;
+    
+    isLoading = true;
+    currentPage = page;
+    
+    // Show loading spinner
+    document.getElementById('loading-spinner').style.display = 'block';
+    document.getElementById('directory-content').style.display = 'none';
+    document.getElementById('pagination-container')?.style.setProperty('display', 'none');
+    
+    // Prepare URL parameters
+    const params = new URLSearchParams();
+    params.append('page', page);
+    if (currentSearch) {
+        params.append('search', currentSearch);
+    }
+    
+    // Make AJAX request
+    fetch(`{% url 'rma_log' %}?${params}`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json',
         }
-    }, 30000); // 30 seconds
+    })
+    .then(response => response.json())
+    .then(data => {
+        updateDirectoriesTable(data);
+        updatePaginationInfo(data);
+        updatePaginationControls(data);
+        
+        // Hide loading spinner
+        document.getElementById('loading-spinner').style.display = 'none';
+        document.getElementById('directory-content').style.display = 'block';
+        
+        isLoading = false;
+    })
+    .catch(error => {
+        console.error('Error loading page:', error);
+        // Hide loading spinner and show error
+        document.getElementById('loading-spinner').style.display = 'none';
+        document.getElementById('directory-content').style.display = 'block';
+        isLoading = false;
+    });
+}
+
+// Function to update the directories table
+function updateDirectoriesTable(data) {
+    const tbody = document.getElementById('directories-tbody');
+    const noResults = document.getElementById('no-results');
     
-    // Track user activity
-    document.addEventListener('click', function() {
-        localStorage.setItem('lastActivity', Date.now().toString());
+    if (data.directories.length === 0) {
+        // Show no results message
+        if (tbody) tbody.innerHTML = '';
+        if (!noResults) {
+            const content = document.getElementById('directory-content');
+            content.innerHTML = `
+                <div class="text-center text-muted py-4" id="no-results">
+                    <i class="fas fa-folder-open fa-3x mb-3"></i>
+                    <p>No RMA directories found${currentSearch ? ` matching "${currentSearch}"` : ''}</p>
+                    <small>${currentSearch ? 'Try searching with a different Base SN or RMA Number' : 'Looking for directories matching pattern: {base_sn}_{rma_number}'}</small>
+                </div>
+            `;
+        }
+        return;
+    }
+    
+    // Create table if it doesn't exist
+    if (!tbody) {
+        const content = document.getElementById('directory-content');
+        content.innerHTML = `
+            <div class="table-responsive">
+                <table class="table table-hover" id="directories-table">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-folder me-1"></i>Directory</th>
+                            <th><i class="fas fa-barcode me-1"></i>Base SN</th>
+                            <th><i class="fas fa-hashtag me-1"></i>RMA Number</th>
+                            <th><i class="fas fa-file me-1"></i>Files</th>
+                            <th><i class="fas fa-hdd me-1"></i>Size</th>
+                            <th><i class="fas fa-clock me-1"></i>Modified</th>
+                            <th><i class="fas fa-cog me-1"></i>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="directories-tbody"></tbody>
+                </table>
+            </div>
+        `;
+    }
+    
+    // Update table content
+    const newTbody = document.getElementById('directories-tbody');
+    newTbody.innerHTML = '';
+    
+    data.directories.forEach(dir => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-folder text-warning me-2"></i>
+                    <span class="fw-bold">${dir.name}</span>
+                </div>
+            </td>
+            <td>
+                <span class="badge bg-info">${dir.base_sn}</span>
+            </td>
+            <td>
+                <span class="badge bg-primary">${dir.rma_number}</span>
+            </td>
+            <td>
+                <span class="text-muted">${dir.file_count}</span>
+            </td>
+            <td>
+                <span class="text-muted">${dir.total_size}</span>
+            </td>
+            <td>
+                <small class="text-muted">${dir.mtime}</small>
+            </td>
+            <td>
+                <a href="/pxe/rma/logs/${dir.path}/" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-folder-open me-1"></i>Browse
+                </a>
+                ${dir.error ? `<span class="text-warning ms-2" title="${dir.error}"><i class="fas fa-exclamation-triangle"></i></span>` : ''}
+            </td>
+        `;
+        newTbody.appendChild(row);
+    });
+}
+
+// Function to update pagination info
+function updatePaginationInfo(data) {
+    // Update search info
+    const searchInfoElements = document.querySelectorAll('.search-info');
+    searchInfoElements.forEach(element => {
+        if (currentSearch) {
+            element.textContent = `Found ${data.filtered_count} of ${data.total_directories} directories matching "${currentSearch}"`;
+        } else {
+            element.textContent = `Showing ${data.total_directories} RMA directories`;
+        }
     });
     
-    document.addEventListener('keypress', function() {
-        localStorage.setItem('lastActivity', Date.now().toString());
+    // Update page info in header
+    const pageInfoElements = document.querySelectorAll('.page-info');
+    pageInfoElements.forEach(element => {
+        if (data.total_pages > 1) {
+            element.textContent = `Page ${data.current_page} of ${data.total_pages} (${data.start_index}-${data.end_index} of ${data.filtered_count})`;
+        } else {
+            element.textContent = '';
+        }
+    });
+}
+
+// Function to update pagination controls
+function updatePaginationControls(data) {
+    let paginationContainer = document.getElementById('pagination-container');
+    
+    if (data.total_pages <= 1) {
+        if (paginationContainer) {
+            paginationContainer.remove();
+        }
+        return;
+    }
+    
+    if (!paginationContainer) {
+        paginationContainer = document.createElement('div');
+        paginationContainer.id = 'pagination-container';
+        paginationContainer.className = 'd-flex justify-content-between align-items-center mt-4';
+        document.querySelector('.card-body').appendChild(paginationContainer);
+    }
+    
+    // Build pagination HTML
+    let paginationHTML = `
+        <div>
+            <small class="text-muted">
+                Showing ${data.start_index}-${data.end_index} of ${data.filtered_count} entries
+            </small>
+        </div>
+        <nav aria-label="RMA directories pagination">
+            <ul class="pagination pagination-sm mb-0">
+    `;
+    
+    // Previous buttons
+    if (data.has_previous) {
+        paginationHTML += `
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="loadPage(1); return false;">
+                    <i class="fas fa-angle-double-left"></i>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="loadPage(${data.current_page - 1}); return false;">
+                    <i class="fas fa-angle-left"></i>
+                </a>
+            </li>
+        `;
+    }
+    
+    // Page numbers (show 5 pages around current)
+    const startPage = Math.max(1, data.current_page - 2);
+    const endPage = Math.min(data.total_pages, data.current_page + 2);
+    
+    for (let i = startPage; i <= endPage; i++) {
+        if (i === data.current_page) {
+            paginationHTML += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
+        } else {
+            paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="loadPage(${i}); return false;">${i}</a></li>`;
+        }
+    }
+    
+    // Next buttons
+    if (data.has_next) {
+        paginationHTML += `
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="loadPage(${data.current_page + 1}); return false;">
+                    <i class="fas fa-angle-right"></i>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="loadPage(${data.total_pages}); return false;">
+                    <i class="fas fa-angle-double-right"></i>
+                </a>
+            </li>
+        `;
+    }
+    
+    paginationHTML += '</ul></nav>';
+    paginationContainer.innerHTML = paginationHTML;
+}
+
+// Handle search form submission with AJAX
+document.addEventListener('DOMContentLoaded', function() {
+    const searchForm = document.querySelector('form');
+    
+    searchForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const searchInput = document.querySelector('input[name="search"]');
+        currentSearch = searchInput.value.trim();
+        currentPage = 1; // Reset to first page on new search
+        
+        loadPage(1);
     });
     
-    // Initialize activity tracker
-    localStorage.setItem('lastActivity', Date.now().toString());
+    // Handle search input changes with debounce
+    const searchInput = document.querySelector('input[name="search"]');
+    let searchTimeout;
+    
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            const newSearch = this.value.trim();
+            if (newSearch !== currentSearch) {
+                currentSearch = newSearch;
+                currentPage = 1;
+                loadPage(1);
+            }
+        }, 500); // 500ms debounce
+    });
+});
 </script>
 {% endblock %}
