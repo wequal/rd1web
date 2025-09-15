@@ -1,34 +1,23 @@
-# RMA Log Page with Pagination and Lazy Loading
+# Task: Create Remote Dict Configuration File
 
-## Task: Add pagination and lazy loading to RMA directories
+## Analysis
+Both `rma_pxe.py` and `pxe_input.py` contain hardcoded `remote_dict` dictionaries with fabric Connection objects for remote server access:
 
-### Background:
-- RMA log page simplified to show only directories with search functionality
-- User requested pagination for better performance with many directories
-- Need lazy loading to improve page responsiveness
+- **rma_pxe.py**: Contains connection to RMA server (172.31.35.191)
+- **pxe_input.py**: Contains connections to multiple locations (us_b3, us_b1, tw) with different IP addresses
 
-### Tasks:
-- [x] Add pagination support for RMA directories listing
-- [x] Implement lazy loading for directory table
-- [x] Update RMA logs view to support pagination (20 items per page)
-- [x] Update template with pagination controls
-- [x] Add AJAX support for lazy loading
-- [x] Add loading spinner for better UX
-- [x] Implement debounced search (500ms delay)
-- [x] Add proper error handling for AJAX requests
-- [x] Add download button next to view button in directory browser
-- [x] Implement download functionality with ?download=1 parameter
-- [x] Style button groups for better UI presentation
+## Plan
+Create a centralized configuration file to store remote connection information that can be shared between both files.
 
-### Implementation Details:
-- Update `check_rma_logs_availability()` to scan /srv/rma for directories matching pattern {base_sn}_{rma_number}
-- Modify `get_recent_rma_logs()` to read from RMA-specific directories
-- Use existing log_view pattern: add RMA-specific URL routing like 'rma/logs/<path:path>/'
-- Reuse existing view_file functionality for file viewing and downloading
-- Update template to show RMA directories as browsable items using existing log browser UI
-- Leverage existing file type detection and display capabilities from log_view.py
+## Tasks
+- [x] Create `/home/devin/rd1web-dev/rd1web/pxe/remote_config.py` file to store all remote connection configurations
+- [x] Move remote_dict definitions from both files into the new configuration file
+- [x] Update `rma_pxe.py` to import and use the centralized remote_dict
+- [x] Update `pxe_input.py` to import and use the centralized remote_dict
+- [x] Test that both files still work correctly after the changes
 
-### Minimal Impact:
-- Only changing log source location and structure
-- No changes to existing UI layout
-- Maintaining backward compatibility for error cases
+## Benefits
+- Centralized configuration management
+- Easier maintenance of connection details
+- No code duplication
+- Single source of truth for remote connections

@@ -285,6 +285,12 @@ class OptimizedUserActivityMiddleware:
                 action = 'system_view'
             elif path.startswith('/ipmitool'):
                 action = 'ipmitool_use'
+            elif path.startswith('/rma/pxe'):
+                action = 'rma_pxe'
+            elif path.startswith('/rma/logs'):
+                action = 'rma_log_view'
+            elif path.startswith('/rma/view'):
+                action = 'rma_file_view'
             elif path.startswith('/logs'):
                 action = 'log_view'
             elif path.startswith('/view'):
@@ -319,6 +325,9 @@ class OptimizedUserActivityMiddleware:
             'kvm_access': 'User accessed KVM',
             'sol_access': 'User accessed SOL',
             'mac_ip_view': 'User viewed MAC-IP results',
+            'rma_pxe': 'User accessed RMA PXE configuration',
+            'rma_log_view': 'User viewed RMA logs',
+            'rma_file_view': 'User viewed RMA file',
             'page_view': f'User visited {path}'
         }
         return descriptions.get(action, f'User visited {path}')

@@ -55,6 +55,10 @@ class UserActivity(models.Model):
         ('password_change', 'Password Change'),
         ('profile_view', 'Profile View'),
         ('admin_access', 'Admin Panel Access'),
+        ('rma_pxe', 'RMA PXE Configuration'),
+        ('rma_log_view', 'RMA Log View'),
+        ('rma_file_view', 'RMA File View'),
+        ('mac_ip_view', 'MAC-IP Scan View'),
     ]
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activities', null=True, blank=True)

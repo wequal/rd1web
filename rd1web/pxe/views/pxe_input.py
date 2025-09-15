@@ -6,12 +6,7 @@ from ..models import PxeEntry
 import os
 from fabric import Connection
 import asyncio
-
-remote_dict = {
-    'us_b3': Connection(host="root@172.31.60.129", connect_kwargs={"password": "superrd1"}),
-    'us_b1': Connection(host="root@172.31.58.142", connect_kwargs={"password": "superrd1"}),
-    'tw': Connection(host="root@10.135.179.104", connect_kwargs={"password": "superrd1"})
-}
+from ..remote_config import remote_dict
 
 @login_required
 def pxe_input(request):

@@ -52,6 +52,14 @@
             display: flex;
             align-items: center;
             padding: 0 1.5rem;
+            white-space: nowrap;
+            margin-left: 0;
+        }
+
+        @media (max-width: 992px) {
+            .navbar-brand {
+                margin-left: 3rem;
+            }
         }
 
         .navbar-brand i {
@@ -59,6 +67,24 @@
             padding: 8px;
             border-radius: 8px;
             margin-right: 12px;
+        }
+
+        #sidebarToggle {
+            border: none !important;
+            background: none !important;
+            font-size: 1.2rem;
+            padding: 0.5rem !important;
+            margin-right: 0.75rem !important;
+            position: fixed;
+            left: 0.5rem;
+            top: 0.5rem;
+            z-index: 1031;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.2) !important;
+        }
+
+        #sidebarToggle:hover {
+            background: rgba(0, 0, 0, 0.4) !important;
         }
 
         .sb-sidenav {
@@ -71,6 +97,7 @@
             z-index: 1020;
             box-shadow: 4px 0 6px -1px rgba(0, 0, 0, 0.1);
             border-right: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s ease-in-out;
         }
 
         .sb-sidenav-menu {
@@ -225,6 +252,8 @@
             margin-left: var(--sidebar-width);
             padding-top: 64px;
             min-height: 100vh;
+            transition: margin-left 0.3s ease-in-out;
+            position: relative;
         }
 
         main {
@@ -250,10 +279,10 @@
         }
 
         /* Responsive */
-        @media (max-width: 768px) {
+        @media (max-width: 992px) {
             .sb-sidenav {
                 transform: translateX(-100%);
-                transition: transform 0.3s ease;
+                z-index: 1050;
             }
             
             .sb-sidenav.show {
@@ -261,7 +290,88 @@
             }
             
             #layoutSidenav_content {
-                margin-left: 0;
+                margin-left: 0 !important;
+            }
+            
+            main {
+                padding: 1rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            main {
+                padding: 0.75rem;
+            }
+            
+            .navbar-brand {
+                font-size: 1.2rem;
+                padding: 0 0.75rem;
+                margin-left: 2.5rem !important;
+            }
+            
+            .navbar-brand img {
+                height: 32px !important;
+                margin-right: 8px !important;
+            }
+
+            #sidebarToggle {
+                font-size: 1.1rem;
+                padding: 0.4rem !important;
+                left: 0.4rem;
+                top: 0.4rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            main {
+                padding: 0.5rem;
+            }
+            
+            .navbar-brand {
+                font-size: 0.9rem !important;
+                padding: 0 0.5rem;
+                margin-left: 2.2rem !important;
+            }
+            
+            .navbar-brand img {
+                height: 28px !important;
+                margin-right: 6px !important;
+            }
+
+            #sidebarToggle {
+                font-size: 1rem;
+                padding: 0.3rem !important;
+                left: 0.3rem;
+                top: 0.3rem;
+            }
+            
+            .sb-sidenav {
+                width: 100vw;
+            }
+        }
+
+        /* Overlay for mobile */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 64px;
+            left: 0;
+            width: 100%;
+            height: calc(100vh - 64px);
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1040;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .sidebar-overlay.show {
+            display: block;
+            opacity: 1;
+        }
+
+        @media (min-width: 993px) {
+            .sidebar-overlay {
+                display: none !important;
             }
         }
 
@@ -280,13 +390,13 @@
 </head>
 <body>
     <nav class="sb-topnav navbar navbar-expand navbar-dark">
+        <button class="btn btn-link btn-sm text-white d-lg-none" id="sidebarToggle">
+            <i class="fas fa-bars"></i>
+        </button>
         <a class="navbar-brand" href="{% url 'index' %}">
             <img src="{% static 'assets/img/Super_Micro_Computer_Logo.svg.png' %}" alt="Supermicro" style="height: 40px; width: auto; margin-right: 12px;">
             RD1 PXE
         </a>
-        <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0 text-white" id="sidebarToggle">
-            <i class="fas fa-bars"></i>
-        </button>
         
         <!-- User Authentication Navigation -->
         {% if user.is_authenticated %}
@@ -316,6 +426,8 @@
         <div id="layoutSidenav_nav">
             {% include 'partials/sidebar.html' %}
         </div>
+        
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
         <div id="layoutSidenav_content">
             <main>
@@ -328,17 +440,57 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{% static 'js/scripts.js' %}"></script>
     <script>
-        // Sidebar toggle functionality
-        document.getElementById('sidebarToggle').addEventListener('click', function() {
-            const sidebar = document.querySelector('.sb-sidenav');
-            sidebar.classList.toggle('show');
-        });
-
-        // Set active nav link
+        // Responsive sidebar toggle functionality
         document.addEventListener('DOMContentLoaded', function() {
-            const currentPath = window.location.pathname;
-            const navLinks = document.querySelectorAll('.nav-link');
+            const sidebar = document.querySelector('.sb-sidenav');
+            const overlay = document.getElementById('sidebarOverlay');
+            const sidebarToggle = document.getElementById('sidebarToggle');
             
+            function toggleSidebar() {
+                sidebar.classList.toggle('show');
+                
+                // Show/hide overlay on mobile
+                if (window.innerWidth <= 992) {
+                    overlay.classList.toggle('show');
+                }
+            }
+            
+            function closeSidebar() {
+                sidebar.classList.remove('show');
+                overlay.classList.remove('show');
+            }
+            
+            // Sidebar toggle button
+            sidebarToggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                toggleSidebar();
+            });
+            
+            // Close sidebar when clicking overlay
+            overlay.addEventListener('click', function() {
+                closeSidebar();
+            });
+            
+            // Close sidebar on window resize if switching to desktop
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 992) {
+                    overlay.classList.remove('show');
+                    // Don't auto-close sidebar on desktop
+                }
+            });
+            
+            // Close sidebar when clicking nav links on mobile
+            const navLinks = document.querySelectorAll('.sb-sidenav .nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth <= 992) {
+                        closeSidebar();
+                    }
+                });
+            });
+
+            // Set active nav link
+            const currentPath = window.location.pathname;
             navLinks.forEach(link => {
                 if (link.getAttribute('href') === currentPath) {
                     link.classList.add('active');

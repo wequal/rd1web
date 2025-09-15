@@ -126,6 +126,65 @@
 
             </div>
         </section>
+
+        <!-- RMA Management Section -->
+        <section class="content-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <i class="fas fa-exchange-alt"></i>
+                </div>
+                <div class="section-title">
+                    <h2>RMA Management</h2>
+                    <p>Return Merchandise Authorization management and tracking</p>
+                </div>
+            </div>
+            
+            <div class="cards-grid two-column">
+                <!-- RMA PXE -->
+                <div class="feature-card">
+                    <div class="card-icon danger">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>RMA PXE Configuration</h3>
+                        <p>Configure PXE boot settings specifically for RMA systems. Automated deployment and testing for return merchandise with specialized test parameters and diagnostic procedures.</p>
+                        <div class="card-tags">
+                            <span class="tag danger">RMA Testing</span>
+                            <span class="tag warning">Diagnostics</span>
+                            <span class="tag secondary">Automated</span>
+                        </div>
+                    </div>
+                    <div class="card-action">
+                        <a href="{% url 'rma_pxe' %}" class="btn btn-primary">
+                            <i class="fas fa-cog"></i>
+                            Configure RMA PXE
+                        </a>
+                    </div>
+                </div>
+
+                <!-- RMA Logs -->
+                <div class="feature-card">
+                    <div class="card-icon warning">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>RMA Logs & Reports</h3>
+                        <p>View and analyze RMA system logs, test results, and diagnostic reports. Comprehensive tracking of RMA procedures and system testing outcomes for quality assurance.</p>
+                        <div class="card-tags">
+                            <span class="tag info">Log Analysis</span>
+                            <span class="tag success">Reports</span>
+                            <span class="tag primary">Tracking</span>
+                        </div>
+                    </div>
+                    <div class="card-action">
+                        <a href="{% url 'rma_log' %}" class="btn btn-primary">
+                            <i class="fas fa-search"></i>
+                            View RMA Logs
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
 </div>
 
@@ -439,6 +498,11 @@
 .tag.dark {
     background: rgba(45, 55, 72, 0.1);
     color: #2d3748;
+}
+
+.tag.danger {
+    background: rgba(245, 101, 101, 0.1);
+    color: #f56565;
 }
 
 /* Card Actions */

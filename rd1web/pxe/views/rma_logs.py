@@ -2,9 +2,11 @@ from django.shortcuts import render
 from django.http import HttpResponse, Http404, FileResponse, JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.template import Template, Context
 from urllib.parse import unquote
 from datetime import datetime
 import mimetypes
+import csv
 import os
 import logging
 import re
@@ -140,8 +142,8 @@ def get_rma_directories():
             return rma_directories
         
         # Pattern to match {base_sn}_{rma_number}
-        # base_sn could be alphanumeric, rma_number should be numeric
-        pattern = re.compile(r'^(.+)_([0-9]+)$')
+        # base_sn could be alphanumeric, rma_number can be alphanumeric
+        pattern = re.compile(r'^(.+)_(.+)$')
         
         for item in os.listdir(RMA_BASE_DIR):
             full_path = os.path.join(RMA_BASE_DIR, item)
@@ -194,7 +196,15 @@ def get_rma_directories():
                         })
         
         # Sort by RMA number (newest first), then by base_sn
-        rma_directories.sort(key=lambda x: (int(x['rma_number']), x['base_sn']), reverse=True)
+        # Handle alphanumeric rma_numbers by trying to convert to int, fallback to string
+        def sort_key(x):
+            try:
+                return (int(x['rma_number']), x['base_sn'])
+            except ValueError:
+                # If rma_number is not numeric, sort alphabetically
+                return (x['rma_number'], x['base_sn'])
+        
+        rma_directories.sort(key=sort_key, reverse=True)
         
     except Exception as e:
         logger.error(f"Error scanning RMA directories: {e}")
@@ -336,6 +346,179 @@ def rma_log_browser(request, path=""):
         "dir_count": dir_count
     })
 
+def render_csv_as_html(file_path, filename):
+    """Convert CSV file to HTML table display"""
+    try:
+        # Try to detect CSV format and read the file
+        with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+            # Sample the first few lines to detect delimiter
+            sample = f.read(1024)
+            f.seek(0)
+            
+            # Try to detect delimiter
+            sniffer = csv.Sniffer()
+            delimiter = ','  # Default to comma
+            
+            try:
+                dialect = sniffer.sniff(sample, delimiters=',;\t|')
+                delimiter = dialect.delimiter
+            except:
+                # If sniffing fails, try to guess based on file extension and content
+                if filename.lower().endswith('.tsv'):
+                    delimiter = '\t'
+                elif '\t' in sample and sample.count('\t') > sample.count(','):
+                    delimiter = '\t'
+                elif ';' in sample and sample.count(';') > sample.count(','):
+                    delimiter = ';'
+                elif '|' in sample and sample.count('|') > sample.count(','):
+                    delimiter = '|'
+            
+            # Read CSV data
+            reader = csv.reader(f, delimiter=delimiter)
+            rows = list(reader)
+        
+        if not rows:
+            return "<p>Empty CSV file</p>"
+        
+        # Build HTML table
+        html_template = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>{{ filename }}</title>
+            <meta charset="utf-8">
+            <style>
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                    margin: 20px;
+                    background-color: #f8f9fa;
+                }
+                .container {
+                    max-width: 100%;
+                    background: white;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    overflow: hidden;
+                }
+                .header {
+                    background: #007bff;
+                    color: white;
+                    padding: 15px 20px;
+                    margin: 0;
+                }
+                .table-container {
+                    overflow-x: auto;
+                    max-height: 80vh;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 13px;
+                }
+                th {
+                    background-color: #f8f9fa;
+                    border: 1px solid #dee2e6;
+                    padding: 8px 12px;
+                    text-align: left;
+                    font-weight: 600;
+                    position: sticky;
+                    top: 0;
+                    z-index: 10;
+                }
+                td {
+                    border: 1px solid #dee2e6;
+                    padding: 6px 12px;
+                    white-space: nowrap;
+                }
+                tr:nth-child(even) {
+                    background-color: #f8f9fa;
+                }
+                tr:hover {
+                    background-color: #e3f2fd;
+                }
+                .info {
+                    padding: 15px 20px;
+                    background: #f8f9fa;
+                    border-top: 1px solid #dee2e6;
+                    font-size: 14px;
+                    color: #6c757d;
+                }
+                .download-link {
+                    display: inline-block;
+                    margin-top: 10px;
+                    padding: 8px 16px;
+                    background: #28a745;
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 4px;
+                    font-size: 14px;
+                }
+                .download-link:hover {
+                    background: #218838;
+                    color: white;
+                    text-decoration: none;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1 class="header">{{ filename }}</h1>
+                <div class="table-container">
+                    <table>
+                        {% if header_row %}
+                        <thead>
+                            <tr>
+                                {% for header in header_row %}
+                                <th>{{ header|default:"Column "|add:forloop.counter }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        {% endif %}
+                        <tbody>
+                            {% for row in data_rows %}
+                            <tr>
+                                {% for cell in row %}
+                                <td>{{ cell|default:"" }}</td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="info">
+                    <strong>File Info:</strong> {{ row_count }} rows, {{ col_count }} columns
+                    <br>
+                    <a href="?download=1" class="download-link">Download Original CSV</a>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Prepare template context
+        header_row = rows[0] if rows else []
+        data_rows = rows[1:] if len(rows) > 1 else []
+        
+        # If first row doesn't look like headers, treat it as data
+        if header_row and all(cell.isdigit() or not cell.strip() for cell in header_row):
+            data_rows = rows
+            header_row = None
+        
+        context = {
+            'filename': filename,
+            'header_row': header_row,
+            'data_rows': data_rows,
+            'row_count': len(rows),
+            'col_count': len(rows[0]) if rows else 0,
+        }
+        
+        # Render template
+        template = Template(html_template)
+        return template.render(Context(context))
+        
+    except Exception as e:
+        return f"<p>Error reading CSV file: {str(e)}</p>"
+
 @login_required
 def rma_view_file(request, path):
     """
@@ -366,6 +549,25 @@ def rma_view_file(request, path):
     _, ext = os.path.splitext(full_path)
     ext = ext.lower()
     filename = os.path.basename(full_path)
+
+    # Handle CSV and TSV files specially
+    if ext in ['.csv', '.tsv']:
+        # Check if user wants to download the original file
+        if request.GET.get('download') == '1':
+            # Serve as download
+            try:
+                file = open(full_path, 'rb')
+                content_type = 'text/csv' if ext == '.csv' else 'text/tab-separated-values'
+                response = FileResponse(file, content_type=content_type, as_attachment=True, filename=filename)
+                return response
+            except Exception as e:
+                raise Http404(f"Cannot read file: {str(e)}")
+        else:
+            # Display as HTML table
+            html_content = render_csv_as_html(full_path, filename)
+            response = HttpResponse(html_content, content_type='text/html; charset=utf-8')
+            response['Cache-Control'] = 'no-cache'
+            return response
 
     # Determine content type
     content_type = None

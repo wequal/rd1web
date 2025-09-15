@@ -6,11 +6,7 @@ import re
 from fabric import Connection
 from django.contrib.auth.decorators import login_required
 from ..models import PxeEntry
-
-remote_dict = {
-    'rma': Connection(host="root@172.31.35.191", connect_kwargs={"password": "superrd1"}),
-
-}
+from ..remote_config import remote_dict
 
 
 @login_required
