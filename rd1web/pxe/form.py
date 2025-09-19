@@ -254,11 +254,35 @@ class RmaForm(forms.Form):
     base_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Base SN')
     rma_number=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='RMA Number')
     mac=forms.CharField(widget=forms.Textarea(attrs={'class':'form-control','style': 'width: 500px;',}),label='MAC')
-    image=forms.ChoiceField(choices=[('ubuntu2204-arm64-rma','Ubuntu2204-ARM64'),('ubuntu2204-x86-rma','Ubuntu2204-X86')],label='Image')
+    image=forms.ChoiceField(choices=[('ubuntu2204-x86-rma','Ubuntu2204-X86'),('ubuntu2204-arm64-rma','Ubuntu2204-ARM64'),],label='Image')
     remove=forms.BooleanField(required=False,label="Remove",initial=False)
     check=forms.BooleanField(required=False,label="Check",initial=False)
-    tests=forms.ChoiceField(choices=[('generic','Generic'),('coreweave','Coreweave'),],label='Tests')
-    cooling=forms.ChoiceField(choices=[('lc','LC'),('ac','AC')],label='Cooling')
+    tests = forms.MultipleChoiceField(
+    choices=[
+        ('default', 'Default'),
+        ('nvidia-smi-q', 'Nvidia SMI Q'),
+        ('dcgm', 'DCGM'),
+        ('fd2', 'FD2'),
+    ],
+    widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
+    label='Tests',
+    required=False
+    )
+    
+    def clean_tests(self):
+        """Validate that default test is not combined with specific tests"""
+        tests = self.cleaned_data.get('tests', [])
+        
+        if 'default' in tests:
+            # Check if any specific tests are also selected
+            specific_tests = [test for test in tests if test != 'default']
+            if specific_tests:
+                raise ValidationError(
+                    "Default test cannot be combined with specific tests (Nvidia SMI Q, DCGM, FD2). "
+                    "Please select either Default OR any combination of the specific tests."
+                )
+        
+        return tests
 
 
         

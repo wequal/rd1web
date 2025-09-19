@@ -108,10 +108,43 @@
 
                         <!-- Tests Selection -->
                         <div class="mb-4">
-                            <label for="{{ form.tests.id_for_label }}" class="form-label fw-bold">
+                            <label class="form-label fw-bold">
                                 <i class="fas fa-vial me-2 text-danger"></i>{{ form.tests.label }}
                             </label>
-                            {{ form.tests }}
+                            <div id="tests-container" class="row">
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" name="tests" value="default" id="id_tests_0">
+                                        <label class="form-check-label" for="id_tests_0">
+                                            <i class="fas fa-star me-1 text-warning"></i>Default
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" name="tests" value="nvidia-smi-q" id="id_tests_1">
+                                        <label class="form-check-label" for="id_tests_1">
+                                            <i class="fas fa-microchip me-1 text-success"></i>Nvidia SMI Q
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" name="tests" value="dcgm" id="id_tests_2">
+                                        <label class="form-check-label" for="id_tests_2">
+                                            <i class="fas fa-chart-line me-1 text-info"></i>DCGM
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" name="tests" value="fd2" id="id_tests_3">
+                                        <label class="form-check-label" for="id_tests_3">
+                                            <i class="fas fa-cogs me-1 text-primary"></i>FD2
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                             {% if form.tests.errors %}
                                 <div class="text-danger mt-1">
                                     {% for error in form.tests.errors %}
@@ -119,28 +152,14 @@
                                     {% endfor %}
                                 </div>
                             {% endif %}
-                            <small class="form-text text-muted">
+                            <div id="tests-validation-message" class="text-warning mt-2" style="display: none;">
+                                <small><i class="fas fa-exclamation-triangle me-1"></i>
+                                    You can select either 'Default' test OR any combination of 'Nvidia SMI Q', 'DCGM', and 'FD2', but 'Default' cannot be combined with other tests.
+                                </small>
+                            </div>
+                            <small class="form-text text-muted mt-2">
                                 <i class="fas fa-info-circle me-1"></i>
-                                Select the test suite to run for RMA validation.
-                            </small>
-                        </div>
-
-                        <!-- Cooling Selection -->
-                        <div class="mb-4">
-                            <label for="{{ form.cooling.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas fa-thermometer-half me-2 text-info"></i>{{ form.cooling.label }}
-                            </label>
-                            {{ form.cooling }}
-                            {% if form.cooling.errors %}
-                                <div class="text-danger mt-1">
-                                    {% for error in form.cooling.errors %}
-                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                            <small class="form-text text-muted">
-                                <i class="fas fa-info-circle me-1"></i>
-                                Select the cooling type for the RMA system (LC - Liquid Cooling, AC - Air Cooling).
+                                Select either Default test OR any combination of specific tests (Nvidia SMI Q, DCGM, FD2). Default cannot be combined with others.
                             </small>
                         </div>
 
@@ -314,6 +333,20 @@
     .shadow {
         box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
     }
+    
+    /* Tests container styling */
+    #tests-container .form-check {
+        margin-bottom: 0.5rem;
+    }
+    
+    #tests-container .form-check-label {
+        cursor: pointer;
+        font-weight: 500;
+    }
+    
+    #tests-container .form-check-input {
+        margin-top: 0.25rem;
+    }
 </style>
 {% endblock %}
 
@@ -340,7 +373,68 @@
             });
         }
         
-        // Form validation
+        // Tests selection validation logic
+        const testsContainer = document.getElementById('tests-container');
+        const testsValidationMessage = document.getElementById('tests-validation-message');
+        
+        if (testsContainer) {
+            // Find specific test checkboxes by their IDs
+            const defaultCheckbox = document.getElementById('id_tests_0');
+            const nvidiaCheckbox = document.getElementById('id_tests_1');
+            const dcgmCheckbox = document.getElementById('id_tests_2');
+            const fd2Checkbox = document.getElementById('id_tests_3');
+            
+            const otherCheckboxes = [nvidiaCheckbox, dcgmCheckbox, fd2Checkbox].filter(cb => cb !== null);
+            const testCheckboxes = [defaultCheckbox, ...otherCheckboxes].filter(cb => cb !== null);
+            
+            // Function to validate test selections
+            function validateTestSelections() {
+                const defaultSelected = defaultCheckbox && defaultCheckbox.checked;
+                const otherSelected = otherCheckboxes.some(cb => cb.checked);
+                
+                // If both default and others are selected, show warning and prevent submission
+                if (defaultSelected && otherSelected) {
+                    testsValidationMessage.style.display = 'block';
+                    return false;
+                } else {
+                    testsValidationMessage.style.display = 'none';
+                    return true;
+                }
+            }
+            
+            // Function to handle checkbox changes
+            function handleTestSelection(changedCheckbox) {
+                const isDefault = changedCheckbox === defaultCheckbox;
+                
+                if (changedCheckbox.checked) {
+                    if (isDefault) {
+                        // If default is selected, uncheck all others
+                        otherCheckboxes.forEach(function(cb) {
+                            cb.checked = false;
+                        });
+                    } else {
+                        // If any other test is selected, uncheck default
+                        if (defaultCheckbox) {
+                            defaultCheckbox.checked = false;
+                        }
+                    }
+                }
+                
+                validateTestSelections();
+            }
+            
+            // Add event listeners to all test checkboxes
+            testCheckboxes.forEach(function(checkbox) {
+                checkbox.addEventListener('change', function() {
+                    handleTestSelection(this);
+                });
+            });
+            
+            // Initial validation
+            validateTestSelections();
+        }
+        
+        // Enhanced form validation
         form.addEventListener('submit', function(e) {
             const baseSn = document.getElementById('{{ form.base_sn.id_for_label }}').value.trim();
             const rmaNumber = document.getElementById('{{ form.rma_number.id_for_label }}').value.trim();
@@ -360,6 +454,13 @@
             
             if (!macAddresses) {
                 alert('At least one MAC address is required');
+                e.preventDefault();
+                return;
+            }
+            
+            // Validate test selections
+            if (defaultCheckbox && !validateTestSelections()) {
+                alert('Invalid test selection: You cannot combine Default test with other specific tests (Nvidia SMI Q, DCGM, FD2).');
                 e.preventDefault();
                 return;
             }

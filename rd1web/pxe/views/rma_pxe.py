@@ -18,8 +18,8 @@ def rma_pxe(request):
             base_sn = bound_form.cleaned_data.get('base_sn', '')
             rma_number = bound_form.cleaned_data.get('rma_number', '')
             mac= [x.strip().replace(":","").replace("-","").lower() for x in bound_form.cleaned_data['mac'].splitlines() if x!='']
-            tests = bound_form.cleaned_data.get('tests', '')
-            cooling = bound_form.cleaned_data.get('cooling', '')
+            tests = bound_form.cleaned_data.get('tests', [])
+            tests = " ".join(tests) if tests else " "
             image = bound_form.cleaned_data.get('image', '')
             remove=bound_form.cleaned_data.get('remove', False)
             check=bound_form.cleaned_data.get('check', False)
@@ -54,8 +54,8 @@ def rma_pxe(request):
                         defaults={'parameters': {'base_sn': base_sn, 'rma_number': rma_number, 'tests': tests},'image':image},
                     )
                     action = "Created" if created else "Updated"
-                    result['actions'].append(f"{action} entry for MAC: {x} | Image: {image} | Parameters: base_sn={base_sn}, rma_number={rma_number}, tests={tests}, cooling={cooling}")
-                    remote_dict['rma'].run(f"/srv/share/scripts/rma_pxe_generation {x} {image} {base_sn} {rma_number} {tests} {cooling}")
+                    result['actions'].append(f"{action} entry for MAC: {x} | Image: {image} | Parameters: base_sn={base_sn}, rma_number={rma_number}, tests={tests}")
+                    remote_dict['rma'].run(f"/srv/share/scripts/rma_pxe_generation {x} {image} {base_sn} {rma_number} {tests}")
 
             form=RmaForm()
         else:
