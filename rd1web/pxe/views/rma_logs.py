@@ -533,17 +533,18 @@ def rma_view_file(request, path):
     if os.path.isdir(full_path):
         raise Http404("Requested path is a directory")
 
-    # Check file size to prevent serving extremely large files
-    try:
-        file_size = os.path.getsize(full_path)
-        # Limit to 100MB to prevent memory/timeout issues
-        if file_size > 100 * 1024 * 1024:  # 100MB
-            raise Http404("File too large to display")
-    except OSError:
-        raise Http404("Cannot access file")
-
     # Check if user wants to download the file
     download_mode = request.GET.get('download') == '1'
+
+    # Check file size to prevent serving extremely large files for viewing (not downloading)
+    try:
+        file_size = os.path.getsize(full_path)
+        # Limit to 100MB to prevent memory/timeout issues when viewing in browser
+        # But allow downloads of any size
+        if not download_mode and file_size > 100 * 1024 * 1024:  # 100MB
+            raise Http404("File too large to display. Use download option to get the file.")
+    except OSError:
+        raise Http404("Cannot access file")
 
     # Get file extension
     _, ext = os.path.splitext(full_path)
