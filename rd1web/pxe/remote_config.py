@@ -11,7 +11,7 @@ from fabric import Connection
 # Contains all remote server connections used across PXE services
 remote_dict = {
     # RMA server connection
-    'rma': Connection(host="root@172.31.32.223", connect_kwargs={"password": "superrd1"}),
+    'rma': Connection(host="root@10.4.4.140", connect_kwargs={"password": "superrd1"}),
     
     # PXE input location connections
     'us_b3': Connection(host="root@172.31.60.129", connect_kwargs={"password": "superrd1"}),

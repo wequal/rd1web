@@ -10,9 +10,19 @@ import csv
 import os
 import logging
 import re
+import io
+from ..remote_config import remote_dict
 
 logger = logging.getLogger(__name__)
 RMA_BASE_DIR = '/srv/rma'
+
+def get_rma_host_ip():
+    """Extract RMA host IP from remote_config"""
+    rma_host = remote_dict['rma'].host
+    # Extract IP from format like "root@10.4.4.140"
+    if '@' in rma_host:
+        return rma_host.split('@')[1]
+    return rma_host
 
 @login_required
 def rma_log(request, path=""):
@@ -132,82 +142,108 @@ def rma_log_ajax(request):
 
 def get_rma_directories():
     """
-    Get list of RMA directories from /srv/rma matching pattern {base_sn}_{rma_number}
+    Get list of RMA directories from remote /srv/rma matching pattern {base_sn}_{rma_number}
     """
     rma_directories = []
     
     try:
-        if not os.path.exists(RMA_BASE_DIR):
-            logger.warning(f"RMA base directory does not exist: {RMA_BASE_DIR}")
+        # Connect to remote RMA host
+        rma_conn = remote_dict['rma']
+        
+        # Check if remote directory exists
+        result = rma_conn.run(f'test -d {RMA_BASE_DIR}', warn=True)
+        if result.return_code != 0:
+            logger.warning(f"RMA base directory does not exist on remote host: {RMA_BASE_DIR}")
+            return rma_directories
+        
+        # List directories on remote host
+        result = rma_conn.run(f'ls -la {RMA_BASE_DIR}', hide=True)
+        if result.return_code != 0:
+            logger.error(f"Cannot list remote RMA directory: {RMA_BASE_DIR}")
             return rma_directories
         
         # Pattern to match {base_sn}_{rma_number}
-        # base_sn could be alphanumeric, rma_number can be alphanumeric
         pattern = re.compile(r'^(.+)_(.+)$')
         
-        for item in os.listdir(RMA_BASE_DIR):
-            full_path = os.path.join(RMA_BASE_DIR, item)
+        # Parse ls output
+        for line in result.stdout.strip().split('\n'):
+            if line.startswith('total') or line.startswith('d') == False:
+                continue  # Skip total line and files
             
-            if os.path.isdir(full_path):
+            parts = line.split()
+            if len(parts) < 9:
+                continue
+                
+            # Extract directory name (last part)
+            item = parts[-1]
+            if item in ['.', '..']:
+                continue
+                
+            # Check if it's a directory and matches pattern
+            if line.startswith('d') and pattern.match(item):
                 match = pattern.match(item)
-                if match:
-                    base_sn, rma_number = match.groups()
+                base_sn, rma_number = match.groups()
+                
+                try:
+                    # Get directory stats from remote host
+                    stat_result = rma_conn.run(f'stat -c "%Y %s" {RMA_BASE_DIR}/{item}', hide=True)
+                    if stat_result.return_code == 0:
+                        mtime_timestamp, size_str = stat_result.stdout.strip().split()
+                        mtime = datetime.fromtimestamp(int(mtime_timestamp)).strftime("%Y-%m-%d %H:%M:%S")
+                    else:
+                        mtime = 'Unknown'
                     
+                    # Count files and calculate total size
+                    file_count = 0
+                    total_size = 0
                     try:
-                        # Get directory stats
-                        stat = os.stat(full_path)
+                        count_result = rma_conn.run(f'find {RMA_BASE_DIR}/{item} -type f | wc -l', hide=True)
+                        if count_result.return_code == 0:
+                            file_count = int(count_result.stdout.strip())
                         
-                        # Count files in the directory
-                        file_count = 0
-                        total_size = 0
-                        try:
-                            for file_item in os.listdir(full_path):
-                                file_path = os.path.join(full_path, file_item)
-                                if os.path.isfile(file_path):
-                                    file_count += 1
-                                    total_size += os.path.getsize(file_path)
-                        except PermissionError:
-                            pass
-                        
-                        rma_directories.append({
-                            'name': item,
-                            'base_sn': base_sn,
-                            'rma_number': rma_number,
-                            'path': item,
-                            'full_path': full_path,
-                            'file_count': file_count,
-                            'total_size': format_size(total_size),
-                            'mtime': datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
-                            'exists': True
-                        })
-                    except (OSError, PermissionError) as e:
-                        logger.warning(f"Cannot access RMA directory {full_path}: {e}")
-                        rma_directories.append({
-                            'name': item,
-                            'base_sn': base_sn,
-                            'rma_number': rma_number,
-                            'path': item,
-                            'full_path': full_path,
-                            'file_count': 0,
-                            'total_size': '0 B',
-                            'mtime': 'Unknown',
-                            'exists': True,
-                            'error': str(e)
-                        })
+                        size_result = rma_conn.run(f'find {RMA_BASE_DIR}/{item} -type f -exec stat -c "%s" {{}} + | awk "{{sum += \\$1}} END {{print sum}}"', hide=True)
+                        if size_result.return_code == 0 and size_result.stdout.strip():
+                            total_size = int(size_result.stdout.strip() or '0')
+                    except (ValueError, AttributeError):
+                        pass
+                    
+                    rma_directories.append({
+                        'name': item,
+                        'base_sn': base_sn,
+                        'rma_number': rma_number,
+                        'path': item,
+                        'full_path': f"{RMA_BASE_DIR}/{item}",
+                        'file_count': file_count,
+                        'total_size': format_size(total_size),
+                        'mtime': mtime,
+                        'exists': True
+                    })
+                except Exception as e:
+                    logger.warning(f"Cannot access remote RMA directory {item}: {e}")
+                    rma_directories.append({
+                        'name': item,
+                        'base_sn': base_sn,
+                        'rma_number': rma_number,
+                        'path': item,
+                        'full_path': f"{RMA_BASE_DIR}/{item}",
+                        'file_count': 0,
+                        'total_size': '0 B',
+                        'mtime': 'Unknown',
+                        'exists': True,
+                        'error': str(e)
+                    })
         
         # Sort by RMA number (newest first), then by base_sn
-        # Handle alphanumeric rma_numbers by trying to convert to int, fallback to string
         def sort_key(x):
             try:
                 return (int(x['rma_number']), x['base_sn'])
             except ValueError:
-                # If rma_number is not numeric, sort alphabetically
                 return (x['rma_number'], x['base_sn'])
         
         rma_directories.sort(key=sort_key, reverse=True)
         
     except Exception as e:
-        logger.error(f"Error scanning RMA directories: {e}")
+        logger.error(f"Error scanning remote RMA directories: {e}")
     
     return rma_directories
 
@@ -256,16 +292,15 @@ def get_file_extension(filename):
 @login_required
 def rma_log_browser(request, path=""):
     """
-    Browse RMA directory contents similar to log_view functionality
+    Browse RMA directory contents from remote host
     """
     decoded_path = unquote(path)
-    abs_path = os.path.normpath(os.path.join(RMA_BASE_DIR, decoded_path))
+    # Construct remote path
+    remote_path = os.path.normpath(os.path.join(RMA_BASE_DIR, decoded_path))
 
-    if not abs_path.startswith(RMA_BASE_DIR):
+    # Security check - ensure path stays within RMA_BASE_DIR
+    if not remote_path.startswith(RMA_BASE_DIR):
         raise Http404("Access denied")
-
-    if not os.path.exists(abs_path):
-        raise Http404("Directory does not exist")
 
     items = []
     total_size = 0
@@ -273,17 +308,63 @@ def rma_log_browser(request, path=""):
     dir_count = 0
     
     try:
-        # Get directory contents
-        contents = os.listdir(abs_path)
+        # Connect to remote RMA host
+        rma_conn = remote_dict['rma']
+        
+        # Check if remote directory exists
+        result = rma_conn.run(f'test -d "{remote_path}"', warn=True)
+        if result.return_code != 0:
+            raise Http404("Directory does not exist")
+
+        # List directory contents on remote host
+        result = rma_conn.run(f'ls -la "{remote_path}"', hide=True)
+        if result.return_code != 0:
+            raise Http404("Cannot read directory")
         
         # Separate directories and files
         dirs = []
         files = []
         
-        for name in contents:
-            full_path = os.path.join(abs_path, name)
-            stat = os.stat(full_path)
-            is_dir = os.path.isdir(full_path)
+        # Parse ls output
+        for line in result.stdout.strip().split('\n'):
+            if line.startswith('total'):
+                continue
+            
+            parts = line.split()
+            if len(parts) < 9:
+                continue
+                
+            # Extract file/directory name (handle names with spaces)
+            name = ' '.join(parts[8:])
+            if name in ['.', '..']:
+                continue
+            
+            # Parse file attributes
+            permissions = parts[0]
+            is_dir = permissions.startswith('d')
+            size = int(parts[4]) if not is_dir else 0
+            
+            # Parse date/time (parts 5, 6, 7)
+            try:
+                date_str = f"{parts[5]} {parts[6]} {parts[7]}"
+                # Try to parse the date - handle year vs time format
+                if ':' in parts[7]:  # Time format (current year)
+                    from datetime import datetime
+                    current_year = datetime.now().year
+                    mtime = f"{current_year}-{parts[5]}-{parts[6]} {parts[7]}:00"
+                    try:
+                        parsed_date = datetime.strptime(mtime, "%Y-%b-%d %H:%M:%S")
+                        mtime = parsed_date.strftime("%Y-%m-%d %H:%M:%S")
+                    except:
+                        mtime = date_str
+                else:  # Year format
+                    try:
+                        parsed_date = datetime.strptime(date_str, "%b %d %Y")
+                        mtime = parsed_date.strftime("%Y-%m-%d %H:%M:%S")
+                    except:
+                        mtime = date_str
+            except:
+                mtime = "Unknown"
 
             # relative path for URL reversing
             item_path = os.path.join(decoded_path, name).strip("/")
@@ -291,11 +372,12 @@ def rma_log_browser(request, path=""):
             item = {
                 "name": name,
                 "is_dir": is_dir,
-                "size": "-" if is_dir else format_size(stat.st_size),
-                "raw_size": 0 if is_dir else stat.st_size,
-                "mtime": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                "size": "-" if is_dir else format_size(size),
+                "raw_size": 0 if is_dir else size,
+                "mtime": mtime,
                 "path": item_path,
                 "file_type": "Directory" if is_dir else get_file_extension(name),
+                "download_url": f"http://{get_rma_host_ip()}/{item_path}" if not is_dir else None,
             }
             
             if is_dir:
@@ -304,7 +386,7 @@ def rma_log_browser(request, path=""):
             else:
                 files.append(item)
                 file_count += 1
-                total_size += stat.st_size
+                total_size += size
         
         # Sort directories and files separately
         dirs.sort(key=lambda x: x["name"].lower())
@@ -313,15 +395,16 @@ def rma_log_browser(request, path=""):
         # Combine sorted lists with directories first
         items = dirs + files
         
-    except Exception:
+    except Exception as e:
+        logger.error(f"Error browsing remote directory {remote_path}: {e}")
         raise Http404("Cannot read directory")
 
     # Get current directory name
-    current_dir = os.path.basename(abs_path) if abs_path != RMA_BASE_DIR else "RMA Logs"
+    current_dir = os.path.basename(remote_path) if remote_path != RMA_BASE_DIR else "RMA Logs"
 
     # Parent directory logic
-    path_parts = decoded_path.strip("/").split("/")
-    parent_path = "/".join(path_parts[:-1]) if path_parts else None
+    path_parts = decoded_path.strip("/").split("/") if decoded_path.strip("/") else []
+    parent_path = "/".join(path_parts[:-1]) if len(path_parts) > 1 else None
 
     # Prepare path parts for breadcrumb
     breadcrumb_parts = []
@@ -340,42 +423,43 @@ def rma_log_browser(request, path=""):
         "current_dir": current_dir,
         "parent": parent_path,
         "breadcrumb_parts": breadcrumb_parts,
-        "is_root": abs_path == RMA_BASE_DIR,
+        "is_root": remote_path == RMA_BASE_DIR,
         "total_size": format_size(total_size),
         "file_count": file_count,
-        "dir_count": dir_count
+        "dir_count": dir_count,
+        "rma_host_ip": get_rma_host_ip()
     })
 
-def render_csv_as_html(file_path, filename):
-    """Convert CSV file to HTML table display"""
+def render_csv_as_html(file_content, filename):
+    """Convert CSV file content to HTML table display"""
     try:
-        # Try to detect CSV format and read the file
-        with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
-            # Sample the first few lines to detect delimiter
-            sample = f.read(1024)
-            f.seek(0)
-            
-            # Try to detect delimiter
-            sniffer = csv.Sniffer()
-            delimiter = ','  # Default to comma
-            
-            try:
-                dialect = sniffer.sniff(sample, delimiters=',;\t|')
-                delimiter = dialect.delimiter
-            except:
-                # If sniffing fails, try to guess based on file extension and content
-                if filename.lower().endswith('.tsv'):
-                    delimiter = '\t'
-                elif '\t' in sample and sample.count('\t') > sample.count(','):
-                    delimiter = '\t'
-                elif ';' in sample and sample.count(';') > sample.count(','):
-                    delimiter = ';'
-                elif '|' in sample and sample.count('|') > sample.count(','):
-                    delimiter = '|'
-            
-            # Read CSV data
-            reader = csv.reader(f, delimiter=delimiter)
-            rows = list(reader)
+        # Try to detect CSV format and read the content
+        f = io.StringIO(file_content)
+        # Sample the first few lines to detect delimiter
+        sample = f.read(1024)
+        f.seek(0)
+        
+        # Try to detect delimiter
+        sniffer = csv.Sniffer()
+        delimiter = ','  # Default to comma
+        
+        try:
+            dialect = sniffer.sniff(sample, delimiters=',;\t|')
+            delimiter = dialect.delimiter
+        except:
+            # If sniffing fails, try to guess based on file extension and content
+            if filename.lower().endswith('.tsv'):
+                delimiter = '\t'
+            elif '\t' in sample and sample.count('\t') > sample.count(','):
+                delimiter = '\t'
+            elif ';' in sample and sample.count(';') > sample.count(','):
+                delimiter = ';'
+            elif '|' in sample and sample.count('|') > sample.count(','):
+                delimiter = '|'
+        
+        # Read CSV data
+        reader = csv.reader(f, delimiter=delimiter)
+        rows = list(reader)
         
         if not rows:
             return "<p>Empty CSV file</p>"
@@ -522,144 +606,125 @@ def render_csv_as_html(file_path, filename):
 @login_required
 def rma_view_file(request, path):
     """
-    View RMA files - similar to view_file but for RMA directory
-    Supports both viewing and downloading based on 'download' parameter
+    View RMA files from remote host for viewing only
+    Downloads are handled directly via Apache2 server on RMA host
     """
-    full_path = os.path.normpath(os.path.join(RMA_BASE_DIR, path))
+    # Construct remote path
+    remote_path = os.path.normpath(os.path.join(RMA_BASE_DIR, path))
 
-    if not full_path.startswith(RMA_BASE_DIR) or not os.path.exists(full_path):
-        raise Http404("File does not exist")
+    # Security check
+    if not remote_path.startswith(RMA_BASE_DIR):
+        raise Http404("Access denied")
 
-    if os.path.isdir(full_path):
-        raise Http404("Requested path is a directory")
-
-    # Check if user wants to download the file
-    download_mode = request.GET.get('download') == '1'
-
-    # Check file size to prevent serving extremely large files for viewing (not downloading)
+    # Get filename
+    filename = os.path.basename(remote_path)
+    
     try:
-        file_size = os.path.getsize(full_path)
-        # Limit to 100MB to prevent memory/timeout issues when viewing in browser
-        # But allow downloads of any size
-        if not download_mode and file_size > 100 * 1024 * 1024:  # 100MB
+        # Connect to remote RMA host
+        rma_conn = remote_dict['rma']
+        
+        # Check if remote file exists and is not a directory
+        result = rma_conn.run(f'test -f "{remote_path}"', warn=True)
+        if result.return_code != 0:
+            raise Http404("File does not exist or is a directory")
+
+        # Get file size
+        size_result = rma_conn.run(f'stat -c "%s" "{remote_path}"', hide=True)
+        if size_result.return_code != 0:
+            raise Http404("Cannot access file")
+        
+        file_size = int(size_result.stdout.strip())
+
+        # For viewing, check file size to prevent serving extremely large files
+        if file_size > 100 * 1024 * 1024:  # 100MB
             raise Http404("File too large to display. Use download option to get the file.")
-    except OSError:
-        raise Http404("Cannot access file")
 
-    # Get file extension
-    _, ext = os.path.splitext(full_path)
-    ext = ext.lower()
-    filename = os.path.basename(full_path)
+        # Get file extension
+        _, ext = os.path.splitext(remote_path)
+        ext = ext.lower()
 
-    # Handle CSV and TSV files specially
-    if ext in ['.csv', '.tsv']:
-        # Check if user wants to download the original file
-        if request.GET.get('download') == '1':
-            # Serve as download
-            try:
-                file = open(full_path, 'rb')
-                content_type = 'text/csv' if ext == '.csv' else 'text/tab-separated-values'
-                response = FileResponse(file, content_type=content_type, as_attachment=True, filename=filename)
-                return response
-            except Exception as e:
-                raise Http404(f"Cannot read file: {str(e)}")
-        else:
+        # Read file content from remote host
+        try:
+            cat_result = rma_conn.run(f'cat "{remote_path}"', hide=True)
+            if cat_result.return_code != 0:
+                raise Http404("Cannot read file content")
+            file_content = cat_result.stdout
+        except Exception as e:
+            logger.error(f"Error reading remote file {remote_path}: {e}")
+            raise Http404("Cannot read file content")
+
+        # Handle CSV and TSV files specially
+        if ext in ['.csv', '.tsv']:
             # Display as HTML table
-            html_content = render_csv_as_html(full_path, filename)
+            html_content = render_csv_as_html(file_content, filename)
             response = HttpResponse(html_content, content_type='text/html; charset=utf-8')
             response['Cache-Control'] = 'no-cache'
             return response
 
-    # Determine content type
-    content_type = None
-    
-    # Handle files without extensions or common text files
-    if not ext:
-        # No extension - check if it's a text file
-        if is_text_file(full_path):
+        # Determine content type
+        content_type = None
+        
+        if not ext:
+            # No extension - check if it's likely text based on content
+            content_type = 'text/plain; charset=utf-8' if is_text_content(file_content) else 'application/octet-stream'
+        elif ext in ['.txt', '.log', '.md', '.py', '.js', '.css', '.html', '.xml', '.json', '.yaml', '.yml', '.conf', '.cfg', '.ini', '.sh', '.bash']:
             content_type = 'text/plain; charset=utf-8'
+        elif ext in ['.jpg', '.jpeg']:
+            content_type = 'image/jpeg'
+        elif ext == '.png':
+            content_type = 'image/png'
+        elif ext == '.gif':
+            content_type = 'image/gif'
+        elif ext == '.svg':
+            content_type = 'image/svg+xml'
+        elif ext == '.pdf':
+            content_type = 'application/pdf'
         else:
-            content_type = 'application/octet-stream'
-    elif ext in ['.txt', '.log', '.md', '.py', '.js', '.css', '.html', '.xml', '.json', '.yaml', '.yml', '.conf', '.cfg', '.ini', '.sh', '.bash']:
-        content_type = 'text/plain; charset=utf-8'
-    elif ext in ['.jpg', '.jpeg']:
-        content_type = 'image/jpeg'
-    elif ext == '.png':
-        content_type = 'image/png'
-    elif ext == '.gif':
-        content_type = 'image/gif'
-    elif ext == '.svg':
-        content_type = 'image/svg+xml'
-    elif ext == '.pdf':
-        content_type = 'application/pdf'
-    elif ext in ['.doc', '.docx']:
-        content_type = 'application/msword'
-    elif ext in ['.xls', '.xlsx']:
-        content_type = 'application/vnd.ms-excel'
-    elif ext in ['.zip', '.tar', '.gz', '.bz2']:
-        content_type = 'application/octet-stream'
-    else:
-        # Use mimetypes as fallback
-        content_type, _ = mimetypes.guess_type(full_path)
-        if content_type is None:
-            # Final fallback - check if it's text
-            if is_text_file(full_path):
-                content_type = 'text/plain; charset=utf-8'
-            else:
-                content_type = 'application/octet-stream'
+            # Use mimetypes as fallback
+            content_type, _ = mimetypes.guess_type(remote_path)
+            if content_type is None:
+                content_type = 'text/plain; charset=utf-8' if is_text_content(file_content) else 'application/octet-stream'
 
-    # If download mode is requested, always serve as attachment
-    if download_mode:
-        try:
-            response = FileResponse(
-                open(full_path, 'rb'), 
-                content_type=content_type or 'application/octet-stream',
-                as_attachment=True,
-                filename=filename
-            )
-            response['Cache-Control'] = 'no-cache'
-            response['Content-Length'] = file_size
-            return response
-        except Exception as e:
-            raise Http404(f"Cannot download file: {str(e)}")
-
-    # Handle text files with proper encoding for viewing
-    if content_type and content_type.startswith('text/'):
-        try:
-            # Try UTF-8 first
-            with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
-                content = f.read()
-            response = HttpResponse(content, content_type=content_type)
+        # For text files, serve content directly
+        if content_type and content_type.startswith('text/'):
+            response = HttpResponse(file_content, content_type=content_type)
             response['Content-Disposition'] = f'inline; filename="{filename}"'
             response['Cache-Control'] = 'no-cache'
             return response
-        except UnicodeDecodeError:
-            # If UTF-8 fails, try latin-1
-            try:
-                with open(full_path, 'r', encoding='latin-1') as f:
-                    content = f.read()
-                response = HttpResponse(content, content_type='text/plain; charset=latin-1')
-                response['Content-Disposition'] = f'inline; filename="{filename}"'
-                response['Cache-Control'] = 'no-cache'
-                return response
-            except:
-                # If all text reading fails, treat as binary
-                content_type = 'application/octet-stream'
 
-    # Handle binary files or when text reading failed (for viewing)
-    try:
-        # For images and other binary files, serve them efficiently
-        response = FileResponse(
-            open(full_path, 'rb'), 
-            content_type=content_type or 'application/octet-stream'
-        )
-        response['Content-Disposition'] = f'inline; filename="{filename}"'
-        response['Cache-Control'] = 'no-cache'
-        response['Content-Length'] = file_size
-        return response
+        # For binary files, redirect to Apache2 for direct serving
+        else:
+            apache_url = f"http://{get_rma_host_ip()}/{path}"
+            from django.shortcuts import redirect
+            return redirect(apache_url)
             
     except Exception as e:
-        raise Http404(f"Cannot read file: {str(e)}")
+        logger.error(f"Error viewing remote file {remote_path}: {e}")
+        raise Http404(f"Cannot access file: {str(e)}")
+
+def is_text_content(content):
+    """Determine if content is text based on its string content"""
+    try:
+        # If content is already a string, it's likely text
+        if isinstance(content, str):
+            return True
+        
+        # If content is bytes, check for binary indicators
+        if isinstance(content, bytes):
+            # Check for null bytes (common in binary files)
+            if b'\x00' in content[:8192]:
+                return False
+            
+            # Try to decode as UTF-8
+            try:
+                content.decode('utf-8')
+                return True
+            except UnicodeDecodeError:
+                return False
+        
+        return True
+    except:
+        return False
 
 def is_text_file(file_path):
     """Determine if a file is a text file by examining its content"""
