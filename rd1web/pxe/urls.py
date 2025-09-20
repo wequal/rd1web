@@ -20,6 +20,14 @@ from .views.archive import archive_system
 from .views.mac_ip_view import mac_ip_results, mac_ip_api, manual_scan, scan_status_api
 from .views.rma_pxe import rma_pxe
 from .views.rma_logs import rma_log, rma_view_file
+from .views.rma_testing_db import (
+    rma_testing_db_list, 
+    rma_testing_db_add, 
+    rma_testing_db_edit, 
+    rma_testing_db_delete, 
+    rma_testing_db_get, 
+    rma_testing_db_api
+)
 from .api.system_api import systems_summary, systems_category
 
 
@@ -61,4 +69,12 @@ urlpatterns = [
     path('rma/logs/', rma_log, name='rma_log'),
     path('rma/logs/<path:path>/', rma_log, name='rma_log_browse'),
     path('rma/view/<path:path>/', rma_view_file, name='rma_view_file'),
+    
+    # RMA Testing DB URLs
+    path('rma/testing-db/', rma_testing_db_list, name='rma_testing_db'),
+    path('rma/testing-db/add/', rma_testing_db_add, name='rma_testing_db_add'),
+    path('rma/testing-db/edit/<int:entry_id>/', rma_testing_db_edit, name='rma_testing_db_edit'),
+    path('rma/testing-db/delete/<int:entry_id>/', rma_testing_db_delete, name='rma_testing_db_delete'),
+    path('rma/testing-db/get/<int:entry_id>/', rma_testing_db_get, name='rma_testing_db_get'),
+    path('api/rma/testing-db/', rma_testing_db_api, name='rma_testing_db_api'),
 ]

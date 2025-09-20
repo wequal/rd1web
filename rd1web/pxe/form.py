@@ -1,6 +1,7 @@
 from django import forms
 import re
 from django.core.exceptions import ValidationError
+from .models import RmaTestingDb
 
 class PxeForm(forms.Form):
     mac=forms.CharField(widget=forms.Textarea(attrs={'class':'form-control','style': 'width: 300px;',}),label='MAC')
@@ -283,6 +284,62 @@ class RmaForm(forms.Form):
                 )
         
         return tests
+
+
+class RmaTestingDbForm(forms.ModelForm):
+    """Form for adding/editing RMA Testing DB entries"""
+    
+    class Meta:
+        model = RmaTestingDb
+        fields = ['bmc_mac', 'bmc_ip', 'bmc_password', 'lan0_mac', 'lan1_mac', 'golden_number']
+        widgets = {
+            'bmc_mac': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'xx:xx:xx:xx:xx:xx',
+                'pattern': '[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}'
+            }),
+            'bmc_ip': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': '192.168.1.100'
+            }),
+            'bmc_password': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter BMC password'
+            }),
+            'lan0_mac': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'xx:xx:xx:xx:xx:xx',
+                'pattern': '[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}'
+            }),
+            'lan1_mac': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'xx:xx:xx:xx:xx:xx',
+                'pattern': '[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}'
+            }),
+            'golden_number': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter Golden Number'
+            }),
+        }
+
+
+class RmaTestingDbSearchForm(forms.Form):
+    """Form for searching RMA Testing DB entries"""
+    
+    search = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Search by MAC address, IP, or password...',
+            'id': 'search-input'
+        }),
+        label='Search'
+    )
+    
+    def clean_search(self):
+        """Clean and validate search input"""
+        search = self.cleaned_data.get('search', '').strip()
+        return search
 
 
         
