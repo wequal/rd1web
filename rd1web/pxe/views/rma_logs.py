@@ -19,9 +19,9 @@ from ..remote_config import remote_dict
 logger = logging.getLogger(__name__)
 RMA_BASE_DIR = '/srv/rma'
 
-# Cache timeout settings
-RMA_CACHE_TIMEOUT = 300  # 5 minutes cache for directory listings
-RMA_STATS_CACHE_TIMEOUT = 1800  # 30 minutes cache for file stats
+# Cache timeout settings (shorter for faster new directory detection)
+RMA_CACHE_TIMEOUT = 60  # 1 minute cache for directory listings
+RMA_STATS_CACHE_TIMEOUT = 300  # 5 minutes cache for file stats
 
 class TimeoutError(Exception):
     """Custom timeout exception"""
@@ -82,6 +82,12 @@ def rma_log(request, path=""):
     search_query = request.GET.get('search', '').strip()
     page_number = request.GET.get('page', 1)
     
+    # Check if cache refresh is requested
+    refresh_cache = request.GET.get('refresh', 'false').lower() == 'true'
+    if refresh_cache:
+        from django.core.cache import cache
+        cache.delete('rma_directories_basic')
+    
     # Get all RMA directories (fast mode for initial load)
     all_rma_directories = get_rma_directories(include_stats=False)
     
@@ -107,9 +113,15 @@ def rma_log(request, path=""):
     except EmptyPage:
         page_obj = paginator.get_page(paginator.num_pages)
     
-    # Load stats for only the current page directories (to reduce load time)
+    # Load stats for only the current page directories (optional/lazy loading)
     page_directories = list(page_obj.object_list)
-    page_directories_with_stats = load_directory_stats(page_directories)
+    # Only load stats if explicitly requested or if it's a small set
+    load_stats = request.GET.get('load_stats', 'false').lower() == 'true'
+    if load_stats and len(page_directories) <= 10:
+        page_directories_with_stats = load_directory_stats(page_directories)
+    else:
+        # Fast mode: No stats loading, just show directories
+        page_directories_with_stats = page_directories
     
     # Main RMA logs page - show RMA directories
     context = {
@@ -133,6 +145,12 @@ def rma_log_ajax(request):
     search_query = request.GET.get('search', '').strip()
     page_number = request.GET.get('page', 1)
     
+    # Check if cache refresh is requested
+    refresh_cache = request.GET.get('refresh', 'false').lower() == 'true'
+    if refresh_cache:
+        from django.core.cache import cache
+        cache.delete('rma_directories_basic')
+    
     # Get all RMA directories (fast mode for initial load)
     all_rma_directories = get_rma_directories(include_stats=False)
     
@@ -158,9 +176,15 @@ def rma_log_ajax(request):
     except EmptyPage:
         page_obj = paginator.get_page(paginator.num_pages)
     
-    # Load stats for only the current page directories (to reduce load time)
+    # Load stats for only the current page directories (optional/lazy loading)
     page_directories = list(page_obj.object_list)
-    page_directories_with_stats = load_directory_stats(page_directories)
+    # Only load stats if explicitly requested or if it's a small set
+    load_stats = request.GET.get('load_stats', 'false').lower() == 'true'
+    if load_stats and len(page_directories) <= 10:
+        page_directories_with_stats = load_directory_stats(page_directories)
+    else:
+        # Fast mode: No stats loading, just show directories
+        page_directories_with_stats = page_directories
     
     # Prepare data for JSON response
     directories_data = []
