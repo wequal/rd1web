@@ -30,6 +30,7 @@ def rma_pxe(request):
             remove=bound_form.cleaned_data.get('remove', False)
             check=bound_form.cleaned_data.get('check', False)
             macs = get_lan_macs(bmc_ip)
+            macs= [x.strip().replace(":","").replace("-","").lower() for x in macs if x!='']
 
             
         
