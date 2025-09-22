@@ -12,7 +12,8 @@ import os
 import logging
 import re
 import io
-import signal
+import threading
+import time
 from ..remote_config import remote_dict
 
 logger = logging.getLogger(__name__)
@@ -26,35 +27,34 @@ class TimeoutError(Exception):
     """Custom timeout exception"""
     pass
 
-def timeout_handler(signum, frame):
-    """Signal handler for timeouts"""
-    raise TimeoutError("Operation timed out")
-
 def run_with_timeout(func, timeout_seconds=60):
     """
-    Run a function with a timeout
+    Run a function with a timeout using threading instead of signals
     Returns (result, success, error_message)
     """
-    try:
-        # Set up signal alarm for timeout
-        old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(timeout_seconds)
-        
-        result = func()
-        
-        # Clear the alarm
-        signal.alarm(0)
-        signal.signal(signal.SIGALRM, old_handler)
-        
-        return result, True, None
-    except TimeoutError:
-        signal.alarm(0)
-        signal.signal(signal.SIGALRM, old_handler)
+    result = [None]
+    exception = [None]
+    
+    def target():
+        try:
+            result[0] = func()
+        except Exception as e:
+            exception[0] = e
+    
+    thread = threading.Thread(target=target)
+    thread.daemon = True
+    thread.start()
+    thread.join(timeout_seconds)
+    
+    if thread.is_alive():
+        # Thread is still running, timeout occurred
         return None, False, f"Operation timed out after {timeout_seconds} seconds"
-    except Exception as e:
-        signal.alarm(0)
-        signal.signal(signal.SIGALRM, old_handler)
-        return None, False, str(e)
+    elif exception[0] is not None:
+        # Exception occurred in the thread
+        return None, False, str(exception[0])
+    else:
+        # Success
+        return result[0], True, None
 
 def get_rma_host_ip():
     """Extract RMA host IP from remote_config"""

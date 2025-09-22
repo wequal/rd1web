@@ -15,7 +15,6 @@ remote_dict = {
         host="root@10.4.4.80", 
         connect_kwargs={
             "password": "superrd1",
-            "timeout": 30,  # SSH connection timeout
             "banner_timeout": 30,  # Banner negotiation timeout
             "auth_timeout": 30  # Authentication timeout
         },
@@ -27,7 +26,6 @@ remote_dict = {
         host="root@172.31.60.129", 
         connect_kwargs={
             "password": "superrd1",
-            "timeout": 30,
             "banner_timeout": 30,
             "auth_timeout": 30
         },
@@ -37,7 +35,6 @@ remote_dict = {
         host="root@172.31.58.142", 
         connect_kwargs={
             "password": "superrd1",
-            "timeout": 30,
             "banner_timeout": 30,
             "auth_timeout": 30
         },
@@ -47,7 +44,6 @@ remote_dict = {
         host="root@10.135.179.104", 
         connect_kwargs={
             "password": "superrd1",
-            "timeout": 30,
             "banner_timeout": 30,
             "auth_timeout": 30
         },
