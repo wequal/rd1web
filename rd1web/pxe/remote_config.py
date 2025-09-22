@@ -10,11 +10,47 @@ from fabric import Connection
 # Centralized remote connection dictionary
 # Contains all remote server connections used across PXE services
 remote_dict = {
-    # RMA server connection
-    'rma': Connection(host="root@10.4.4.80", connect_kwargs={"password": "superrd1"}),
+    # RMA server connection with timeout settings
+    'rma': Connection(
+        host="root@10.4.4.80", 
+        connect_kwargs={
+            "password": "superrd1",
+            "timeout": 30,  # SSH connection timeout
+            "banner_timeout": 30,  # Banner negotiation timeout
+            "auth_timeout": 30  # Authentication timeout
+        },
+        connect_timeout=30  # Overall connection timeout
+    ),
     
     # PXE input location connections
-    'us_b3': Connection(host="root@172.31.60.129", connect_kwargs={"password": "superrd1"}),
-    'us_b1': Connection(host="root@172.31.58.142", connect_kwargs={"password": "superrd1"}),
-    'tw': Connection(host="root@10.135.179.104", connect_kwargs={"password": "superrd1"})
+    'us_b3': Connection(
+        host="root@172.31.60.129", 
+        connect_kwargs={
+            "password": "superrd1",
+            "timeout": 30,
+            "banner_timeout": 30,
+            "auth_timeout": 30
+        },
+        connect_timeout=30
+    ),
+    'us_b1': Connection(
+        host="root@172.31.58.142", 
+        connect_kwargs={
+            "password": "superrd1",
+            "timeout": 30,
+            "banner_timeout": 30,
+            "auth_timeout": 30
+        },
+        connect_timeout=30
+    ),
+    'tw': Connection(
+        host="root@10.135.179.104", 
+        connect_kwargs={
+            "password": "superrd1",
+            "timeout": 30,
+            "banner_timeout": 30,
+            "auth_timeout": 30
+        },
+        connect_timeout=30
+    )
 }

@@ -1,23 +1,49 @@
-# Task: Create Remote Dict Configuration File
+# Task: Fix RMA Log Page Timeout Issues
 
 ## Analysis
-Both `rma_pxe.py` and `pxe_input.py` contain hardcoded `remote_dict` dictionaries with fabric Connection objects for remote server access:
+The RMA log page is experiencing timeout issues after some period of time. Investigation shows several root causes:
 
-- **rma_pxe.py**: Contains connection to RMA server (172.31.35.191)
-- **pxe_input.py**: Contains connections to multiple locations (us_b3, us_b1, tw) with different IP addresses
+### 1. **Heavy Remote Operations (Primary Cause)**
+In `get_rma_directories()` function (lines 200-208), for each RMA directory:
+- **File counting**: `find {RMA_BASE_DIR}/{item} -type f | wc -l` 
+- **Size calculation**: `find {RMA_BASE_DIR}/{item} -type f -exec stat -c "%s" {} + | awk "{sum += $1} END {print sum}"`
+
+These operations can be extremely slow when:
+- RMA directories contain thousands of files
+- Network latency to RMA host (10.4.4.80) is high
+- Multiple directories are processed sequentially
+
+### 2. **No Connection Timeouts**
+The Fabric connections in `remote_config.py` have no timeout settings:
+```python
+'rma': Connection(host="root@10.4.4.80", connect_kwargs={"password": "superrd1"})
+```
+
+### 3. **No Caching**
+Every page load triggers full directory scanning, even for unchanged data.
+
+### 4. **Sequential Processing**
+All operations happen synchronously in the main request thread.
 
 ## Plan
-Create a centralized configuration file to store remote connection information that can be shared between both files.
 
-## Tasks
-- [x] Create `/home/devin/rd1web-dev/rd1web/pxe/remote_config.py` file to store all remote connection configurations
-- [x] Move remote_dict definitions from both files into the new configuration file
-- [x] Update `rma_pxe.py` to import and use the centralized remote_dict
-- [x] Update `pxe_input.py` to import and use the centralized remote_dict
-- [x] Test that both files still work correctly after the changes
+### Phase 1: Quick Fixes (Immediate) - ✅ COMPLETED
+- [x] Add connection timeouts to prevent indefinite hangs
+- [x] Add timeout wrapper for heavy operations
+- [x] Improve error handling and logging
+
+### Phase 2: Performance Optimization (Short-term) - ✅ COMPLETED  
+- [x] Implement caching for directory metadata
+- [x] Make file counting and size calculation optional/lazy
+- [x] Add timeout controls and fallback values
+
+### Phase 3: Architecture Improvement (Medium-term) - ⏭️ FUTURE
+- [ ] Implement background task processing for heavy operations
+- [ ] Add progress indicators for long-running operations
+- [ ] Consider pagination improvements
 
 ## Benefits
-- Centralized configuration management
-- Easier maintenance of connection details
-- No code duplication
-- Single source of truth for remote connections
+- Prevents page timeouts and improves user experience
+- Reduces server load and network traffic
+- Better error handling and recovery
+- Scalable for large RMA directory structures
