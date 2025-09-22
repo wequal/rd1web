@@ -254,7 +254,7 @@ class UniquePasswordForm(forms.Form):
 class RmaForm(forms.Form):
     base_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Base SN')
     rma_number=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='RMA Number')
-    mac=forms.CharField(widget=forms.Textarea(attrs={'class':'form-control','style': 'width: 500px;',}),label='MAC')
+    bmc_ip=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='BMC IP')
     image=forms.ChoiceField(choices=[('ubuntu2204-x86-rma','Ubuntu2204-X86'),('ubuntu2204-arm64-rma','Ubuntu2204-ARM64'),],label='Image')
     remove=forms.BooleanField(required=False,label="Remove",initial=False)
     check=forms.BooleanField(required=False,label="Check",initial=False)

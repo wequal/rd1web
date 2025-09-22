@@ -67,23 +67,22 @@
                             </small>
                         </div>
 
-                        <!-- MAC Addresses -->
+                        <!-- BMC IP -->
                         <div class="mb-4">
-                            <label for="{{ form.mac.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas fa-network-wired me-2 text-success"></i>{{ form.mac.label }}
+                            <label for="{{ form.bmc_ip.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-network-wired me-2 text-success"></i>{{ form.bmc_ip.label }}
                             </label>
-                            <textarea class="form-control" id="{{ form.mac.id_for_label }}" name="{{ form.mac.name }}" 
-                                      rows="4" placeholder="Enter MAC addresses (one per line)&#10;Supported formats:&#10;aa:bb:cc:dd:ee:ff (with colons)&#10;aa-bb-cc-dd-ee-ff (with dashes)&#10;aabbccddeeff (without separators)">{{ form.mac.value|default_if_none:"" }}</textarea>
-                            {% if form.mac.errors %}
+                            {{ form.bmc_ip }}
+                            {% if form.bmc_ip.errors %}
                                 <div class="text-danger mt-1">
-                                    {% for error in form.mac.errors %}
+                                    {% for error in form.bmc_ip.errors %}
                                         <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
                                     {% endfor %}
                                 </div>
                             {% endif %}
                             <small class="form-text text-muted">
                                 <i class="fas fa-info-circle me-1"></i>
-                                Enter MAC addresses for RMA systems (one per line).
+                                Enter the BMC IP address for RMA systems.
                             </small>
                         </div>
 
