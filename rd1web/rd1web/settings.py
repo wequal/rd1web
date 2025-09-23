@@ -235,3 +235,6 @@ LOGGING = {
         },
     },
 }
+
+# Increase the maximum number of fields in forms to handle Django admin with many permissions
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000

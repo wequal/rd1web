@@ -75,45 +75,142 @@ class RmaTestingDbAdmin(admin.ModelAdmin):
         return request.user.is_superuser
 
 
-# Enhance the default User admin interface for easier permission management
+# Create a simpler User admin that doesn't cause TooManyFieldsSent error
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.admin import SimpleListFilter
+from django import forms
+
+class RD1PermissionFilter(SimpleListFilter):
+    """Filter users by RD1 Web App permissions"""
+    title = 'RD1 Web App Access'
+    parameter_name = 'rd1_access'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('rma_pxe', 'Has RMA PXE Access'),
+            ('rma_testing_db', 'Has RMA Testing DB Access'),
+            ('default_only', 'Default Permissions Only'),
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == 'rma_pxe':
+            return queryset.filter(user_permissions__codename='can_access_rma_pxe').distinct()
+        elif self.value() == 'rma_testing_db':
+            return queryset.filter(user_permissions__codename='can_access_rma_testing_db').distinct()
+        elif self.value() == 'default_only':
+            # Users who don't have admin-only permissions
+            return queryset.exclude(
+                user_permissions__codename__in=['can_access_rma_pxe', 'can_access_rma_testing_db']
+            ).distinct()
+
+class CustomUserForm(forms.ModelForm):
+    """Custom form that only shows essential permissions to prevent TooManyFieldsSent error"""
+    
+    # Create custom fields for RD1 permissions
+    rma_pxe_access = forms.BooleanField(
+        required=False,
+        label='RMA PXE Access (RMA GPU TEST)',
+        help_text='Grant access to RMA PXE management features'
+    )
+    rma_testing_db_access = forms.BooleanField(
+        required=False,
+        label='RMA Testing DB Access',
+        help_text='Grant access to RMA Testing Database'
+    )
+    
+    class Meta:
+        model = User
+        fields = '__all__'
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Remove the problematic user_permissions field that causes TooManyFieldsSent
+        if 'user_permissions' in self.fields:
+            del self.fields['user_permissions']
+        
+        # If editing an existing user, populate the custom fields
+        if self.instance.pk:
+            try:
+                self.fields['rma_pxe_access'].initial = self.instance.has_perm('pxe.can_access_rma_pxe')
+                self.fields['rma_testing_db_access'].initial = self.instance.has_perm('pxe.can_access_rma_testing_db')
+            except Exception:
+                pass
+    
+    def save(self, commit=True):
+        user = super().save(commit=commit)
+        
+        if commit:
+            # Handle RMA PXE permission
+            try:
+                rma_pxe_perm = Permission.objects.get(
+                    content_type__app_label='pxe',
+                    codename='can_access_rma_pxe'
+                )
+                if self.cleaned_data.get('rma_pxe_access'):
+                    user.user_permissions.add(rma_pxe_perm)
+                else:
+                    user.user_permissions.remove(rma_pxe_perm)
+            except Permission.DoesNotExist:
+                pass
+            
+            # Handle RMA Testing DB permission
+            try:
+                rma_testing_db_perm = Permission.objects.get(
+                    content_type__app_label='pxe',
+                    codename='can_access_rma_testing_db'
+                )
+                if self.cleaned_data.get('rma_testing_db_access'):
+                    user.user_permissions.add(rma_testing_db_perm)
+                else:
+                    user.user_permissions.remove(rma_testing_db_perm)
+            except Permission.DoesNotExist:
+                pass
+        
+        return user
 
 class CustomUserAdmin(BaseUserAdmin):
-    """Enhanced User admin with easier permission management"""
+    """Enhanced User admin with RD1 Web App permission management"""
     
-    def save_model(self, request, obj, form, change):
-        """Custom save logic for user permissions"""
-        super().save_model(request, obj, form, change)
-        
-        # If this is a new user, the signal will handle default permissions
-        # If it's an existing user being modified, we don't need to do anything special here
-        pass
+    form = CustomUserForm
+    list_filter = BaseUserAdmin.list_filter + (RD1PermissionFilter,)
     
     def get_fieldsets(self, request, obj=None):
-        """Enhanced fieldsets for better permission management"""
-        fieldsets = super().get_fieldsets(request, obj)
+        """Use standard fieldsets with custom RD1 permission fields"""
+        fieldsets = list(super().get_fieldsets(request, obj))
         
         if obj and request.user.is_superuser:
-            # Add a custom section showing app-specific permissions
-            app_permissions_section = (
-                'RD1 Web Application Permissions', {
-                    'fields': (),
-                    'description': '''
-                    <strong>Default Permissions (Auto-granted to new users):</strong><br/>
-                    • can_use_dashboard - Access to overview and basic features<br/>
-                    • can_use_system_management - System Overview, PXE Boot Manager<br/>
-                    • can_use_tools - IPMI Tool, MAC to IP<br/>
-                    • can_view_rma_logs - RMA Logs (read-only)<br/><br/>
-                    
-                    <strong>Admin-Only Permissions (Manual approval required):</strong><br/>
-                    • can_access_rma_pxe - RMA GPU TEST (RMA PXE functionality)<br/>
-                    • can_access_rma_testing_db - RMA Testing DB<br/><br/>
-                    
-                    Use the "User permissions" section below to grant admin-only permissions.
-                    '''
-                }
-            )
-            fieldsets = fieldsets + (app_permissions_section,)
+            # Replace the Permissions section with our custom RD1 permissions
+            new_fieldsets = []
+            for name, options in fieldsets:
+                if name == 'Permissions':
+                    # Custom permissions section
+                    new_fieldsets.append((
+                        'Permissions', {
+                            'fields': ('is_active', 'is_staff', 'is_superuser', 'groups')
+                        }
+                    ))
+                    # Add RD1 Web App permissions section
+                    new_fieldsets.append((
+                        'RD1 Web App Permissions', {
+                            'fields': ('rma_pxe_access', 'rma_testing_db_access'),
+                            'description': '''
+                            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                                <h4>RD1 Web Application Access Control:</h4>
+                                
+                                <p><strong>✅ Default Access (Automatic):</strong><br/>
+                                All users automatically have: Dashboard, System Management, Tools, RMA Logs</p>
+                                
+                                <p><strong>🔒 Admin-Only Access (Manual):</strong><br/>
+                                Use the checkboxes below to grant special administrative access.</p>
+                            </div>
+                            '''
+                        }
+                    ))
+                else:
+                    new_fieldsets.append((name, options))
+            
+            return new_fieldsets
         
         return fieldsets
 
