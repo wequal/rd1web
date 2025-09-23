@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from django.http import HttpResponse, Http404, FileResponse, JsonResponse
+from django.http import HttpResponse, Http404, FileResponse, JsonResponse, StreamingHttpResponse
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.template import Template, Context
@@ -542,7 +542,7 @@ def rma_log_browser(request, path=""):
                 "mtime": mtime,
                 "path": item_path,
                 "file_type": "Directory" if is_dir else get_file_extension(name),
-                "download_url": f"http://{get_rma_host_ip()}/{item_path}" if not is_dir else None,
+                "download_url": f"/rma/view/{item_path}/?download=true" if not is_dir else None,
             }
             
             if is_dir:
@@ -859,18 +859,56 @@ def rma_view_file(request, path):
             if content_type is None:
                 content_type = 'text/plain; charset=utf-8' if is_text_content(file_content) else 'application/octet-stream'
 
+        # Check if download is requested
+        download_requested = request.GET.get('download', 'false').lower() == 'true'
+        
         # For text files, serve content directly
         if content_type and content_type.startswith('text/'):
             response = HttpResponse(file_content, content_type=content_type)
-            response['Content-Disposition'] = f'inline; filename="{filename}"'
+            if download_requested:
+                response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            else:
+                response['Content-Disposition'] = f'inline; filename="{filename}"'
             response['Cache-Control'] = 'no-cache'
             return response
 
-        # For binary files, redirect to Apache2 for direct serving
+        # For binary files, handle download vs view
         else:
-            apache_url = f"http://{get_rma_host_ip()}/{path}"
-            from django.shortcuts import redirect
-            return redirect(apache_url)
+            if download_requested:
+                # For downloads, create a redirect URL with download headers
+                # Use JavaScript to trigger download with proper filename
+                download_script = f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Downloading {filename}</title>
+                </head>
+                <body>
+                    <p>Starting download of {filename}...</p>
+                    <script>
+                        // Create a temporary link to trigger download
+                        var link = document.createElement('a');
+                        link.href = 'http://{get_rma_host_ip()}/{path}';
+                        link.download = '{filename}';
+                        link.style.display = 'none';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        
+                        // Redirect back after a short delay
+                        setTimeout(function() {{
+                            window.history.back();
+                        }}, 1000);
+                    </script>
+                </body>
+                </html>
+                """
+                return HttpResponse(download_script, content_type='text/html')
+            else:
+                # Redirect to Apache2 for direct serving/viewing
+                apache_url = f"http://{get_rma_host_ip()}/{path}"
+                from django.shortcuts import redirect
+                return redirect(apache_url)
             
     except Exception as e:
         logger.error(f"Error viewing remote file {remote_path}: {e}")
