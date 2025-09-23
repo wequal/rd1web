@@ -113,7 +113,7 @@ def rma_log(request, path=""):
         cache.delete('rma_directories_basic')
     
     # Get all RMA directories (fast mode for initial load)
-    all_rma_directories = get_rma_directories(include_stats=False)
+    all_rma_directories = get_rma_directories(include_stats=False, include_status=True)
     
     # Filter directories based on search query
     if search_query:
@@ -137,15 +137,8 @@ def rma_log(request, path=""):
     except EmptyPage:
         page_obj = paginator.get_page(paginator.num_pages)
     
-    # Load stats for only the current page directories (optional/lazy loading)
-    page_directories = list(page_obj.object_list)
-    # Only load stats if explicitly requested or if it's a small set
-    load_stats = request.GET.get('load_stats', 'false').lower() == 'true'
-    if load_stats and len(page_directories) <= 10:
-        page_directories_with_stats = load_directory_stats(page_directories)
-    else:
-        # Fast mode: No stats loading, just show directories
-        page_directories_with_stats = page_directories
+    # Use page directories as-is (status already loaded)
+    page_directories_with_stats = list(page_obj.object_list)
     
     # Main RMA logs page - show RMA directories
     context = {
@@ -176,7 +169,7 @@ def rma_log_ajax(request):
         cache.delete('rma_directories_basic')
     
     # Get all RMA directories (fast mode for initial load)
-    all_rma_directories = get_rma_directories(include_stats=False)
+    all_rma_directories = get_rma_directories(include_stats=False, include_status=True)
     
     # Filter directories based on search query
     if search_query:
@@ -200,15 +193,8 @@ def rma_log_ajax(request):
     except EmptyPage:
         page_obj = paginator.get_page(paginator.num_pages)
     
-    # Load stats for only the current page directories (optional/lazy loading)
-    page_directories = list(page_obj.object_list)
-    # Only load stats if explicitly requested or if it's a small set
-    load_stats = request.GET.get('load_stats', 'false').lower() == 'true'
-    if load_stats and len(page_directories) <= 10:
-        page_directories_with_stats = load_directory_stats(page_directories)
-    else:
-        # Fast mode: No stats loading, just show directories
-        page_directories_with_stats = page_directories
+    # Use page directories as-is (status already loaded)
+    page_directories_with_stats = list(page_obj.object_list)
     
     # Prepare data for JSON response
     directories_data = []
@@ -217,8 +203,7 @@ def rma_log_ajax(request):
             'name': rma_dir['name'],
             'base_sn': rma_dir['base_sn'],
             'rma_number': rma_dir['rma_number'],
-            'file_count': rma_dir['file_count'],
-            'total_size': rma_dir['total_size'],
+            'test_details': rma_dir.get('test_details', {}),
             'mtime': rma_dir['mtime'],
             'path': rma_dir['path'],
             'error': rma_dir.get('error', None)
@@ -236,12 +221,13 @@ def rma_log_ajax(request):
         'end_index': page_obj.end_index() if page_obj.object_list else 0
     })
 
-async def get_rma_directories_async(include_stats=True):
+async def get_rma_directories_async(include_stats=False, include_status=False):
     """
     Get list of RMA directories from remote /srv/rma matching pattern {base_sn}_{rma_number} (ASYNC VERSION)
     
     Args:
         include_stats (bool): Whether to include file count and size stats (slower)
+        include_status (bool): Whether to include test status from test_status.txt
     """
     # Check cache first for basic directory listing
     cache_key = f"rma_directories_basic"
@@ -294,6 +280,11 @@ async def get_rma_directories_async(include_stats=True):
                         else:
                             mtime = 'Unknown'
                         
+                        # Get test status if requested
+                        test_details = {}
+                        if include_status:
+                            test_details = await get_test_status_async(item)
+                        
                         rma_directories.append({
                             'name': item,
                             'base_sn': base_sn,
@@ -304,10 +295,17 @@ async def get_rma_directories_async(include_stats=True):
                             'total_size': '0 B',  # Will be loaded separately if needed
                             'mtime': mtime,
                             'exists': True,
-                            'stats_loaded': False
+                            'stats_loaded': False,
+                            'test_details': test_details
                         })
                     except Exception as e:
                         logger.warning(f"Cannot access remote RMA directory {item}: {e}")
+                        
+                        # Get test status if requested (even for errored directories)
+                        test_details = {}
+                        if include_status:
+                            test_details = await get_test_status_async(item)
+                        
                         rma_directories.append({
                             'name': item,
                             'base_sn': base_sn,
@@ -319,7 +317,8 @@ async def get_rma_directories_async(include_stats=True):
                             'mtime': 'Unknown',
                             'exists': True,
                             'error': str(e),
-                            'stats_loaded': False
+                            'stats_loaded': False,
+                            'test_details': test_details
                         })
             
             # Sort by RMA number (newest first), then by base_sn
@@ -346,12 +345,13 @@ async def get_rma_directories_async(include_stats=True):
     
     return rma_directories
 
-def get_rma_directories(include_stats=True):
+def get_rma_directories(include_stats=False, include_status=False):
     """
     Get list of RMA directories from remote /srv/rma matching pattern {base_sn}_{rma_number}
     
     Args:
         include_stats (bool): Whether to include file count and size stats (slower)
+        include_status (bool): Whether to include test status from test_status.txt
     """
     # Check cache first for basic directory listing
     cache_key = f"rma_directories_basic"
@@ -407,6 +407,11 @@ def get_rma_directories(include_stats=True):
                         else:
                             mtime = 'Unknown'
                         
+                        # Get test status if requested
+                        test_details = {}
+                        if include_status:
+                            test_details = get_test_status(item)
+                        
                         rma_directories.append({
                             'name': item,
                             'base_sn': base_sn,
@@ -417,10 +422,17 @@ def get_rma_directories(include_stats=True):
                             'total_size': '0 B',  # Will be loaded separately if needed
                             'mtime': mtime,
                             'exists': True,
-                            'stats_loaded': False
+                            'stats_loaded': False,
+                            'test_details': test_details
                         })
                     except Exception as e:
                         logger.warning(f"Cannot access remote RMA directory {item}: {e}")
+                        
+                        # Get test status if requested (even for errored directories)
+                        test_details = {}
+                        if include_status:
+                            test_details = get_test_status(item)
+                        
                         rma_directories.append({
                             'name': item,
                             'base_sn': base_sn,
@@ -432,7 +444,8 @@ def get_rma_directories(include_stats=True):
                             'mtime': 'Unknown',
                             'exists': True,
                             'error': str(e),
-                            'stats_loaded': False
+                            'stats_loaded': False,
+                            'test_details': test_details
                         })
             
             # Sort by RMA number (newest first), then by base_sn
@@ -605,6 +618,112 @@ def format_size(size):
             return f"{size:.1f} {unit}"
         size /= 1024
     return f"{size:.1f} TB"
+
+def parse_test_status_content(content):
+    """
+    Parse test status content to extract individual test items and their statuses
+    
+    Args:
+        content (str): Content of the test_status.txt file
+        
+    Returns:
+        dict: Dictionary of {test_name: status} pairs
+    """
+    test_details = {}
+    
+    if not content:
+        return test_details
+    
+    lines = content.strip().split('\n')
+    
+    # Handle different formats
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        
+        # Format 1: "TestName: STATUS" or "TestName STATUS"
+        if ':' in line:
+            parts = line.split(':', 1)
+            if len(parts) == 2:
+                test_name = parts[0].strip()
+                status = parts[1].strip().upper()
+                test_details[test_name] = status
+        elif ' ' in line:
+            # Format 2: "TestName STATUS" (space separated)
+            parts = line.split()
+            if len(parts) >= 2:
+                test_name = parts[0].strip()
+                status = parts[1].strip().upper()
+                test_details[test_name] = status
+        else:
+            # Format 3: Single line with overall status
+            status = line.upper()
+            test_details['Overall'] = status
+    
+    return test_details
+
+def get_test_status(directory_name):
+    """
+    Get test status from test_status.txt file in RMA directory
+    
+    Args:
+        directory_name (str): The RMA directory name
+        
+    Returns:
+        dict: Dictionary of test details with individual test statuses
+    """
+    try:
+        # Read test_status.txt from the directory
+        status_file_path = f"{RMA_BASE_DIR}/{directory_name}/test_status.txt"
+        result, success, error = run_with_timeout_async(f'cat "{status_file_path}"', timeout_seconds=5, hide=True)
+        
+        if success and result.return_code == 0:
+            content = result.stdout.strip()
+            test_details = parse_test_status_content(content)
+            
+            if test_details:
+                return test_details
+            else:
+                return {'Overall': 'No Status'}
+        else:
+            # File doesn't exist or can't be read
+            return {'Overall': 'No Status'}
+            
+    except Exception as e:
+        logger.warning(f"Error reading test status for {directory_name}: {e}")
+        return {'Overall': 'Unknown'}
+
+async def get_test_status_async(directory_name):
+    """
+    Get test status from test_status.txt file in RMA directory (ASYNC VERSION)
+    
+    Args:
+        directory_name (str): The RMA directory name
+        
+    Returns:
+        dict: Dictionary of test details with individual test statuses
+    """
+    try:
+        # Read test_status.txt from the directory
+        status_file_path = f"{RMA_BASE_DIR}/{directory_name}/test_status.txt"
+        result, success, error = await async_rma.run_async(f'cat "{status_file_path}"', timeout=5, hide=True)
+        
+        if success and result.return_code == 0:
+            content = result.stdout.strip()
+            test_details = parse_test_status_content(content)
+            
+            if test_details:
+                return test_details
+            else:
+                return {'Overall': 'No Status'}
+        else:
+            # File doesn't exist or can't be read
+            return {'Overall': 'No Status'}
+            
+    except Exception as e:
+        logger.warning(f"Error reading test status for {directory_name}: {e}")
+        return {'Overall': 'Unknown'}
 
 
 def get_file_extension(filename):

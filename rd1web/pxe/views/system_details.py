@@ -3,7 +3,7 @@ import os
 import re
 from django.shortcuts import render, get_object_or_404
 from django.http import Http404
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from datetime import datetime
 
 BASE_DIR = '/srv/log'
@@ -367,6 +367,7 @@ def determine_test_type_and_status(log_dir, folder_name):
     return test_info
 
 @login_required
+@permission_required('pxe.can_use_system_management', raise_exception=True)
 def system_details(request, mac):
     """Display comprehensive system details for a given MAC address"""
     # The mac parameter might be the original folder name, so we need to handle both cases
@@ -771,6 +772,7 @@ def get_systems_data():
 # ------------------------------------------------------------------
 
 @login_required
+@permission_required('pxe.can_use_system_management', raise_exception=True)
 def system_list(request):
     systems = get_systems_data()
     return render(request, 'features/system_list.html', {'systems': systems}) 

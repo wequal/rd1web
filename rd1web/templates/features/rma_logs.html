@@ -92,8 +92,7 @@
                                             <th><i class="fas fa-folder me-1"></i>Directory</th>
                                             <th><i class="fas fa-barcode me-1"></i>Base SN</th>
                                             <th><i class="fas fa-hashtag me-1"></i>RMA Number</th>
-                                            <th><i class="fas fa-file me-1"></i>Files</th>
-                                            <th><i class="fas fa-hdd me-1"></i>Size</th>
+                                            <th><i class="fas fa-check-circle me-1"></i>Status</th>
                                             <th><i class="fas fa-clock me-1"></i>Modified</th>
                                             <th><i class="fas fa-cog me-1"></i>Actions</th>
                                         </tr>
@@ -114,10 +113,26 @@
                                                     <span class="badge bg-primary">{{ rma_dir.rma_number }}</span>
                                                 </td>
                                                 <td>
-                                                    <span class="text-muted">{{ rma_dir.file_count }}</span>
-                                                </td>
-                                                <td>
-                                                    <span class="text-muted">{{ rma_dir.total_size }}</span>
+                                                    <div class="test-status-container">
+                                                        {% if rma_dir.test_details %}
+                                                            {% for test_name, test_status in rma_dir.test_details.items %}
+                                                                <span class="badge 
+                                                                    {% if test_status == 'COMPLETED' or test_status == 'PASSED' or test_status == 'SUCCESS' %}bg-success
+                                                                    {% elif test_status == 'FAIL' or test_status == 'FAILED' or test_status == 'ERROR' %}bg-danger
+                                                                    {% elif test_status == 'RUNNING' or test_status == 'IN PROGRESS' or test_status == 'TESTING' %}bg-primary
+                                                                    {% else %}bg-secondary{% endif %} me-1 mb-1">
+                                                                    {% if test_status == 'COMPLETED' or test_status == 'PASSED' or test_status == 'SUCCESS' %}<i class="fas fa-check-circle me-1"></i>{% endif %}
+                                                                    {% if test_status == 'FAIL' or test_status == 'FAILED' or test_status == 'ERROR' %}<i class="fas fa-times-circle me-1"></i>{% endif %}
+                                                                    {% if test_status == 'RUNNING' or test_status == 'IN PROGRESS' or test_status == 'TESTING' %}<i class="fas fa-play-circle me-1"></i>{% endif %}
+                                                                    {{ test_name }}{% if test_status == 'FAIL' or test_status == 'FAILED' or test_status == 'ERROR' %}: {{ test_status }}{% endif %}
+                                                                </span>
+                                                            {% endfor %}
+                                                        {% else %}
+                                                            <span class="badge bg-secondary">
+                                                                <i class="fas fa-question-circle me-1"></i>Unknown
+                                                            </span>
+                                                        {% endif %}
+                                                    </div>
                                                 </td>
                                                 <td>
                                                     <small class="text-muted">{{ rma_dir.mtime }}</small>
@@ -265,6 +280,15 @@
         background-color: #f8f9fa;
         border-color: #dee2e6;
     }
+    
+    .test-status-container {
+        line-height: 1.2;
+    }
+    
+    .test-status-container .badge {
+        font-size: 0.75em;
+        white-space: nowrap;
+    }
 </style>
 
 <script>
@@ -352,8 +376,7 @@ function updateDirectoriesTable(data) {
                             <th><i class="fas fa-folder me-1"></i>Directory</th>
                             <th><i class="fas fa-barcode me-1"></i>Base SN</th>
                             <th><i class="fas fa-hashtag me-1"></i>RMA Number</th>
-                            <th><i class="fas fa-file me-1"></i>Files</th>
-                            <th><i class="fas fa-hdd me-1"></i>Size</th>
+                            <th><i class="fas fa-check-circle me-1"></i>Status</th>
                             <th><i class="fas fa-clock me-1"></i>Modified</th>
                             <th><i class="fas fa-cog me-1"></i>Actions</th>
                         </tr>
@@ -370,6 +393,32 @@ function updateDirectoriesTable(data) {
     
     data.directories.forEach(dir => {
         const row = document.createElement('tr');
+        // Helper function to get status color and icon
+        const getStatusColorAndIcon = (status) => {
+            const upperStatus = status.toUpperCase();
+            if (upperStatus === 'COMPLETED' || upperStatus === 'PASSED' || upperStatus === 'SUCCESS') {
+                return { color: 'success', icon: '<i class="fas fa-check-circle me-1"></i>' };
+            } else if (upperStatus === 'FAIL' || upperStatus === 'FAILED' || upperStatus === 'ERROR') {
+                return { color: 'danger', icon: '<i class="fas fa-times-circle me-1"></i>' };
+            } else if (upperStatus === 'RUNNING' || upperStatus === 'IN PROGRESS' || upperStatus === 'TESTING') {
+                return { color: 'primary', icon: '<i class="fas fa-play-circle me-1"></i>' };
+            } else {
+                return { color: 'secondary', icon: '<i class="fas fa-question-circle me-1"></i>' };
+            }
+        };
+        
+        // Generate test status badges
+        let statusHtml = '';
+        if (dir.test_details && Object.keys(dir.test_details).length > 0) {
+            for (const [testName, testStatus] of Object.entries(dir.test_details)) {
+                const { color, icon } = getStatusColorAndIcon(testStatus);
+                const showStatus = (testStatus.toUpperCase() === 'FAIL' || testStatus.toUpperCase() === 'FAILED' || testStatus.toUpperCase() === 'ERROR') ? `: ${testStatus}` : '';
+                statusHtml += `<span class="badge bg-${color} me-1 mb-1">${icon}${testName}${showStatus}</span>`;
+            }
+        } else {
+            statusHtml = '<span class="badge bg-secondary"><i class="fas fa-question-circle me-1"></i>Unknown</span>';
+        }
+        
         row.innerHTML = `
             <td>
                 <div class="d-flex align-items-center">
@@ -384,10 +433,9 @@ function updateDirectoriesTable(data) {
                 <span class="badge bg-primary">${dir.rma_number}</span>
             </td>
             <td>
-                <span class="text-muted">${dir.file_count}</span>
-            </td>
-            <td>
-                <span class="text-muted">${dir.total_size}</span>
+                <div class="test-status-container">
+                    ${statusHtml}
+                </div>
             </td>
             <td>
                 <small class="text-muted">${dir.mtime}</small>

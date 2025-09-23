@@ -10,6 +10,17 @@ class PxeEntry(models.Model):
     image= models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        permissions = [
+            # Default permissions (auto-granted to new users)
+            ('can_use_dashboard', 'Can use dashboard and overview'),
+            ('can_use_system_management', 'Can use system management features'),
+            ('can_use_tools', 'Can use tools and utilities'),
+            ('can_view_rma_logs', 'Can view RMA logs'),
+            # Admin-only permissions (require manual approval)
+            ('can_access_rma_pxe', 'Can access RMA PXE management'),
+        ]
+
     def __str__(self):
         return self.mac
 

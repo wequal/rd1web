@@ -1,8 +1,17 @@
 from django.contrib import admin
+from django.contrib.auth.models import User, Group, Permission
+from django.contrib.contenttypes.models import ContentType
 from .models import PxeEntry, ArpScanResult, RmaTestingDb
 
-# Register your models here.
-admin.site.register(PxeEntry)
+
+@admin.register(PxeEntry)
+class PxeEntryAdmin(admin.ModelAdmin):
+    """Enhanced admin interface for PXE entries"""
+    list_display = ('mac', 'image', 'created_at')
+    search_fields = ('mac', 'image', 'parameters')
+    list_filter = ('image', 'created_at')
+    readonly_fields = ('created_at',)
+    ordering = ('-created_at',)
 
 
 @admin.register(ArpScanResult)
@@ -64,3 +73,50 @@ class RmaTestingDbAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         """Only superusers can delete RMA Testing DB entries in admin"""
         return request.user.is_superuser
+
+
+# Enhance the default User admin interface for easier permission management
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+
+class CustomUserAdmin(BaseUserAdmin):
+    """Enhanced User admin with easier permission management"""
+    
+    def save_model(self, request, obj, form, change):
+        """Custom save logic for user permissions"""
+        super().save_model(request, obj, form, change)
+        
+        # If this is a new user, the signal will handle default permissions
+        # If it's an existing user being modified, we don't need to do anything special here
+        pass
+    
+    def get_fieldsets(self, request, obj=None):
+        """Enhanced fieldsets for better permission management"""
+        fieldsets = super().get_fieldsets(request, obj)
+        
+        if obj and request.user.is_superuser:
+            # Add a custom section showing app-specific permissions
+            app_permissions_section = (
+                'RD1 Web Application Permissions', {
+                    'fields': (),
+                    'description': '''
+                    <strong>Default Permissions (Auto-granted to new users):</strong><br/>
+                    • can_use_dashboard - Access to overview and basic features<br/>
+                    • can_use_system_management - System Overview, PXE Boot Manager<br/>
+                    • can_use_tools - IPMI Tool, MAC to IP<br/>
+                    • can_view_rma_logs - RMA Logs (read-only)<br/><br/>
+                    
+                    <strong>Admin-Only Permissions (Manual approval required):</strong><br/>
+                    • can_access_rma_pxe - RMA GPU TEST (RMA PXE functionality)<br/>
+                    • can_access_rma_testing_db - RMA Testing DB<br/><br/>
+                    
+                    Use the "User permissions" section below to grant admin-only permissions.
+                    '''
+                }
+            )
+            fieldsets = fieldsets + (app_permissions_section,)
+        
+        return fieldsets
+
+# Unregister the default User admin and register our custom one
+admin.site.unregister(User)
+admin.site.register(User, CustomUserAdmin)

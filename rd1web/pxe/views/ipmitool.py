@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.conf import settings
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.http import JsonResponse
 import asyncio
 import subprocess
@@ -73,6 +73,7 @@ def run_firmware_update_sequence(sequence_id, bmc_ip, credentials, firmware_file
 
 
 @login_required
+@permission_required('pxe.can_use_tools', raise_exception=True)
 def ipmitool(request):
     result = {}
     task_id = None

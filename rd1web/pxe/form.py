@@ -252,8 +252,8 @@ class UniquePasswordForm(forms.Form):
         return macs
 
 class RmaForm(forms.Form):
-    base_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Base SN')
-    rma_number=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='RMA Number')
+    base_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Base SN',required=False)
+    rma_number=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='RMA Number',required=False)
     bmc_ip=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='BMC IP')
     image=forms.ChoiceField(choices=[('ubuntu2204-x86-rma','Ubuntu2204-X86'),('ubuntu2204-arm64-rma','Ubuntu2204-ARM64'),],label='Image')
     remove=forms.BooleanField(required=False,label="Remove",initial=False)
@@ -264,6 +264,7 @@ class RmaForm(forms.Form):
         ('nvidia-smi-q', 'Nvidia SMI Q'),
         ('dcgm', 'DCGM'),
         ('fd2', 'FD2'),
+        ('gpudiag', 'GPU Field Diag'),
     ],
     widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
     label='Tests',

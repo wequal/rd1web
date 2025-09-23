@@ -123,7 +123,7 @@
                                     <div class="form-check">
                                         <input type="checkbox" class="form-check-input" name="tests" value="nvidia-smi-q" id="id_tests_1">
                                         <label class="form-check-label" for="id_tests_1">
-                                            <i class="fas fa-microchip me-1 text-success"></i>Nvidia SMI Q
+                                            <i class="fas  me-1 text-success"></i>Nvidia SMI Q
                                         </label>
                                     </div>
                                 </div>
@@ -131,7 +131,7 @@
                                     <div class="form-check">
                                         <input type="checkbox" class="form-check-input" name="tests" value="dcgm" id="id_tests_2">
                                         <label class="form-check-label" for="id_tests_2">
-                                            <i class="fas fa-chart-line me-1 text-info"></i>DCGM
+                                            <i class="fas  me-1 text-info"></i>DCGM
                                         </label>
                                     </div>
                                 </div>
@@ -139,11 +139,19 @@
                                     <div class="form-check">
                                         <input type="checkbox" class="form-check-input" name="tests" value="fd2" id="id_tests_3">
                                         <label class="form-check-label" for="id_tests_3">
-                                            <i class="fas fa-cogs me-1 text-primary"></i>FD2
+                                            <i class="fas  me-1 text-primary"></i>FD2
                                         </label>
                                     </div>
                                 </div>
                             </div>
+                            <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" name="tests" value="gpudiag" id="id_tests_4">
+                                        <label class="form-check-label" for="id_tests_4">
+                                            <i class="fas  me-1 text-success"></i>GPU Field Diag
+                                        </label>
+                                    </div>
+                                </div>
                             {% if form.tests.errors %}
                                 <div class="text-danger mt-1">
                                     {% for error in form.tests.errors %}
@@ -153,12 +161,12 @@
                             {% endif %}
                             <div id="tests-validation-message" class="text-warning mt-2" style="display: none;">
                                 <small><i class="fas fa-exclamation-triangle me-1"></i>
-                                    You can select either 'Default' test OR any combination of 'Nvidia SMI Q', 'DCGM', and 'FD2', but 'Default' cannot be combined with other tests.
+                                    You can select either 'Default' test OR any combination of 'Nvidia SMI Q', 'DCGM', 'GPU Field Diag', 'FD2', but 'Default' cannot be combined with other tests.
                                 </small>
                             </div>
                             <small class="form-text text-muted mt-2">
                                 <i class="fas fa-info-circle me-1"></i>
-                                Select either Default test OR any combination of specific tests (Nvidia SMI Q, DCGM, FD2). Default cannot be combined with others.
+                                Select either Default test OR any combination of specific tests (Nvidia SMI Q, DCGM, FD2, GPU Field Diag). Default cannot be combined with others.
                             </small>
                         </div>
 

@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.conf import settings
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from pxe.form import *
 from ..models import PxeEntry
 import os
@@ -9,6 +9,7 @@ import asyncio
 from ..remote_config import remote_dict
 
 @login_required
+@permission_required('pxe.can_use_system_management', raise_exception=True)
 def pxe_input(request):
     result = {}
     if request.method == "POST":

@@ -14,7 +14,7 @@ import os
 import re
 import tempfile
 from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.db.models import Q, Count, Value
@@ -336,6 +336,7 @@ def scan_status_api(request):
         return JsonResponse({'scan_status': result})
 
 @login_required
+@permission_required('pxe.can_use_tools', raise_exception=True)
 def mac_ip_results(request):
     """Display MAC-IP scan results from multiple subnets"""
     # Get filter parameters

@@ -2,7 +2,7 @@ import os
 from django.shortcuts import render
 from datetime import datetime
 from django.http import Http404
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from urllib.parse import unquote
 
 BASE_DIR = "/srv/log"
@@ -49,6 +49,7 @@ def get_file_extension(filename):
         return f'{ext} file'
 
 @login_required
+@permission_required('pxe.can_view_rma_logs', raise_exception=True)  
 def log_view(request, path=""):
     decoded_path = unquote(path)
     abs_path = os.path.normpath(os.path.join(BASE_DIR, decoded_path))

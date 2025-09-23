@@ -4,7 +4,7 @@ from ..form import RmaForm
 import subprocess
 import re
 from fabric import Connection
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from ..models import PxeEntry, RmaTestingDb
 from ..remote_config import remote_dict, async_rma
 import asyncio
@@ -44,6 +44,7 @@ def run_rma_command_sync(command, timeout=30):
         return False, str(e)
 
 @login_required
+@permission_required('pxe.can_access_rma_pxe', raise_exception=True)
 def rma_pxe(request):
     result = {}
     if request.method == "POST":

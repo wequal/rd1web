@@ -2,14 +2,17 @@
     <div class="sb-sidenav-menu">
         <div class="nav">
             <!-- Main Navigation -->
+            {% if perms.pxe.can_use_dashboard %}
             <div class="sb-sidenav-menu-heading">Dashboard</div>
             
             <a class="nav-link" href="{% url 'index' %}">
                 <div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt"></i></div>
                 Overview
             </a>
+            {% endif %}
 
             <!-- System Management -->
+            {% if perms.pxe.can_use_system_management %}
             <div class="sb-sidenav-menu-heading">System Management</div>
             
             <a class="nav-link" href="{% url 'system_list' %}">
@@ -21,8 +24,10 @@
                 <div class="sb-nav-link-icon"><i class="fas fa-server"></i></div>
                 PXE Boot Manager
             </a>
+            {% endif %}
 
             <!-- Tools & Utilities -->
+            {% if perms.pxe.can_use_tools %}
             <div class="sb-sidenav-menu-heading">Tools & Utilities</div>
             
             <a class="nav-link" href="{% url 'ipmitool' %}">
@@ -34,19 +39,26 @@
                 <div class="sb-nav-link-icon"><i class="fas fa-network-wired"></i></div>
                 MAC to IP
             </a>
+            {% endif %}
 
             <!-- RMA Management -->
+            {% if perms.pxe.can_view_rma_logs or perms.pxe.can_access_rma_pxe or perms.pxe.can_access_rma_testing_db %}
             <div class="sb-sidenav-menu-heading">RMA Management</div>
             
+            {% if perms.pxe.can_view_rma_logs %}
             <a class="nav-link" href="{% url 'rma_log' %}">
                 <div class="sb-nav-link-icon"><i class="fas fa-server"></i></div>
                 RMA Logs
             </a>
+            {% endif %}
 
+            {% if perms.pxe.can_access_rma_pxe %}
             <a class="nav-link" href="{% url 'rma_pxe' %}">
                 <div class="sb-nav-link-icon"><i class="fas fa-server"></i></div>
-                RMA PXE
+                RMA GPU TEST
             </a>
+            {% endif %}
+            {% endif %}
 
             {% if perms.pxe.can_access_rma_testing_db %}
             <a class="nav-link" href="{% url 'rma_testing_db' %}">
