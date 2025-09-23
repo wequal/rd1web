@@ -988,6 +988,17 @@ def rma_view_file(request, path):
         if not success or result.return_code != 0:
             raise Http404(f"File does not exist, is a directory, or timeout: {error}")
 
+        # Check if download is requested FIRST - before doing any heavy operations
+        download_requested = request.GET.get('download', 'false').lower() == 'true'
+        
+        # For downloads, redirect directly to Apache2 without reading file content
+        if download_requested:
+            # Direct redirect to Apache2 server for all downloads
+            apache_url = f"http://{get_rma_host_ip()}/{path}"
+            from django.shortcuts import redirect
+            return redirect(apache_url)
+
+        # For viewing only - continue with file size checks and content reading
         # Get file size with timeout
         def get_file_size():
             return rma_conn.run(f'stat -c "%s" "{remote_path}"', hide=True)
@@ -1019,7 +1030,7 @@ def rma_view_file(request, path):
             logger.error(f"Error reading remote file {remote_path}: {e}")
             raise Http404(f"Cannot read file content: {str(e)}")
 
-        # Handle CSV and TSV files specially
+        # Handle CSV and TSV files specially for viewing
         if ext in ['.csv', '.tsv']:
             # Display as HTML table
             html_content = render_csv_as_html(file_content, filename)
@@ -1050,57 +1061,19 @@ def rma_view_file(request, path):
             content_type, _ = mimetypes.guess_type(remote_path)
             if content_type is None:
                 content_type = 'text/plain; charset=utf-8' if is_text_content(file_content) else 'application/octet-stream'
-
-        # Check if download is requested
-        download_requested = request.GET.get('download', 'false').lower() == 'true'
         
-        # For text files, serve content directly
+        # For text files, serve content directly for viewing
         if content_type and content_type.startswith('text/'):
             response = HttpResponse(file_content, content_type=content_type)
-            if download_requested:
-                response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            else:
-                response['Content-Disposition'] = f'inline; filename="{filename}"'
+            response['Content-Disposition'] = f'inline; filename="{filename}"'
             response['Cache-Control'] = 'no-cache'
             return response
 
-        # For binary files, handle download vs view
+        # For binary files, redirect to Apache2 for direct serving/viewing
         else:
-            if download_requested:
-                # For downloads, create a redirect URL with download headers
-                # Use JavaScript to trigger download with proper filename
-                download_script = f"""
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Downloading {filename}</title>
-                </head>
-                <body>
-                    <p>Starting download of {filename}...</p>
-                    <script>
-                        // Create a temporary link to trigger download
-                        var link = document.createElement('a');
-                        link.href = 'http://{get_rma_host_ip()}/{path}';
-                        link.download = '{filename}';
-                        link.style.display = 'none';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        
-                        // Redirect back after a short delay
-                        setTimeout(function() {{
-                            window.history.back();
-                        }}, 1000);
-                    </script>
-                </body>
-                </html>
-                """
-                return HttpResponse(download_script, content_type='text/html')
-            else:
-                # Redirect to Apache2 for direct serving/viewing
-                apache_url = f"http://{get_rma_host_ip()}/{path}"
-                from django.shortcuts import redirect
-                return redirect(apache_url)
+            apache_url = f"http://{get_rma_host_ip()}/{path}"
+            from django.shortcuts import redirect
+            return redirect(apache_url)
             
     except Exception as e:
         logger.error(f"Error viewing remote file {remote_path}: {e}")
