@@ -1,5 +1,6 @@
 from django.urls import path
 from django.views.generic import TemplateView
+from asgiref.sync import async_to_sync
 from . import views
 from .views.index import index
 from .views.pxe_input import pxe_input

@@ -14,7 +14,8 @@ import re
 import io
 import threading
 import time
-from ..remote_config import remote_dict
+from ..remote_config import remote_dict, async_rma
+from asgiref.sync import sync_to_async
 
 logger = logging.getLogger(__name__)
 RMA_BASE_DIR = '/srv/rma'
@@ -26,6 +27,29 @@ RMA_STATS_CACHE_TIMEOUT = 300  # 5 minutes cache for file stats
 class TimeoutError(Exception):
     """Custom timeout exception"""
     pass
+
+def run_with_timeout_async(command, timeout_seconds=60, **kwargs):
+    """
+    Run an RMA command using async wrapper but in synchronous context
+    Returns (result, success, error_message)
+    """
+    import asyncio
+    
+    async def _run_async():
+        return await async_rma.run_async(command, timeout=timeout_seconds, **kwargs)
+    
+    try:
+        # Run the async function in the current thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result, success, error = loop.run_until_complete(_run_async())
+            return result, success, error
+        finally:
+            loop.close()
+    except Exception as e:
+        logger.error(f"Async command failed: {command}, Error: {e}")
+        return None, False, str(e)
 
 def run_with_timeout(func, timeout_seconds=60):
     """
@@ -64,7 +88,7 @@ def get_rma_host_ip():
         return rma_host.split('@')[1]
     return rma_host
 
-@login_required
+@login_required  
 def rma_log(request, path=""):
     """
     RMA Logs view - displays RMA directories from /srv/rma
@@ -212,9 +236,9 @@ def rma_log_ajax(request):
         'end_index': page_obj.end_index() if page_obj.object_list else 0
     })
 
-def get_rma_directories(include_stats=True):
+async def get_rma_directories_async(include_stats=True):
     """
-    Get list of RMA directories from remote /srv/rma matching pattern {base_sn}_{rma_number}
+    Get list of RMA directories from remote /srv/rma matching pattern {base_sn}_{rma_number} (ASYNC VERSION)
     
     Args:
         include_stats (bool): Whether to include file count and size stats (slower)
@@ -227,23 +251,14 @@ def get_rma_directories(include_stats=True):
         rma_directories = []
         
         try:
-            # Connect to remote RMA host
-            rma_conn = remote_dict['rma']
-            
-            # Check if remote directory exists with timeout
-            def check_dir():
-                return rma_conn.run(f'test -d {RMA_BASE_DIR}', warn=True)
-            
-            result, success, error = run_with_timeout(check_dir, 10)
+            # Check if remote directory exists using async wrapper
+            result, success, error = await async_rma.run_async(f'test -d {RMA_BASE_DIR}', timeout=30, warn=True)
             if not success or result.return_code != 0:
                 logger.warning(f"RMA base directory check failed: {error or 'Directory does not exist'}")
                 return []
             
-            # List directories on remote host with timeout
-            def list_dirs():
-                return rma_conn.run(f'ls -la {RMA_BASE_DIR}', hide=True)
-            
-            result, success, error = run_with_timeout(list_dirs, 30)
+            # List directories on remote host using async wrapper
+            result, success, error = await async_rma.run_async(f'ls -la {RMA_BASE_DIR}', timeout=30, hide=True)
             if not success or result.return_code != 0:
                 logger.error(f"Cannot list remote RMA directory: {error or 'Unknown error'}")
                 return []
@@ -271,11 +286,121 @@ def get_rma_directories(include_stats=True):
                     base_sn, rma_number = match.groups()
                     
                     try:
-                        # Get basic directory stats with timeout
-                        def get_basic_stats():
-                            return rma_conn.run(f'stat -c "%Y" {RMA_BASE_DIR}/{item}', hide=True)
+                        # Get basic directory stats using async wrapper
+                        stat_result, success, error = await async_rma.run_async(f'stat -c "%Y" {RMA_BASE_DIR}/{item}', timeout=10, hide=True)
+                        if success and stat_result.return_code == 0:
+                            mtime_timestamp = stat_result.stdout.strip()
+                            mtime = datetime.fromtimestamp(int(mtime_timestamp)).strftime("%Y-%m-%d %H:%M:%S")
+                        else:
+                            mtime = 'Unknown'
                         
-                        stat_result, success, error = run_with_timeout(get_basic_stats, 10)
+                        rma_directories.append({
+                            'name': item,
+                            'base_sn': base_sn,
+                            'rma_number': rma_number,
+                            'path': item,
+                            'full_path': f"{RMA_BASE_DIR}/{item}",
+                            'file_count': 0,  # Will be loaded separately if needed
+                            'total_size': '0 B',  # Will be loaded separately if needed
+                            'mtime': mtime,
+                            'exists': True,
+                            'stats_loaded': False
+                        })
+                    except Exception as e:
+                        logger.warning(f"Cannot access remote RMA directory {item}: {e}")
+                        rma_directories.append({
+                            'name': item,
+                            'base_sn': base_sn,
+                            'rma_number': rma_number,
+                            'path': item,
+                            'full_path': f"{RMA_BASE_DIR}/{item}",
+                            'file_count': 0,
+                            'total_size': '0 B',
+                            'mtime': 'Unknown',
+                            'exists': True,
+                            'error': str(e),
+                            'stats_loaded': False
+                        })
+            
+            # Sort by RMA number (newest first), then by base_sn
+            def sort_key(x):
+                try:
+                    return (int(x['rma_number']), x['base_sn'])
+                except ValueError:
+                    return (x['rma_number'], x['base_sn'])
+            
+            rma_directories.sort(key=sort_key, reverse=True)
+            
+            # Cache the basic directory listing
+            cache.set(cache_key, rma_directories, RMA_CACHE_TIMEOUT)
+            
+        except Exception as e:
+            logger.error(f"Error scanning remote RMA directories: {e}")
+            return []
+    else:
+        rma_directories = cached_dirs
+    
+    # If stats are requested, load them for visible directories only
+    if include_stats:
+        rma_directories = await load_directory_stats_async(rma_directories)
+    
+    return rma_directories
+
+def get_rma_directories(include_stats=True):
+    """
+    Get list of RMA directories from remote /srv/rma matching pattern {base_sn}_{rma_number}
+    
+    Args:
+        include_stats (bool): Whether to include file count and size stats (slower)
+    """
+    # Check cache first for basic directory listing
+    cache_key = f"rma_directories_basic"
+    cached_dirs = cache.get(cache_key)
+    
+    if cached_dirs is None:
+        rma_directories = []
+        
+        try:
+            # Connect to remote RMA host
+            rma_conn = remote_dict['rma']
+            
+            # Check if remote directory exists using async wrapper
+            result, success, error = run_with_timeout_async(f'test -d {RMA_BASE_DIR}', timeout_seconds=30, warn=True)
+            if not success or result.return_code != 0:
+                logger.warning(f"RMA base directory check failed: {error or 'Directory does not exist'}")
+                return []
+            
+            # List directories on remote host using async wrapper
+            result, success, error = run_with_timeout_async(f'ls -la {RMA_BASE_DIR}', timeout_seconds=30, hide=True)
+            if not success or result.return_code != 0:
+                logger.error(f"Cannot list remote RMA directory: {error or 'Unknown error'}")
+                return []
+            
+            # Pattern to match {base_sn}_{rma_number}
+            pattern = re.compile(r'^(.+)_(.+)$')
+            
+            # Parse ls output
+            for line in result.stdout.strip().split('\n'):
+                if line.startswith('total') or not line.startswith('d'):
+                    continue  # Skip total line and files
+                
+                parts = line.split()
+                if len(parts) < 9:
+                    continue
+                    
+                # Extract directory name (last part)
+                item = parts[-1]
+                if item in ['.', '..']:
+                    continue
+                    
+                # Check if it matches pattern
+                if pattern.match(item):
+                    match = pattern.match(item)
+                    base_sn, rma_number = match.groups()
+                    
+                    try:
+                        # Get basic directory stats using async wrapper
+                        stat_result, success, error = run_with_timeout_async(f'stat -c "%Y" {RMA_BASE_DIR}/{item}', timeout_seconds=10, hide=True)
                         if success and stat_result.return_code == 0:
                             mtime_timestamp = stat_result.stdout.strip()
                             mtime = datetime.fromtimestamp(int(mtime_timestamp)).strftime("%Y-%m-%d %H:%M:%S")
@@ -333,6 +458,73 @@ def get_rma_directories(include_stats=True):
         rma_directories = load_directory_stats(rma_directories)
     
     return rma_directories
+
+async def load_directory_stats_async(directories, max_concurrent=5):
+    """
+    Load file count and size stats for directories asynchronously.
+    Only loads stats for directories that don't have them cached.
+    """
+    try:
+        for i, rma_dir in enumerate(directories):
+            # Limit concurrent operations to prevent overwhelming the system
+            if i >= max_concurrent:
+                break
+                
+            if rma_dir.get('stats_loaded', False):
+                continue
+                
+            item = rma_dir['name']
+            cache_key = f"rma_stats_{item}"
+            cached_stats = cache.get(cache_key)
+            
+            if cached_stats:
+                rma_dir.update(cached_stats)
+                rma_dir['stats_loaded'] = True
+                continue
+            
+            # Load stats with timeout
+            file_count = 0
+            total_size = 0
+            
+            try:
+                # Count files with async wrapper
+                count_result, success, error = await async_rma.run_async(f'find {RMA_BASE_DIR}/{item} -type f | wc -l', timeout=30, hide=True)
+                if success and count_result.return_code == 0:
+                    file_count = int(count_result.stdout.strip())
+                else:
+                    logger.warning(f"File count timeout for {item}: {error}")
+                
+                # Calculate size with timeout (only if file count succeeded)
+                if file_count > 0 and file_count < 10000:  # Skip size calc for very large directories
+                    size_result, success, error = await async_rma.run_async(
+                        f'find {RMA_BASE_DIR}/{item} -type f -exec stat -c "%s" {{}} + | awk "{{sum += \\$1}} END {{print sum}}"', 
+                        timeout=60, hide=True
+                    )
+                    if success and size_result.return_code == 0 and size_result.stdout.strip():
+                        total_size = int(size_result.stdout.strip() or '0')
+                    else:
+                        logger.warning(f"Size calculation timeout for {item}: {error}")
+                        total_size = 0  # Use placeholder for large directories
+                
+            except (ValueError, AttributeError) as e:
+                logger.warning(f"Error calculating stats for {item}: {e}")
+            
+            # Update directory with stats
+            stats = {
+                'file_count': file_count,
+                'total_size': format_size(total_size) if total_size > 0 else ('Large directory' if file_count > 10000 else '0 B'),
+                'stats_loaded': True
+            }
+            
+            rma_dir.update(stats)
+            
+            # Cache the stats
+            cache.set(cache_key, stats, RMA_STATS_CACHE_TIMEOUT)
+            
+    except Exception as e:
+        logger.error(f"Error loading directory stats: {e}")
+    
+    return directories
 
 def load_directory_stats(directories, max_concurrent=5):
     """
