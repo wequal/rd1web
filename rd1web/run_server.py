@@ -134,8 +134,8 @@ def main():
     print(f"✓ SOL terminal functionality will be enabled")
     print(f"⚡ Redis caching: User tracking optimized for high performance")
     print(f"🌐 Nginx should proxy external requests from port 80 to these backends")
-    print(f"📁 Public access via: http://172.31.60.129/ (through Nginx)")
-    print(f"🔌 WebSocket SOL terminals: ws://172.31.60.129/ws/sol/<folder_name>/ (through Nginx)")
+    print(f"📁 Public access via: http://172.31.56.135/ (through Nginx)")
+    print(f"🔌 WebSocket SOL terminals: ws://172.31.56.135/ws/sol/<folder_name>/ (through Nginx)")
     print(f"⚡ Static files served directly by Nginx for better performance")
     print()
     

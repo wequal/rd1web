@@ -398,7 +398,7 @@ start_port = 8000
 ```
 
 ### Environment Configuration
-- **Database**: PostgreSQL (172.31.60.129:5432)
+- **Database**: PostgreSQL (172.31.56.135:5432)
 - **Redis**: Local Redis instance (127.0.0.1:6379)
 - **Static Files**: Nginx serves static content
 - **WebSocket**: Proxied through Nginx

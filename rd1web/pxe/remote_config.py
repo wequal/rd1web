@@ -28,7 +28,7 @@ remote_dict = {
     
     # PXE input location connections
     'us_b3': Connection(
-        host="root@172.31.60.129", 
+        host="root@172.31.56.135", 
         connect_kwargs={
             "password": "superrd1",
             "banner_timeout": 30,
