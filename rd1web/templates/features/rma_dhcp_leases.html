@@ -206,10 +206,9 @@
                             </h3>
                             <p class="mb-0" style="color: #6c757d; font-size: 0.9rem;">
                                 View active DHCP leases from the network
-                                <br><small class="text-muted">API Endpoint: {{ api_endpoint }}</small>
                             </p>
                         </div>
-                        <button type="button" class="btn refresh-btn" id="refreshBtn" onclick="refreshLeases()">
+                        <button type="button" class="btn refresh-btn" id="refreshBtn" onclick="refreshLeases()" data-refresh-url="{% url 'rma_dhcp_leases_refresh' %}">
                             <i class="fas fa-sync-alt me-2"></i>
                             Refresh
                         </button>
@@ -286,12 +285,25 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}
+{% block scripts %}
 <script>
 function refreshLeases() {
     const refreshBtn = document.getElementById('refreshBtn');
     const statusMessages = document.getElementById('statusMessages');
     const tableContainer = document.getElementById('tableContainer');
+    
+    if (!refreshBtn || !statusMessages || !tableContainer) {
+        console.error('Required elements not found');
+        return;
+    }
+    
+    // Get the refresh URL from the button's data attribute
+    const refreshUrl = refreshBtn.getAttribute('data-refresh-url');
+    
+    if (!refreshUrl) {
+        console.error('Refresh URL not found');
+        return;
+    }
     
     // Disable button and show loading state
     refreshBtn.disabled = true;
@@ -301,14 +313,19 @@ function refreshLeases() {
     statusMessages.innerHTML = '';
     
     // Make AJAX request
-    fetch('{% url "rma_dhcp_leases_refresh" %}', {
+    fetch(refreshUrl, {
         method: 'GET',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
             'X-CSRFToken': getCookie('csrftoken')
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             // Show success message
@@ -335,11 +352,11 @@ function refreshLeases() {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
+        console.error('Fetch error:', error);
         statusMessages.innerHTML = `
             <div class="alert error-message mb-0" role="alert">
                 <i class="fas fa-exclamation-triangle me-2"></i>
-                <strong>Error:</strong> Network error - please try again
+                <strong>Error:</strong> ${error.message || 'Network error - please try again'}
             </div>
         `;
         showEmptyState('Network error occurred while fetching DHCP leases.');
