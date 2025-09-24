@@ -1,0 +1,415 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}RMA DHCP Leases{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Modern Container */
+    .table-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 16px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        padding: 0;
+        margin-bottom: 30px;
+        overflow: hidden;
+    }
+    
+    .table-header {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        padding: 25px 30px;
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+    }
+    
+    .table-content {
+        background: white;
+        padding: 0;
+    }
+    
+    /* Modern Table Styling */
+    .modern-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        margin: 0;
+        background: white;
+    }
+    
+    .modern-table thead th {
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        color: #ffffff !important;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+        padding: 20px 16px;
+        border: none;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .modern-table thead th:first-child {
+        border-top-left-radius: 0;
+    }
+    
+    .modern-table thead th:last-child {
+        border-top-right-radius: 0;
+    }
+    
+    .modern-table tbody tr {
+        transition: all 0.3s ease;
+        border-bottom: 1px solid #f8f9fa;
+    }
+    
+    .modern-table tbody tr:hover {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .modern-table tbody td {
+        padding: 16px;
+        vertical-align: middle;
+        border: none;
+        font-size: 0.9rem;
+    }
+    
+    /* Status and Action Styling */
+    .refresh-btn {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border: none;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    }
+    
+    .refresh-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(40, 167, 69, 0.4);
+        color: white;
+    }
+    
+    .refresh-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+    
+    /* Loading Spinner */
+    .spinner-border-sm {
+        width: 1rem;
+        height: 1rem;
+    }
+    
+    /* Status Messages */
+    .status-info {
+        background: linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border: none;
+    }
+    
+    .error-message {
+        background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border: none;
+    }
+    
+    /* MAC Address Styling */
+    .mac-address {
+        font-family: 'Courier New', monospace;
+        font-weight: 600;
+        background: #f8f9fa;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+    
+    /* IP Address Styling */
+    .ip-address {
+        font-family: 'Courier New', monospace;
+        font-weight: 500;
+        color: #495057;
+    }
+    
+    /* Hostname Styling */
+    .hostname {
+        font-style: italic;
+        color: #6c757d;
+    }
+    
+    .hostname.na {
+        color: #adb5bd;
+        font-size: 0.85rem;
+    }
+    
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        color: #dee2e6;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .table-header {
+            padding: 15px 20px;
+        }
+        
+        .table-header h3 {
+            font-size: 1.2rem;
+        }
+        
+        .modern-table thead th,
+        .modern-table tbody td {
+            padding: 12px 8px;
+            font-size: 0.8rem;
+        }
+        
+        .refresh-btn {
+            padding: 8px 16px;
+            font-size: 0.8rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="table-container">
+                <div class="table-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="mb-2" style="color: #495057; font-weight: 700;">
+                                <i class="fas fa-network-wired me-2"></i>
+                                RMA DHCP Leases
+                            </h3>
+                            <p class="mb-0" style="color: #6c757d; font-size: 0.9rem;">
+                                View active DHCP leases from the network
+                                <br><small class="text-muted">API Endpoint: {{ api_endpoint }}</small>
+                            </p>
+                        </div>
+                        <button type="button" class="btn refresh-btn" id="refreshBtn" onclick="refreshLeases()">
+                            <i class="fas fa-sync-alt me-2"></i>
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="table-content">
+                    <!-- Status Messages -->
+                    <div id="statusMessages">
+                        {% if error_message %}
+                        <div class="alert error-message mb-0" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Error:</strong> {{ error_message }}
+                        </div>
+                        {% endif %}
+                        
+                        {% if leases and not error_message %}
+                        <div class="alert status-info mb-0" role="alert">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Status:</strong> Successfully loaded {{ leases|length }} DHCP lease{{ leases|length|pluralize }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Table or Empty State -->
+                    <div id="tableContainer">
+                        {% if leases and not error_message %}
+                        <table class="modern-table" id="leasesTable">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-ethernet me-2"></i>MAC Address</th>
+                                    <th><i class="fas fa-globe me-2"></i>IP Address</th>
+                                    <th><i class="fas fa-desktop me-2"></i>Hostname</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leasesTableBody">
+                                {% for lease in leases %}
+                                <tr>
+                                    <td>
+                                        <span class="mac-address">{{ lease.mac }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="ip-address">{{ lease.ip }}</span>
+                                    </td>
+                                    <td>
+                                        {% if lease.hostname == "N/A" %}
+                                            <span class="hostname na">N/A</span>
+                                        {% else %}
+                                            <span class="hostname">{{ lease.hostname }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-network-wired"></i>
+                            <h4>No DHCP Leases Found</h4>
+                            <p class="mb-0">
+                                {% if error_message %}
+                                    Unable to fetch DHCP leases due to an error.
+                                {% else %}
+                                    Click the refresh button to load DHCP leases.
+                                {% endif %}
+                            </p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function refreshLeases() {
+    const refreshBtn = document.getElementById('refreshBtn');
+    const statusMessages = document.getElementById('statusMessages');
+    const tableContainer = document.getElementById('tableContainer');
+    
+    // Disable button and show loading state
+    refreshBtn.disabled = true;
+    refreshBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Refreshing...';
+    
+    // Clear previous status messages
+    statusMessages.innerHTML = '';
+    
+    // Make AJAX request
+    fetch('{% url "rma_dhcp_leases_refresh" %}', {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            statusMessages.innerHTML = `
+                <div class="alert status-info mb-0" role="alert">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <strong>Success:</strong> ${data.message}
+                </div>
+            `;
+            
+            // Update table
+            updateTable(data.leases);
+        } else {
+            // Show error message
+            statusMessages.innerHTML = `
+                <div class="alert error-message mb-0" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Error:</strong> ${data.error}
+                </div>
+            `;
+            
+            // Show empty state
+            showEmptyState('Unable to fetch DHCP leases due to an error.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        statusMessages.innerHTML = `
+            <div class="alert error-message mb-0" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Error:</strong> Network error - please try again
+            </div>
+        `;
+        showEmptyState('Network error occurred while fetching DHCP leases.');
+    })
+    .finally(() => {
+        // Re-enable button
+        refreshBtn.disabled = false;
+        refreshBtn.innerHTML = '<i class="fas fa-sync-alt me-2"></i>Refresh';
+    });
+}
+
+function updateTable(leases) {
+    const tableContainer = document.getElementById('tableContainer');
+    
+    if (leases && leases.length > 0) {
+        let tableHTML = `
+            <table class="modern-table" id="leasesTable">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-ethernet me-2"></i>MAC Address</th>
+                        <th><i class="fas fa-globe me-2"></i>IP Address</th>
+                        <th><i class="fas fa-desktop me-2"></i>Hostname</th>
+                    </tr>
+                </thead>
+                <tbody id="leasesTableBody">
+        `;
+        
+        leases.forEach(lease => {
+            const hostnameClass = lease.hostname === 'N/A' ? 'hostname na' : 'hostname';
+            tableHTML += `
+                <tr>
+                    <td><span class="mac-address">${lease.mac}</span></td>
+                    <td><span class="ip-address">${lease.ip}</span></td>
+                    <td><span class="${hostnameClass}">${lease.hostname}</span></td>
+                </tr>
+            `;
+        });
+        
+        tableHTML += '</tbody></table>';
+        tableContainer.innerHTML = tableHTML;
+    } else {
+        showEmptyState('No DHCP leases found.');
+    }
+}
+
+function showEmptyState(message) {
+    const tableContainer = document.getElementById('tableContainer');
+    tableContainer.innerHTML = `
+        <div class="empty-state">
+            <i class="fas fa-network-wired"></i>
+            <h4>No DHCP Leases Found</h4>
+            <p class="mb-0">${message}</p>
+        </div>
+    `;
+}
+
+// Helper function to get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

@@ -19,6 +19,7 @@ class PxeEntry(models.Model):
             ('can_view_rma_logs', 'Can view RMA logs'),
             # Admin-only permissions (require manual approval)
             ('can_access_rma_pxe', 'Can access RMA PXE management'),
+            ('can_access_rma_dhcp_leases', 'Can access RMA DHCP Leases'),
         ]
 
     def __str__(self):

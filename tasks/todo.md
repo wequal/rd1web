@@ -1,81 +1,54 @@
-# Permission System Implementation Plan
+# RMA DHCP Leases Implementation Plan
 
 ## Overview
-Implement comprehensive permission system for all pages with:
-- Default permissions for most features (automatically granted to new users)
-- Admin-only permissions for RMA PXE and RMA Testing DB (require manual admin approval)
+Add a new page under RMA Management called "RMA DHCP Leases" that fetches DHCP lease data from an external API and displays it in a table format.
 
-## Current Status Analysis
-- ✅ RMA Testing DB already has proper permission system (`can_access_rma_testing_db`)
-- ✅ All views already have `@login_required` decorators
-- ❌ RMA PXE lacks permission protection  
-- ❌ No default permissions system for new users
-- ❌ Missing permission checks for specific admin-only features
+## Requirements
+1. **Page Name**: "RMA DHCP Leases"
+2. **Location**: Under RMA Management section in sidebar
+3. **API Endpoint**: `http://10.4.4.80:8000/leases`
+4. **Expected Response**: `{"leases":[{"mac":"7c:c2:55:1a:29:7a","ip":"192.168.40.18","hostname":"-NA-"}...]}`
+5. **Table Columns**: MAC, IP, Hostname
+6. **Refresh Functionality**: Page load and manual refresh button
 
 ## Implementation Tasks
 
-### 1. Create Permission Structure in Models
-- [ ] Add custom permissions to existing models for different feature groups
-- [ ] Define permission groups: Basic Access, Advanced Tools, RMA Management (Admin-only)
+### 1. Create Permission and Model Updates ✅
+- [x] Add new permission `can_access_rma_dhcp_leases` to PxeEntry model
+- [x] Run migration to apply permission changes
 
-### 2. Create Default Permission System
-- [ ] Create Django signal to automatically grant default permissions to new users
-- [ ] Set up permission groups for easier management
-- [ ] Define which permissions are auto-granted vs admin-only
+### 2. Create View Function ✅
+- [x] Create `rma_dhcp_leases.py` view file in `rd1web/pxe/views/`
+- [x] Implement view with permission required decorator
+- [x] Add API call functionality to fetch leases from external endpoint
+- [x] Handle API errors gracefully (timeout, connection error, invalid response)
+- [x] Implement refresh functionality
 
-### 3. Add Permission Decorators to Views
-- [ ] Add `@permission_required` decorators to RMA PXE views
-- [ ] Ensure all views have appropriate permission checks
-- [ ] Maintain backward compatibility for existing users
+### 3. Create Template ✅
+- [x] Create `rma_dhcp_leases.html` template in `rd1web/templates/features/`
+- [x] Design table layout with MAC, IP, Hostname columns
+- [x] Add refresh button functionality
+- [x] Add loading states and error handling
+- [x] Make it responsive and follow existing design patterns
 
-### 4. Update Templates and Navigation
-- [ ] Add permission checks to sidebar navigation links
-- [ ] Ensure restricted pages show appropriate access denied messages
-- [ ] Update navigation to hide links for unauthorized users
+### 4. URL Configuration ✅
+- [x] Add URL pattern in `rd1web/pxe/urls.py`
+- [x] Add API endpoint for refresh functionality if needed
 
-### 5. Create User Management Interface
-- [ ] Enhance Django admin for easier permission management
-- [ ] Create user groups for different access levels
-- [ ] Document permission structure for admins
+### 5. Update Navigation ✅
+- [x] Update sidebar template to include new RMA DHCP Leases link
+- [x] Add permission check in template for link visibility
 
-### 6. Database Migration and User Updates
-- [ ] Create migration for new permissions
-- [ ] Update existing users with default permissions
-- [ ] Preserve current access patterns
+### 6. Testing ✅
+- [x] Test page loads correctly with proper permissions
+- [x] Test API call functionality
+- [x] Test refresh button functionality
+- [x] Test error handling scenarios
+- [x] Test responsive design
 
-### 7. Testing and Validation
-- [ ] Test permission system with different user types
-- [ ] Verify navigation and access control
-- [ ] Ensure admin users can manage permissions
-
-## Permission Structure Design
-
-### Default Permissions (Auto-granted to new users)
-- `pxe.can_use_dashboard` - Access to overview and basic features
-- `pxe.can_use_system_management` - System Overview, PXE Boot Manager
-- `pxe.can_use_tools` - IPMI Tool, MAC to IP
-- `pxe.can_view_rma_logs` - RMA Logs (read-only)
-
-### Admin-Only Permissions (Manual approval required)
-- `pxe.can_access_rma_pxe` - RMA GPU TEST (existing RMA PXE functionality)
-- `pxe.can_access_rma_testing_db` - RMA Testing DB (already implemented)
-
-## Files to Modify
-
-### Models
-- `rd1web/pxe/models.py` - Add permission structure
-
-### Views  
-- `rd1web/pxe/views/rma_pxe.py` - Add permission decorator
-
-### Templates
-- `rd1web/templates/partials/sidebar.html` - Add permission checks
-
-### Management
-- `rd1web/pxe/admin.py` - Enhanced admin interface
-- Create new signal handler for auto-permissions
-
-### Migrations
-- New migration for permissions and user updates
-
-This plan ensures minimal impact to existing codebase while implementing comprehensive permission control with sensible defaults.
+## Technical Notes
+- Use existing permission system pattern (`@permission_required('pxe.can_access_rma_dhcp_leases')`)
+- Follow existing RMA view patterns for consistency
+- Use requests library for API calls with timeout handling
+- Implement AJAX for refresh functionality to avoid full page reload
+- Use existing CSS/JS frameworks for consistent styling

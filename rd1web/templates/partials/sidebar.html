@@ -42,7 +42,7 @@
             {% endif %}
 
             <!-- RMA Management -->
-            {% if perms.pxe.can_view_rma_logs or perms.pxe.can_access_rma_pxe or perms.pxe.can_access_rma_testing_db %}
+            {% if perms.pxe.can_view_rma_logs or perms.pxe.can_access_rma_pxe or perms.pxe.can_access_rma_testing_db or perms.pxe.can_access_rma_dhcp_leases %}
             <div class="sb-sidenav-menu-heading">RMA Management</div>
             
             {% if perms.pxe.can_view_rma_logs %}
@@ -58,13 +58,20 @@
                 RMA GPU TEST
             </a>
             {% endif %}
-            {% endif %}
 
             {% if perms.pxe.can_access_rma_testing_db %}
             <a class="nav-link" href="{% url 'rma_testing_db' %}">
                 <div class="sb-nav-link-icon"><i class="fas fa-database"></i></div>
                 RMA Testing DB
             </a>
+            {% endif %}
+
+            {% if perms.pxe.can_access_rma_dhcp_leases %}
+            <a class="nav-link" href="{% url 'rma_dhcp_leases' %}">
+                <div class="sb-nav-link-icon"><i class="fas fa-network-wired"></i></div>
+                RMA DHCP Leases
+            </a>
+            {% endif %}
             {% endif %}
 
         </div>

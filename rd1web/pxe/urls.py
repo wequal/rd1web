@@ -29,6 +29,7 @@ from .views.rma_testing_db import (
     rma_testing_db_get, 
     rma_testing_db_api
 )
+from .views.rma_dhcp_leases import rma_dhcp_leases, rma_dhcp_leases_refresh
 from .api.system_api import systems_summary, systems_category
 
 
@@ -78,4 +79,8 @@ urlpatterns = [
     path('rma/testing-db/delete/<int:entry_id>/', rma_testing_db_delete, name='rma_testing_db_delete'),
     path('rma/testing-db/get/<int:entry_id>/', rma_testing_db_get, name='rma_testing_db_get'),
     path('api/rma/testing-db/', rma_testing_db_api, name='rma_testing_db_api'),
+    
+    # RMA DHCP Leases URLs
+    path('rma/dhcp-leases/', rma_dhcp_leases, name='rma_dhcp_leases'),
+    path('rma/dhcp-leases/refresh/', rma_dhcp_leases_refresh, name='rma_dhcp_leases_refresh'),
 ]
