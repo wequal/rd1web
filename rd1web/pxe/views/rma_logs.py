@@ -636,6 +636,9 @@ def parse_test_status_content(content):
     
     lines = content.strip().split('\n')
     
+    # First pass: collect all test names and their statuses
+    raw_tests = {}
+    
     # Handle different formats
     for line in lines:
         line = line.strip()
@@ -648,18 +651,31 @@ def parse_test_status_content(content):
             if len(parts) == 2:
                 test_name = parts[0].strip()
                 status = parts[1].strip().upper()
-                test_details[test_name] = status
+                raw_tests[test_name] = status
         elif ' ' in line:
             # Format 2: "TestName STATUS" (space separated)
             parts = line.split()
             if len(parts) >= 2:
                 test_name = parts[0].strip()
                 status = parts[1].strip().upper()
-                test_details[test_name] = status
+                raw_tests[test_name] = status
         else:
             # Format 3: Single line with overall status
             status = line.upper()
-            test_details['Overall'] = status
+            test_name = 'Overall'
+            raw_tests[test_name] = status
+    
+    # Second pass: determine display names based on status
+    for test_name, status in raw_tests.items():
+        display_name = test_name
+        
+        # Add "Running" prefix only if status shows running AND there's no passed/failed status for this test
+        if status in ['RUNNING', 'IN PROGRESS', 'TESTING']:
+            # Check if this test has passed/failed status - if not, add Running prefix
+            if status not in ['PASSED', 'FAILED', 'COMPLETED', 'SUCCESS', 'ERROR', 'FAIL']:
+                display_name = f'Running {test_name}'
+        
+        test_details[display_name] = status
     
     return test_details
 
@@ -853,7 +869,7 @@ def rma_log_browser(request, path=""):
                 "mtime": mtime,
                 "path": item_path,
                 "file_type": "Directory" if is_dir else get_file_extension(name),
-                "download_url": f"/rma/view/{item_path}/?download=true" if not is_dir else None,
+                "apache_download_url": f"http://{get_rma_host_ip()}/{item_path}" if not is_dir else None,
             }
             
             if is_dir:
@@ -1110,12 +1126,41 @@ def rma_view_file(request, path):
         # Check if download is requested FIRST - before doing any heavy operations
         download_requested = request.GET.get('download', 'false').lower() == 'true'
         
-        # For downloads, redirect directly to Apache2 without reading file content
+        # For downloads, proxy through Django with minimal memory usage
         if download_requested:
-            # Direct redirect to Apache2 server for all downloads
+            # Stream file from Apache2 with proper download headers (minimal memory approach)
+            import requests
+            from django.http import StreamingHttpResponse
+            
             apache_url = f"http://{get_rma_host_ip()}/{path}"
-            from django.shortcuts import redirect
-            return redirect(apache_url)
+            
+            try:
+                # Head request to get file size first
+                head_response = requests.head(apache_url, timeout=30)
+                head_response.raise_for_status()
+                
+                # Get file from Apache2 with streaming
+                file_response = requests.get(apache_url, stream=True, timeout=300)
+                file_response.raise_for_status()
+                
+                # Create streaming response with download headers
+                def file_generator():
+                    for chunk in file_response.iter_content(chunk_size=8192):
+                        yield chunk
+                
+                # Determine content type from Apache response
+                content_type = file_response.headers.get('content-type', 'application/octet-stream')
+                
+                response = StreamingHttpResponse(file_generator(), content_type='application/octet-stream')
+                response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                response['Content-Length'] = head_response.headers.get('content-length', '')
+                response['Cache-Control'] = 'no-cache'
+                
+                return response
+                
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Error downloading file from Apache2: {e}")
+                raise Http404(f"Cannot download file: {str(e)}")
 
         # For viewing only - continue with file size checks and content reading
         # Get file size with timeout
