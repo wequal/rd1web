@@ -261,7 +261,7 @@ class RmaForm(forms.Form):
     tests = forms.MultipleChoiceField(
     choices=[
         ('default', 'Default'),
-        ('nvidia-smi-q', 'Nvidia SMI Q'),
+        ('pre_gpu_test', 'Pre GPU Test'),
         ('dcgm', 'DCGM'),
         ('fd2', 'FD2'),
         ('gpudiag', 'GPU Field Diag'),
@@ -280,7 +280,7 @@ class RmaForm(forms.Form):
             specific_tests = [test for test in tests if test != 'default']
             if specific_tests:
                 raise ValidationError(
-                    "Default test cannot be combined with specific tests (Nvidia SMI Q, DCGM, FD2). "
+                    "Default test cannot be combined with specific tests (Pre GPU Test, DCGM, FD2, GPU Field Diag). "
                     "Please select either Default OR any combination of the specific tests."
                 )
         
