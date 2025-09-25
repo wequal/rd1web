@@ -18,7 +18,7 @@ from ..remote_config import remote_dict, async_rma
 from asgiref.sync import sync_to_async
 
 logger = logging.getLogger(__name__)
-RMA_BASE_DIR = '/srv/rma'
+RMA_BASE_DIR = '/srv/rma-b38'
 
 # Cache timeout settings (shorter for faster new directory detection)
 RMA_CACHE_TIMEOUT = 60  # 1 minute cache for directory listings
@@ -28,27 +28,39 @@ class TimeoutError(Exception):
     """Custom timeout exception"""
     pass
 
-def run_with_timeout_async(command, timeout_seconds=60, **kwargs):
+def run_local_command(command, timeout_seconds=60):
     """
-    Run an RMA command using async wrapper but in synchronous context
+    Run a local command using subprocess instead of remote connection
     Returns (result, success, error_message)
     """
-    import asyncio
+    import subprocess
     
-    async def _run_async():
-        return await async_rma.run_async(command, timeout=timeout_seconds, **kwargs)
+    class LocalResult:
+        def __init__(self, returncode, stdout, stderr):
+            self.return_code = returncode
+            self.stdout = stdout
+            self.stderr = stderr
     
     try:
-        # Run the async function in the current thread
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            result, success, error = loop.run_until_complete(_run_async())
-            return result, success, error
-        finally:
-            loop.close()
+        # Run command locally with timeout
+        result = subprocess.run(
+            command, 
+            shell=True, 
+            capture_output=True, 
+            text=True, 
+            timeout=timeout_seconds
+        )
+        
+        local_result = LocalResult(result.returncode, result.stdout, result.stderr)
+        success = result.returncode == 0
+        error = result.stderr if not success else None
+        
+        return local_result, success, error
+        
+    except subprocess.TimeoutExpired:
+        return None, False, f"Command timed out after {timeout_seconds} seconds"
     except Exception as e:
-        logger.error(f"Async command failed: {command}, Error: {e}")
+        logger.error(f"Local command failed: {command}, Error: {e}")
         return None, False, str(e)
 
 def run_with_timeout(func, timeout_seconds=60):
@@ -223,7 +235,7 @@ def rma_log_ajax(request):
 
 async def get_rma_directories_async(include_stats=False, include_status=False):
     """
-    Get list of RMA directories from remote /srv/rma matching pattern {base_sn}_{rma_number} (ASYNC VERSION)
+    Get list of RMA directories from local /srv/rma-b38 matching pattern {base_sn}_{rma_number} (ASYNC VERSION)
     
     Args:
         include_stats (bool): Whether to include file count and size stats (slower)
@@ -237,33 +249,27 @@ async def get_rma_directories_async(include_stats=False, include_status=False):
         rma_directories = []
         
         try:
-            # Check if remote directory exists using async wrapper
-            result, success, error = await async_rma.run_async(f'test -d {RMA_BASE_DIR}', timeout=30, warn=True)
-            if not success or result.return_code != 0:
-                logger.warning(f"RMA base directory check failed: {error or 'Directory does not exist'}")
+            # Check if local directory exists
+            if not os.path.exists(RMA_BASE_DIR):
+                logger.warning(f"RMA base directory does not exist: {RMA_BASE_DIR}")
                 return []
             
-            # List directories on remote host using async wrapper
-            result, success, error = await async_rma.run_async(f'ls -la {RMA_BASE_DIR}', timeout=30, hide=True)
-            if not success or result.return_code != 0:
-                logger.error(f"Cannot list remote RMA directory: {error or 'Unknown error'}")
+            # List directories locally
+            try:
+                items = os.listdir(RMA_BASE_DIR)
+            except Exception as e:
+                logger.error(f"Cannot list local RMA directory: {e}")
                 return []
             
             # Pattern to match {base_sn}_{rma_number}
             pattern = re.compile(r'^(.+)_(.+)$')
             
-            # Parse ls output
-            for line in result.stdout.strip().split('\n'):
-                if line.startswith('total') or not line.startswith('d'):
-                    continue  # Skip total line and files
+            # Process local directory items
+            for item in items:
+                item_path = os.path.join(RMA_BASE_DIR, item)
                 
-                parts = line.split()
-                if len(parts) < 9:
-                    continue
-                    
-                # Extract directory name (last part)
-                item = parts[-1]
-                if item in ['.', '..']:
+                # Skip non-directories
+                if not os.path.isdir(item_path):
                     continue
                     
                 # Check if it matches pattern
@@ -272,12 +278,11 @@ async def get_rma_directories_async(include_stats=False, include_status=False):
                     base_sn, rma_number = match.groups()
                     
                     try:
-                        # Get basic directory stats using async wrapper
-                        stat_result, success, error = await async_rma.run_async(f'stat -c "%Y" {RMA_BASE_DIR}/{item}', timeout=10, hide=True)
-                        if success and stat_result.return_code == 0:
-                            mtime_timestamp = stat_result.stdout.strip()
-                            mtime = datetime.fromtimestamp(int(mtime_timestamp)).strftime("%Y-%m-%d %H:%M:%S")
-                        else:
+                        # Get basic directory stats locally
+                        try:
+                            stat_info = os.stat(item_path)
+                            mtime = datetime.fromtimestamp(stat_info.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+                        except Exception:
                             mtime = 'Unknown'
                         
                         # Get test status if requested
@@ -290,7 +295,7 @@ async def get_rma_directories_async(include_stats=False, include_status=False):
                             'base_sn': base_sn,
                             'rma_number': rma_number,
                             'path': item,
-                            'full_path': f"{RMA_BASE_DIR}/{item}",
+                            'full_path': item_path,
                             'file_count': 0,  # Will be loaded separately if needed
                             'total_size': '0 B',  # Will be loaded separately if needed
                             'mtime': mtime,
@@ -299,7 +304,7 @@ async def get_rma_directories_async(include_stats=False, include_status=False):
                             'test_details': test_details
                         })
                     except Exception as e:
-                        logger.warning(f"Cannot access remote RMA directory {item}: {e}")
+                        logger.warning(f"Cannot access local RMA directory {item}: {e}")
                         
                         # Get test status if requested (even for errored directories)
                         test_details = {}
@@ -311,7 +316,7 @@ async def get_rma_directories_async(include_stats=False, include_status=False):
                             'base_sn': base_sn,
                             'rma_number': rma_number,
                             'path': item,
-                            'full_path': f"{RMA_BASE_DIR}/{item}",
+                            'full_path': item_path,
                             'file_count': 0,
                             'total_size': '0 B',
                             'mtime': 'Unknown',
@@ -347,7 +352,7 @@ async def get_rma_directories_async(include_stats=False, include_status=False):
 
 def get_rma_directories(include_stats=False, include_status=False):
     """
-    Get list of RMA directories from remote /srv/rma matching pattern {base_sn}_{rma_number}
+    Get list of RMA directories from local /srv/rma-b38 matching pattern {base_sn}_{rma_number}
     
     Args:
         include_stats (bool): Whether to include file count and size stats (slower)
@@ -361,36 +366,27 @@ def get_rma_directories(include_stats=False, include_status=False):
         rma_directories = []
         
         try:
-            # Connect to remote RMA host
-            rma_conn = remote_dict['rma']
-            
-            # Check if remote directory exists using async wrapper
-            result, success, error = run_with_timeout_async(f'test -d {RMA_BASE_DIR}', timeout_seconds=30, warn=True)
-            if not success or result.return_code != 0:
-                logger.warning(f"RMA base directory check failed: {error or 'Directory does not exist'}")
+            # Check if local directory exists
+            if not os.path.exists(RMA_BASE_DIR):
+                logger.warning(f"RMA base directory does not exist: {RMA_BASE_DIR}")
                 return []
             
-            # List directories on remote host using async wrapper
-            result, success, error = run_with_timeout_async(f'ls -la {RMA_BASE_DIR}', timeout_seconds=30, hide=True)
-            if not success or result.return_code != 0:
-                logger.error(f"Cannot list remote RMA directory: {error or 'Unknown error'}")
+            # List directories locally
+            try:
+                items = os.listdir(RMA_BASE_DIR)
+            except Exception as e:
+                logger.error(f"Cannot list local RMA directory: {e}")
                 return []
             
             # Pattern to match {base_sn}_{rma_number}
             pattern = re.compile(r'^(.+)_(.+)$')
             
-            # Parse ls output
-            for line in result.stdout.strip().split('\n'):
-                if line.startswith('total') or not line.startswith('d'):
-                    continue  # Skip total line and files
+            # Process local directory items
+            for item in items:
+                item_path = os.path.join(RMA_BASE_DIR, item)
                 
-                parts = line.split()
-                if len(parts) < 9:
-                    continue
-                    
-                # Extract directory name (last part)
-                item = parts[-1]
-                if item in ['.', '..']:
+                # Skip non-directories
+                if not os.path.isdir(item_path):
                     continue
                     
                 # Check if it matches pattern
@@ -399,12 +395,11 @@ def get_rma_directories(include_stats=False, include_status=False):
                     base_sn, rma_number = match.groups()
                     
                     try:
-                        # Get basic directory stats using async wrapper
-                        stat_result, success, error = run_with_timeout_async(f'stat -c "%Y" {RMA_BASE_DIR}/{item}', timeout_seconds=10, hide=True)
-                        if success and stat_result.return_code == 0:
-                            mtime_timestamp = stat_result.stdout.strip()
-                            mtime = datetime.fromtimestamp(int(mtime_timestamp)).strftime("%Y-%m-%d %H:%M:%S")
-                        else:
+                        # Get basic directory stats locally
+                        try:
+                            stat_info = os.stat(item_path)
+                            mtime = datetime.fromtimestamp(stat_info.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+                        except Exception:
                             mtime = 'Unknown'
                         
                         # Get test status if requested
@@ -417,7 +412,7 @@ def get_rma_directories(include_stats=False, include_status=False):
                             'base_sn': base_sn,
                             'rma_number': rma_number,
                             'path': item,
-                            'full_path': f"{RMA_BASE_DIR}/{item}",
+                            'full_path': item_path,
                             'file_count': 0,  # Will be loaded separately if needed
                             'total_size': '0 B',  # Will be loaded separately if needed
                             'mtime': mtime,
@@ -426,7 +421,7 @@ def get_rma_directories(include_stats=False, include_status=False):
                             'test_details': test_details
                         })
                     except Exception as e:
-                        logger.warning(f"Cannot access remote RMA directory {item}: {e}")
+                        logger.warning(f"Cannot access local RMA directory {item}: {e}")
                         
                         # Get test status if requested (even for errored directories)
                         test_details = {}
@@ -438,7 +433,7 @@ def get_rma_directories(include_stats=False, include_status=False):
                             'base_sn': base_sn,
                             'rma_number': rma_number,
                             'path': item,
-                            'full_path': f"{RMA_BASE_DIR}/{item}",
+                            'full_path': item_path,
                             'file_count': 0,
                             'total_size': '0 B',
                             'mtime': 'Unknown',
@@ -495,29 +490,26 @@ async def load_directory_stats_async(directories, max_concurrent=5):
                 rma_dir['stats_loaded'] = True
                 continue
             
-            # Load stats with timeout
+            # Load stats locally
             file_count = 0
             total_size = 0
             
             try:
-                # Count files with async wrapper
-                count_result, success, error = await async_rma.run_async(f'find {RMA_BASE_DIR}/{item} -type f | wc -l', timeout=30, hide=True)
-                if success and count_result.return_code == 0:
-                    file_count = int(count_result.stdout.strip())
-                else:
-                    logger.warning(f"File count timeout for {item}: {error}")
+                item_path = os.path.join(RMA_BASE_DIR, item)
                 
-                # Calculate size with timeout (only if file count succeeded)
+                # Count files locally
+                for root, dirs, files in os.walk(item_path):
+                    file_count += len(files)
+                
+                # Calculate size locally (only if file count is reasonable)
                 if file_count > 0 and file_count < 10000:  # Skip size calc for very large directories
-                    size_result, success, error = await async_rma.run_async(
-                        f'find {RMA_BASE_DIR}/{item} -type f -exec stat -c "%s" {{}} + | awk "{{sum += \\$1}} END {{print sum}}"', 
-                        timeout=60, hide=True
-                    )
-                    if success and size_result.return_code == 0 and size_result.stdout.strip():
-                        total_size = int(size_result.stdout.strip() or '0')
-                    else:
-                        logger.warning(f"Size calculation timeout for {item}: {error}")
-                        total_size = 0  # Use placeholder for large directories
+                    for root, dirs, files in os.walk(item_path):
+                        for file in files:
+                            try:
+                                file_path = os.path.join(root, file)
+                                total_size += os.path.getsize(file_path)
+                            except (OSError, IOError):
+                                pass  # Skip files that can't be accessed
                 
             except (ValueError, AttributeError) as e:
                 logger.warning(f"Error calculating stats for {item}: {e}")
@@ -545,8 +537,6 @@ def load_directory_stats(directories, max_concurrent=5):
     Only loads stats for directories that don't have them cached.
     """
     try:
-        rma_conn = remote_dict['rma']
-        
         for i, rma_dir in enumerate(directories):
             # Limit concurrent operations to prevent overwhelming the system
             if i >= max_concurrent:
@@ -564,29 +554,42 @@ def load_directory_stats(directories, max_concurrent=5):
                 rma_dir['stats_loaded'] = True
                 continue
             
-            # Load stats with timeout
+            # Load stats locally
             file_count = 0
             total_size = 0
             
             try:
-                # Count files with timeout
-                def count_files():
-                    return rma_conn.run(f'find {RMA_BASE_DIR}/{item} -type f | wc -l', hide=True)
+                item_path = os.path.join(RMA_BASE_DIR, item)
                 
-                count_result, success, error = run_with_timeout(count_files, 30)
-                if success and count_result.return_code == 0:
-                    file_count = int(count_result.stdout.strip())
+                # Count files locally
+                def count_files():
+                    count = 0
+                    for root, dirs, files in os.walk(item_path):
+                        count += len(files)
+                    return count
+                
+                file_count_result, success, error = run_with_timeout(count_files, 30)
+                if success:
+                    file_count = file_count_result
                 else:
                     logger.warning(f"File count timeout for {item}: {error}")
                 
-                # Calculate size with timeout (only if file count succeeded)
+                # Calculate size locally (only if file count succeeded)
                 if file_count > 0 and file_count < 10000:  # Skip size calc for very large directories
                     def calc_size():
-                        return rma_conn.run(f'find {RMA_BASE_DIR}/{item} -type f -exec stat -c "%s" {{}} + | awk "{{sum += \\$1}} END {{print sum}}"', hide=True)
+                        size = 0
+                        for root, dirs, files in os.walk(item_path):
+                            for file in files:
+                                try:
+                                    file_path = os.path.join(root, file)
+                                    size += os.path.getsize(file_path)
+                                except (OSError, IOError):
+                                    pass  # Skip files that can't be accessed
+                        return size
                     
                     size_result, success, error = run_with_timeout(calc_size, 60)
-                    if success and size_result.return_code == 0 and size_result.stdout.strip():
-                        total_size = int(size_result.stdout.strip() or '0')
+                    if success:
+                        total_size = size_result
                     else:
                         logger.warning(f"Size calculation timeout for {item}: {error}")
                         total_size = 0  # Use placeholder for large directories
@@ -690,20 +693,24 @@ def get_test_status(directory_name):
         dict: Dictionary of test details with individual test statuses
     """
     try:
-        # Read test_status.txt from the directory
-        status_file_path = f"{RMA_BASE_DIR}/{directory_name}/test_status.txt"
-        result, success, error = run_with_timeout_async(f'cat "{status_file_path}"', timeout_seconds=5, hide=True)
+        # Read test_status.txt from the local directory
+        status_file_path = os.path.join(RMA_BASE_DIR, directory_name, "test_status.txt")
         
-        if success and result.return_code == 0:
-            content = result.stdout.strip()
-            test_details = parse_test_status_content(content)
-            
-            if test_details:
-                return test_details
-            else:
-                return {'Overall': 'No Status'}
+        if os.path.exists(status_file_path):
+            try:
+                with open(status_file_path, 'r', encoding='utf-8') as f:
+                    content = f.read().strip()
+                test_details = parse_test_status_content(content)
+                
+                if test_details:
+                    return test_details
+                else:
+                    return {'Overall': 'No Status'}
+            except Exception as e:
+                logger.warning(f"Error reading test status file for {directory_name}: {e}")
+                return {'Overall': 'Unknown'}
         else:
-            # File doesn't exist or can't be read
+            # File doesn't exist
             return {'Overall': 'No Status'}
             
     except Exception as e:
@@ -721,20 +728,24 @@ async def get_test_status_async(directory_name):
         dict: Dictionary of test details with individual test statuses
     """
     try:
-        # Read test_status.txt from the directory
-        status_file_path = f"{RMA_BASE_DIR}/{directory_name}/test_status.txt"
-        result, success, error = await async_rma.run_async(f'cat "{status_file_path}"', timeout=5, hide=True)
+        # Read test_status.txt from the local directory
+        status_file_path = os.path.join(RMA_BASE_DIR, directory_name, "test_status.txt")
         
-        if success and result.return_code == 0:
-            content = result.stdout.strip()
-            test_details = parse_test_status_content(content)
-            
-            if test_details:
-                return test_details
-            else:
-                return {'Overall': 'No Status'}
+        if os.path.exists(status_file_path):
+            try:
+                with open(status_file_path, 'r', encoding='utf-8') as f:
+                    content = f.read().strip()
+                test_details = parse_test_status_content(content)
+                
+                if test_details:
+                    return test_details
+                else:
+                    return {'Overall': 'No Status'}
+            except Exception as e:
+                logger.warning(f"Error reading test status file for {directory_name}: {e}")
+                return {'Overall': 'Unknown'}
         else:
-            # File doesn't exist or can't be read
+            # File doesn't exist
             return {'Overall': 'No Status'}
             
     except Exception as e:
@@ -794,68 +805,41 @@ def rma_log_browser(request, path=""):
     dir_count = 0
     
     try:
-        # Connect to remote RMA host
-        rma_conn = remote_dict['rma']
-        
-        # Check if remote directory exists with timeout
-        def check_remote_dir():
-            return rma_conn.run(f'test -d "{remote_path}"', warn=True)
-        
-        result, success, error = run_with_timeout(check_remote_dir, 15)
-        if not success or result.return_code != 0:
-            raise Http404(f"Directory does not exist or timeout: {error}")
+        # Check if local directory exists
+        if not os.path.exists(remote_path):
+            raise Http404("Directory does not exist")
 
-        # List directory contents on remote host with timeout
-        def list_remote_dir():
-            return rma_conn.run(f'ls -la "{remote_path}"', hide=True)
-        
-        result, success, error = run_with_timeout(list_remote_dir, 30)
-        if not success or result.return_code != 0:
-            raise Http404(f"Cannot read directory or timeout: {error}")
+        # List directory contents locally
+        try:
+            dir_items = os.listdir(remote_path)
+        except Exception as e:
+            raise Http404(f"Cannot read directory: {e}")
         
         # Separate directories and files
         dirs = []
         files = []
         
-        # Parse ls output
-        for line in result.stdout.strip().split('\n'):
-            if line.startswith('total'):
-                continue
-            
-            parts = line.split()
-            if len(parts) < 9:
-                continue
-                
-            # Extract file/directory name (handle names with spaces)
-            name = ' '.join(parts[8:])
+        # Process directory items
+        for name in dir_items:
             if name in ['.', '..']:
                 continue
+                
+            item_full_path = os.path.join(remote_path, name)
             
-            # Parse file attributes
-            permissions = parts[0]
-            is_dir = permissions.startswith('d')
-            size = int(parts[4]) if not is_dir else 0
-            
-            # Parse date/time (parts 5, 6, 7)
             try:
-                date_str = f"{parts[5]} {parts[6]} {parts[7]}"
-                # Try to parse the date - handle year vs time format
-                if ':' in parts[7]:  # Time format (current year)
-                    from datetime import datetime
-                    current_year = datetime.now().year
-                    mtime = f"{current_year}-{parts[5]}-{parts[6]} {parts[7]}:00"
-                    try:
-                        parsed_date = datetime.strptime(mtime, "%Y-%b-%d %H:%M:%S")
-                        mtime = parsed_date.strftime("%Y-%m-%d %H:%M:%S")
-                    except:
-                        mtime = date_str
-                else:  # Year format
-                    try:
-                        parsed_date = datetime.strptime(date_str, "%b %d %Y")
-                        mtime = parsed_date.strftime("%Y-%m-%d %H:%M:%S")
-                    except:
-                        mtime = date_str
-            except:
+                # Get file/directory stats
+                stat_info = os.stat(item_full_path)
+                is_dir = os.path.isdir(item_full_path)
+                size = stat_info.st_size if not is_dir else 0
+                
+                # Format modification time
+                mtime = datetime.fromtimestamp(stat_info.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+                
+            except Exception as e:
+                logger.warning(f"Cannot stat {item_full_path}: {e}")
+                # Use defaults if stat fails
+                is_dir = os.path.isdir(item_full_path)
+                size = 0
                 mtime = "Unknown"
 
             # relative path for URL reversing
@@ -1112,16 +1096,12 @@ def rma_view_file(request, path):
     filename = os.path.basename(remote_path)
     
     try:
-        # Connect to remote RMA host
-        rma_conn = remote_dict['rma']
+        # Check if local file exists and is not a directory
+        if not os.path.exists(remote_path):
+            raise Http404("File does not exist")
         
-        # Check if remote file exists and is not a directory with timeout
-        def check_remote_file():
-            return rma_conn.run(f'test -f "{remote_path}"', warn=True)
-        
-        result, success, error = run_with_timeout(check_remote_file, 10)
-        if not success or result.return_code != 0:
-            raise Http404(f"File does not exist, is a directory, or timeout: {error}")
+        if not os.path.isfile(remote_path):
+            raise Http404("Path is not a file")
 
         # Check if download is requested FIRST - before doing any heavy operations
         download_requested = request.GET.get('download', 'false').lower() == 'true'
@@ -1163,15 +1143,11 @@ def rma_view_file(request, path):
                 raise Http404(f"Cannot download file: {str(e)}")
 
         # For viewing only - continue with file size checks and content reading
-        # Get file size with timeout
-        def get_file_size():
-            return rma_conn.run(f'stat -c "%s" "{remote_path}"', hide=True)
-        
-        size_result, success, error = run_with_timeout(get_file_size, 10)
-        if not success or size_result.return_code != 0:
-            raise Http404(f"Cannot access file or timeout: {error}")
-        
-        file_size = int(size_result.stdout.strip())
+        # Get file size locally
+        try:
+            file_size = os.path.getsize(remote_path)
+        except Exception as e:
+            raise Http404(f"Cannot access file: {e}")
 
         # For viewing, check file size to prevent serving extremely large files
         if file_size > 100 * 1024 * 1024:  # 100MB
@@ -1181,17 +1157,12 @@ def rma_view_file(request, path):
         _, ext = os.path.splitext(remote_path)
         ext = ext.lower()
 
-        # Read file content from remote host with timeout
+        # Read file content locally
         try:
-            def read_file_content():
-                return rma_conn.run(f'cat "{remote_path}"', hide=True)
-            
-            cat_result, success, error = run_with_timeout(read_file_content, 60)
-            if not success or cat_result.return_code != 0:
-                raise Http404(f"Cannot read file content or timeout: {error}")
-            file_content = cat_result.stdout
+            with open(remote_path, 'r', encoding='utf-8', errors='ignore') as f:
+                file_content = f.read()
         except Exception as e:
-            logger.error(f"Error reading remote file {remote_path}: {e}")
+            logger.error(f"Error reading local file {remote_path}: {e}")
             raise Http404(f"Cannot read file content: {str(e)}")
 
         # Handle CSV and TSV files specially for viewing
