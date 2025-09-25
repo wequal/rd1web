@@ -90,11 +90,11 @@
                                     <thead>
                                         <tr>
                                             <th><i class="fas fa-folder me-1"></i>Directory</th>
-                                            <th><i class="fas fa-barcode me-1"></i>Base SN</th>
-                                            <th><i class="fas fa-hashtag me-1"></i>RMA Number</th>
-                                            <th><i class="fas fa-microchip me-1"></i>GPU Model</th>
-                                            <th><i class="fas fa-check-circle me-1"></i>Status</th>
-                                            <th><i class="fas fa-clock me-1"></i>Modified</th>
+                                            <th><i class="fas  me-1"></i>Base SN</th>
+                                            <th><i class="fas  me-1"></i>RMA Number</th>
+                                            <th><i class="fas  me-1"></i>GPU Model</th>
+                                            <th><i class="fas  me-1"></i>Status</th>
+                                            <th><i class="fas  me-1"></i>Modified</th>
                                         </tr>
                                     </thead>
                                     <tbody id="directories-tbody">
@@ -413,11 +413,11 @@ function updateDirectoriesTable(data) {
                     <thead>
                         <tr>
                             <th><i class="fas fa-folder me-1"></i>Directory</th>
-                            <th><i class="fas fa-barcode me-1"></i>Base SN</th>
-                            <th><i class="fas fa-hashtag me-1"></i>RMA Number</th>
-                            <th><i class="fas fa-microchip me-1"></i>GPU Model</th>
-                            <th><i class="fas fa-check-circle me-1"></i>Status</th>
-                            <th><i class="fas fa-clock me-1"></i>Modified</th>
+                            <th><i class="fas  me-1"></i>Base SN</th>
+                            <th><i class="fas  me-1"></i>RMA Number</th>
+                            <th><i class="fas  me-1"></i>GPU Model</th>
+                            <th><i class="fas  me-1"></i>Status</th>
+                            <th><i class="fas  me-1"></i>Modified</th>
                         </tr>
                     </thead>
                     <tbody id="directories-tbody"></tbody>
@@ -472,7 +472,7 @@ function updateDirectoriesTable(data) {
                 <span class="badge bg-primary">${dir.rma_number}</span>
             </td>
             <td>
-                <span class="badge bg-secondary">${dir.gpu_model || 'Unknown'}</span>
+                <span class="badge bg-success">${dir.gpu_model || 'Unknown'}</span>
             </td>
             <td>
                 <div class="test-status-container">
