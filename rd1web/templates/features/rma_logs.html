@@ -92,9 +92,9 @@
                                             <th><i class="fas fa-folder me-1"></i>Directory</th>
                                             <th><i class="fas fa-barcode me-1"></i>Base SN</th>
                                             <th><i class="fas fa-hashtag me-1"></i>RMA Number</th>
+                                            <th><i class="fas fa-microchip me-1"></i>GPU Model</th>
                                             <th><i class="fas fa-check-circle me-1"></i>Status</th>
                                             <th><i class="fas fa-clock me-1"></i>Modified</th>
-                                            <th><i class="fas fa-cog me-1"></i>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody id="directories-tbody">
@@ -103,7 +103,7 @@
                                                 <td>
                                                     <div class="d-flex align-items-center">
                                                         <i class="fas fa-folder text-warning me-2"></i>
-                                                        <span class="fw-bold">{{ rma_dir.name }}</span>
+                                                        <a href="{% url 'rma_log_browse' path=rma_dir.path %}" class="fw-bold text-decoration-none">{{ rma_dir.name }}</a>
                                                     </div>
                                                 </td>
                                                 <td>
@@ -111,6 +111,9 @@
                                                 </td>
                                                 <td>
                                                     <span class="badge bg-primary">{{ rma_dir.rma_number }}</span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success">{{ rma_dir.gpu_model|default:"Unknown" }}</span>
                                                 </td>
                                                 <td>
                                                     <div class="test-status-container">
@@ -136,11 +139,6 @@
                                                 </td>
                                                 <td>
                                                     <small class="text-muted">{{ rma_dir.mtime }}</small>
-                                                </td>
-                                                <td>
-                                                    <a href="{% url 'rma_log_browse' path=rma_dir.path %}" class="btn btn-sm btn-outline-primary">
-                                                        <i class="fas fa-folder-open me-1"></i>Browse
-                                                    </a>
                                                     {% if rma_dir.error %}
                                                         <span class="text-warning ms-2" title="{{ rma_dir.error }}">
                                                             <i class="fas fa-exclamation-triangle"></i>
@@ -417,9 +415,9 @@ function updateDirectoriesTable(data) {
                             <th><i class="fas fa-folder me-1"></i>Directory</th>
                             <th><i class="fas fa-barcode me-1"></i>Base SN</th>
                             <th><i class="fas fa-hashtag me-1"></i>RMA Number</th>
+                            <th><i class="fas fa-microchip me-1"></i>GPU Model</th>
                             <th><i class="fas fa-check-circle me-1"></i>Status</th>
                             <th><i class="fas fa-clock me-1"></i>Modified</th>
-                            <th><i class="fas fa-cog me-1"></i>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="directories-tbody"></tbody>
@@ -464,7 +462,7 @@ function updateDirectoriesTable(data) {
             <td>
                 <div class="d-flex align-items-center">
                     <i class="fas fa-folder text-warning me-2"></i>
-                    <span class="fw-bold">${dir.name}</span>
+                    <a href="${rmaLogBrowseBase}${dir.path}/" class="fw-bold text-decoration-none">${dir.name}</a>
                 </div>
             </td>
             <td>
@@ -474,17 +472,15 @@ function updateDirectoriesTable(data) {
                 <span class="badge bg-primary">${dir.rma_number}</span>
             </td>
             <td>
+                <span class="badge bg-secondary">${dir.gpu_model || 'Unknown'}</span>
+            </td>
+            <td>
                 <div class="test-status-container">
                     ${statusHtml}
                 </div>
             </td>
             <td>
                 <small class="text-muted">${dir.mtime}</small>
-            </td>
-            <td>
-                <a href="${rmaLogBrowseBase}${dir.path}/" class="btn btn-sm btn-outline-primary">
-                    <i class="fas fa-folder-open me-1"></i>Browse
-                </a>
                 ${dir.error ? `<span class="text-warning ms-2" title="${dir.error}"><i class="fas fa-exclamation-triangle"></i></span>` : ''}
             </td>
         `;

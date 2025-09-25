@@ -217,6 +217,7 @@ def rma_log_ajax(request):
                 'base_sn': rma_dir['base_sn'],
                 'rma_number': rma_dir['rma_number'],
                 'test_details': rma_dir.get('test_details', {}),
+                'gpu_model': rma_dir.get('gpu_model', 'Unknown'),
                 'mtime': rma_dir['mtime'],
                 'path': rma_dir['path'],
                 'error': rma_dir.get('error', None)
@@ -310,6 +311,9 @@ async def get_rma_directories_async(include_stats=False, include_status=False):
                         if include_status:
                             test_details = await get_test_status_async(item)
                         
+                        # Get GPU model
+                        gpu_model = await get_gpu_model_async(item)
+                        
                         rma_directories.append({
                             'name': item,
                             'base_sn': base_sn,
@@ -321,7 +325,8 @@ async def get_rma_directories_async(include_stats=False, include_status=False):
                             'mtime': mtime,
                             'exists': True,
                             'stats_loaded': False,
-                            'test_details': test_details
+                            'test_details': test_details,
+                            'gpu_model': gpu_model
                         })
                     except Exception as e:
                         logger.warning(f"Cannot access local RMA directory {item}: {e}")
@@ -330,6 +335,9 @@ async def get_rma_directories_async(include_stats=False, include_status=False):
                         test_details = {}
                         if include_status:
                             test_details = await get_test_status_async(item)
+                        
+                        # Get GPU model (even for errored directories)
+                        gpu_model = await get_gpu_model_async(item)
                         
                         rma_directories.append({
                             'name': item,
@@ -343,7 +351,8 @@ async def get_rma_directories_async(include_stats=False, include_status=False):
                             'exists': True,
                             'error': str(e),
                             'stats_loaded': False,
-                            'test_details': test_details
+                            'test_details': test_details,
+                            'gpu_model': gpu_model
                         })
             
             # Sort by RMA number (newest first), then by base_sn
@@ -427,6 +436,9 @@ def get_rma_directories(include_stats=False, include_status=False):
                         if include_status:
                             test_details = get_test_status(item)
                         
+                        # Get GPU model
+                        gpu_model = get_gpu_model(item)
+                        
                         rma_directories.append({
                             'name': item,
                             'base_sn': base_sn,
@@ -438,7 +450,8 @@ def get_rma_directories(include_stats=False, include_status=False):
                             'mtime': mtime,
                             'exists': True,
                             'stats_loaded': False,
-                            'test_details': test_details
+                            'test_details': test_details,
+                            'gpu_model': gpu_model
                         })
                     except Exception as e:
                         logger.warning(f"Cannot access local RMA directory {item}: {e}")
@@ -447,6 +460,9 @@ def get_rma_directories(include_stats=False, include_status=False):
                         test_details = {}
                         if include_status:
                             test_details = get_test_status(item)
+                        
+                        # Get GPU model (even for errored directories)
+                        gpu_model = get_gpu_model(item)
                         
                         rma_directories.append({
                             'name': item,
@@ -460,7 +476,8 @@ def get_rma_directories(include_stats=False, include_status=False):
                             'exists': True,
                             'error': str(e),
                             'stats_loaded': False,
-                            'test_details': test_details
+                            'test_details': test_details,
+                            'gpu_model': gpu_model
                         })
             
             # Sort by RMA number (newest first), then by base_sn
@@ -702,6 +719,40 @@ def parse_test_status_content(content):
     
     return test_details
 
+def get_gpu_model(directory_name):
+    """
+    Get GPU model from gpu_model.txt file in RMA directory
+    
+    Args:
+        directory_name (str): The RMA directory name
+        
+    Returns:
+        str: GPU model string or 'Unknown' if not found
+    """
+    try:
+        # Read gpu_model.txt from the local directory
+        gpu_model_file_path = os.path.join(RMA_BASE_DIR, directory_name, "gpu_model.txt")
+        
+        if os.path.exists(gpu_model_file_path):
+            try:
+                with open(gpu_model_file_path, 'r', encoding='utf-8') as f:
+                    content = f.read().strip()
+                
+                if content:
+                    return content
+                else:
+                    return 'Unknown'
+            except Exception as e:
+                logger.warning(f"Error reading GPU model file for {directory_name}: {e}")
+                return 'Unknown'
+        else:
+            # File doesn't exist
+            return 'Unknown'
+            
+    except Exception as e:
+        logger.warning(f"Error reading GPU model for {directory_name}: {e}")
+        return 'Unknown'
+
 def get_test_status(directory_name):
     """
     Get test status from test_status.txt file in RMA directory
@@ -736,6 +787,40 @@ def get_test_status(directory_name):
     except Exception as e:
         logger.warning(f"Error reading test status for {directory_name}: {e}")
         return {'Overall': 'Unknown'}
+
+async def get_gpu_model_async(directory_name):
+    """
+    Get GPU model from gpu_model.txt file in RMA directory (ASYNC VERSION)
+    
+    Args:
+        directory_name (str): The RMA directory name
+        
+    Returns:
+        str: GPU model string or 'Unknown' if not found
+    """
+    try:
+        # Read gpu_model.txt from the local directory
+        gpu_model_file_path = os.path.join(RMA_BASE_DIR, directory_name, "gpu_model.txt")
+        
+        if os.path.exists(gpu_model_file_path):
+            try:
+                with open(gpu_model_file_path, 'r', encoding='utf-8') as f:
+                    content = f.read().strip()
+                
+                if content:
+                    return content
+                else:
+                    return 'Unknown'
+            except Exception as e:
+                logger.warning(f"Error reading GPU model file for {directory_name}: {e}")
+                return 'Unknown'
+        else:
+            # File doesn't exist
+            return 'Unknown'
+            
+    except Exception as e:
+        logger.warning(f"Error reading GPU model for {directory_name}: {e}")
+        return 'Unknown'
 
 async def get_test_status_async(directory_name):
     """
