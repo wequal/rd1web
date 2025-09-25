@@ -171,67 +171,87 @@ def rma_log_ajax(request):
     """
     AJAX endpoint for lazy loading RMA directories
     """
-    search_query = request.GET.get('search', '').strip()
-    page_number = request.GET.get('page', 1)
-    
-    # Check if cache refresh is requested
-    refresh_cache = request.GET.get('refresh', 'false').lower() == 'true'
-    if refresh_cache:
-        from django.core.cache import cache
-        cache.delete('rma_directories_basic')
-    
-    # Get all RMA directories (fast mode for initial load)
-    all_rma_directories = get_rma_directories(include_stats=False, include_status=True)
-    
-    # Filter directories based on search query
-    if search_query:
-        filtered_directories = []
-        for rma_dir in all_rma_directories:
-            # Search in base_sn or rma_number
-            if (search_query.lower() in rma_dir['base_sn'].lower() or 
-                search_query in rma_dir['rma_number']):
-                filtered_directories.append(rma_dir)
-        rma_directories = filtered_directories
-    else:
-        rma_directories = all_rma_directories
-    
-    # Paginate the results
-    paginator = Paginator(rma_directories, 20)  # Show 20 directories per page
-    
     try:
-        page_obj = paginator.get_page(page_number)
-    except PageNotAnInteger:
-        page_obj = paginator.get_page(1)
-    except EmptyPage:
-        page_obj = paginator.get_page(paginator.num_pages)
-    
-    # Use page directories as-is (status already loaded)
-    page_directories_with_stats = list(page_obj.object_list)
-    
-    # Prepare data for JSON response
-    directories_data = []
-    for rma_dir in page_directories_with_stats:
-        directories_data.append({
-            'name': rma_dir['name'],
-            'base_sn': rma_dir['base_sn'],
-            'rma_number': rma_dir['rma_number'],
-            'test_details': rma_dir.get('test_details', {}),
-            'mtime': rma_dir['mtime'],
-            'path': rma_dir['path'],
-            'error': rma_dir.get('error', None)
-        })
-    
-    return JsonResponse({
-        'directories': directories_data,
-        'has_next': page_obj.has_next(),
-        'has_previous': page_obj.has_previous(),
-        'current_page': page_obj.number,
-        'total_pages': paginator.num_pages,
-        'total_directories': len(all_rma_directories),
-        'filtered_count': len(rma_directories),
-        'start_index': page_obj.start_index() if page_obj.object_list else 0,
-        'end_index': page_obj.end_index() if page_obj.object_list else 0
-    })
+        search_query = request.GET.get('search', '').strip()
+        page_number = request.GET.get('page', 1)
+        
+        # Check if cache refresh is requested
+        refresh_cache = request.GET.get('refresh', 'false').lower() == 'true'
+        if refresh_cache:
+            from django.core.cache import cache
+            cache.delete('rma_directories_basic')
+        
+        # Get all RMA directories (fast mode for initial load)
+        all_rma_directories = get_rma_directories(include_stats=False, include_status=True)
+        
+        # Filter directories based on search query
+        if search_query:
+            filtered_directories = []
+            for rma_dir in all_rma_directories:
+                # Search in base_sn or rma_number
+                if (search_query.lower() in rma_dir['base_sn'].lower() or 
+                    search_query in rma_dir['rma_number']):
+                    filtered_directories.append(rma_dir)
+            rma_directories = filtered_directories
+        else:
+            rma_directories = all_rma_directories
+        
+        # Paginate the results
+        paginator = Paginator(rma_directories, 20)  # Show 20 directories per page
+        
+        try:
+            page_obj = paginator.get_page(page_number)
+        except PageNotAnInteger:
+            page_obj = paginator.get_page(1)
+        except EmptyPage:
+            page_obj = paginator.get_page(paginator.num_pages)
+        
+        # Use page directories as-is (status already loaded)
+        page_directories_with_stats = list(page_obj.object_list)
+        
+        # Prepare data for JSON response
+        directories_data = []
+        for rma_dir in page_directories_with_stats:
+            directories_data.append({
+                'name': rma_dir['name'],
+                'base_sn': rma_dir['base_sn'],
+                'rma_number': rma_dir['rma_number'],
+                'test_details': rma_dir.get('test_details', {}),
+                'mtime': rma_dir['mtime'],
+                'path': rma_dir['path'],
+                'error': rma_dir.get('error', None)
+            })
+        
+        response_data = {
+            'success': True,
+            'directories': directories_data,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous(),
+            'current_page': page_obj.number,
+            'total_pages': paginator.num_pages,
+            'total_directories': len(all_rma_directories),
+            'filtered_count': len(rma_directories),
+            'start_index': page_obj.start_index() if page_obj.object_list else 0,
+            'end_index': page_obj.end_index() if page_obj.object_list else 0
+        }
+        
+        return JsonResponse(response_data, safe=False)
+        
+    except Exception as e:
+        logger.error(f"Error in RMA AJAX request: {e}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'directories': [],
+            'has_next': False,
+            'has_previous': False,
+            'current_page': 1,
+            'total_pages': 1,
+            'total_directories': 0,
+            'filtered_count': 0,
+            'start_index': 0,
+            'end_index': 0
+        }, status=500)
 
 async def get_rma_directories_async(include_stats=False, include_status=False):
     """

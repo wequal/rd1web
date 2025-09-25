@@ -10,7 +10,7 @@
             <p class="mb-0 text-muted">Browse RMA directories from /srv/rma</p>
         </div>
         <div class="d-flex gap-2">
-            <button type="button" class="btn btn-outline-primary" onclick="location.reload()">
+            <button type="button" id="refresh-btn" class="btn btn-outline-primary" onclick="refreshData()">
                 <i class="fas fa-sync-alt me-1"></i>Refresh
             </button>
         </div>
@@ -295,51 +295,92 @@
 let currentPage = {{ page_obj.number|default:1 }};
 let currentSearch = '{{ search_query|default:"" }}';
 let isLoading = false;
+let searchTimeout = null;
+
+// Base URL for AJAX requests
+const rmaLogUrl = window.location.pathname;
+// Base URL for browse links  
+const rmaLogBrowseBase = '/pxe/rma/logs/';
+
+// Function to show error message
+function showError(message) {
+    const content = document.getElementById('directory-content');
+    content.innerHTML = `
+        <div class="alert alert-danger" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Error:</strong> ${message}
+            <button type="button" class="btn btn-sm btn-outline-danger ms-3" onclick="location.reload()">
+                <i class="fas fa-sync-alt me-1"></i>Retry
+            </button>
+        </div>
+    `;
+}
 
 // Function to load a specific page
-function loadPage(page) {
+function loadPage(page, search = currentSearch) {
     if (isLoading) return;
     
     isLoading = true;
     currentPage = page;
+    currentSearch = search;
     
     // Show loading spinner
-    document.getElementById('loading-spinner').style.display = 'block';
-    document.getElementById('directory-content').style.display = 'none';
-    document.getElementById('pagination-container')?.style.setProperty('display', 'none');
+    const spinner = document.getElementById('loading-spinner');
+    const content = document.getElementById('directory-content');
+    const pagination = document.getElementById('pagination-container');
+    
+    if (spinner) spinner.style.display = 'block';
+    if (content) content.style.display = 'none';
+    if (pagination) pagination.style.display = 'none';
     
     // Prepare URL parameters
     const params = new URLSearchParams();
     params.append('page', page);
-    if (currentSearch) {
-        params.append('search', currentSearch);
+    if (search && search.trim()) {
+        params.append('search', search.trim());
     }
     
     // Make AJAX request
-    fetch(`{% url 'rma_log' %}?${params}`, {
+    const requestUrl = `${rmaLogUrl}?${params}`;
+    
+    fetch(requestUrl, {
         method: 'GET',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
-            'Content-Type': 'application/json',
-        }
+            'Accept': 'application/json',
+        },
+        credentials: 'same-origin'
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
     .then(data => {
+        if (data.success === false) {
+            throw new Error(data.error || 'Unknown server error');
+        }
+        
         updateDirectoriesTable(data);
         updatePaginationInfo(data);
         updatePaginationControls(data);
         
-        // Hide loading spinner
-        document.getElementById('loading-spinner').style.display = 'none';
-        document.getElementById('directory-content').style.display = 'block';
+        // Hide loading spinner and show content
+        if (spinner) spinner.style.display = 'none';
+        if (content) content.style.display = 'block';
+        if (pagination) pagination.style.display = 'flex';
         
         isLoading = false;
     })
     .catch(error => {
         console.error('Error loading page:', error);
-        // Hide loading spinner and show error
-        document.getElementById('loading-spinner').style.display = 'none';
-        document.getElementById('directory-content').style.display = 'block';
+        showError(error.message || 'Failed to load RMA directories. Please try again.');
+        
+        // Hide loading spinner
+        if (spinner) spinner.style.display = 'none';
+        if (content) content.style.display = 'block';
+        
         isLoading = false;
     });
 }
@@ -441,7 +482,7 @@ function updateDirectoriesTable(data) {
                 <small class="text-muted">${dir.mtime}</small>
             </td>
             <td>
-                <a href="/pxe/rma/logs/${dir.path}/" class="btn btn-sm btn-outline-primary">
+                <a href="${rmaLogBrowseBase}${dir.path}/" class="btn btn-sm btn-outline-primary">
                     <i class="fas fa-folder-open me-1"></i>Browse
                 </a>
                 ${dir.error ? `<span class="text-warning ms-2" title="${dir.error}"><i class="fas fa-exclamation-triangle"></i></span>` : ''}
@@ -551,35 +592,140 @@ function updatePaginationControls(data) {
     paginationContainer.innerHTML = paginationHTML;
 }
 
-// Handle search form submission with AJAX
+// Function to perform search
+function performSearch(searchValue) {
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+    }
+    
+    searchTimeout = setTimeout(() => {
+        const trimmedSearch = searchValue.trim();
+        if (trimmedSearch !== currentSearch) {
+            loadPage(1, trimmedSearch);
+        }
+    }, 300); // 300ms debounce for better responsiveness
+}
+
+// Function to refresh data
+function refreshData() {
+    if (isLoading) return;
+    
+    // Add refresh parameter to force cache refresh
+    const params = new URLSearchParams();
+    params.append('page', currentPage);
+    params.append('refresh', 'true');
+    if (currentSearch && currentSearch.trim()) {
+        params.append('search', currentSearch.trim());
+    }
+    
+    const requestUrl = `${rmaLogUrl}?${params}`;
+    
+    isLoading = true;
+    const spinner = document.getElementById('loading-spinner');
+    const content = document.getElementById('directory-content');
+    const refreshBtn = document.getElementById('refresh-btn');
+    
+    // Update refresh button state
+    if (refreshBtn) {
+        refreshBtn.disabled = true;
+        refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Refreshing...';
+    }
+    
+    if (spinner) spinner.style.display = 'block';
+    if (content) content.style.display = 'none';
+    
+    fetch(requestUrl, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success === false) {
+            throw new Error(data.error || 'Unknown server error');
+        }
+        
+        updateDirectoriesTable(data);
+        updatePaginationInfo(data);
+        updatePaginationControls(data);
+        
+        // Hide loading spinner and show content
+        if (spinner) spinner.style.display = 'none';
+        if (content) content.style.display = 'block';
+        
+        // Reset refresh button state
+        if (refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Refresh';
+        }
+        
+        isLoading = false;
+    })
+    .catch(error => {
+        console.error('Error refreshing data:', error);
+        showError(error.message || 'Failed to refresh RMA directories. Please try again.');
+        
+        // Hide loading spinner
+        if (spinner) spinner.style.display = 'none';
+        if (content) content.style.display = 'block';
+        
+        // Reset refresh button state
+        if (refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Refresh';
+        }
+        
+        isLoading = false;
+    });
+}
+
+// Handle search form submission and real-time search
 document.addEventListener('DOMContentLoaded', function() {
     const searchForm = document.querySelector('form');
-    
-    searchForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const searchInput = document.querySelector('input[name="search"]');
-        currentSearch = searchInput.value.trim();
-        currentPage = 1; // Reset to first page on new search
-        
-        loadPage(1);
-    });
-    
-    // Handle search input changes with debounce
     const searchInput = document.querySelector('input[name="search"]');
-    let searchTimeout;
     
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            const newSearch = this.value.trim();
-            if (newSearch !== currentSearch) {
-                currentSearch = newSearch;
-                currentPage = 1;
-                loadPage(1);
-            }
-        }, 500); // 500ms debounce
-    });
+    // Handle form submission
+    if (searchForm) {
+        searchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            performSearch(searchInput.value);
+        });
+    }
+    
+    // Handle real-time search input changes
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            performSearch(this.value);
+        });
+        
+        // Clear search functionality
+        const clearBtn = document.querySelector('a[href*="rma_log"]');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                searchInput.value = '';
+                loadPage(1, '');
+            });
+        }
+    }
+    
+    // Handle refresh button
+    const refreshBtn = document.getElementById('refresh-btn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            refreshData();
+        });
+    }
+    
 });
 </script>
 {% endblock %}
