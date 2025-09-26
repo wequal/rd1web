@@ -14,8 +14,7 @@ import re
 import io
 import threading
 import time
-from ..remote_config import remote_dict, async_rma
-from asgiref.sync import sync_to_async
+from ..remote_config import remote_dict
 
 logger = logging.getLogger(__name__)
 RMA_BASE_DIR = '/srv/rma-b31'
@@ -254,130 +253,6 @@ def rma_log_ajax(request):
             'end_index': 0
         }, status=500)
 
-async def get_rma_directories_async(include_stats=False, include_status=False):
-    """
-    Get list of RMA directories from local /srv/rma-b31 matching pattern {base_sn}_{rma_number} (ASYNC VERSION)
-    
-    Args:
-        include_stats (bool): Whether to include file count and size stats (slower)
-        include_status (bool): Whether to include test status from test_status.txt
-    """
-    # Check cache first for basic directory listing
-    cache_key = f"rma_directories_basic"
-    cached_dirs = cache.get(cache_key)
-    
-    if cached_dirs is None:
-        rma_directories = []
-        
-        try:
-            # Check if local directory exists
-            if not os.path.exists(RMA_BASE_DIR):
-                logger.warning(f"RMA base directory does not exist: {RMA_BASE_DIR}")
-                return []
-            
-            # List directories locally
-            try:
-                items = os.listdir(RMA_BASE_DIR)
-            except Exception as e:
-                logger.error(f"Cannot list local RMA directory: {e}")
-                return []
-            
-            # Pattern to match {base_sn}_{rma_number}
-            pattern = re.compile(r'^(.+)_(.+)$')
-            
-            # Process local directory items
-            for item in items:
-                item_path = os.path.join(RMA_BASE_DIR, item)
-                
-                # Skip non-directories
-                if not os.path.isdir(item_path):
-                    continue
-                    
-                # Check if it matches pattern
-                if pattern.match(item):
-                    match = pattern.match(item)
-                    base_sn, rma_number = match.groups()
-                    
-                    try:
-                        # Get basic directory stats locally
-                        try:
-                            stat_info = os.stat(item_path)
-                            mtime = datetime.fromtimestamp(stat_info.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
-                        except Exception:
-                            mtime = 'Unknown'
-                        
-                        # Get test status if requested
-                        test_details = {}
-                        if include_status:
-                            test_details = await get_test_status_async(item)
-                        
-                        # Get GPU model
-                        gpu_model = await get_gpu_model_async(item)
-                        
-                        rma_directories.append({
-                            'name': item,
-                            'base_sn': base_sn,
-                            'rma_number': rma_number,
-                            'path': item,
-                            'full_path': item_path,
-                            'file_count': 0,  # Will be loaded separately if needed
-                            'total_size': '0 B',  # Will be loaded separately if needed
-                            'mtime': mtime,
-                            'exists': True,
-                            'stats_loaded': False,
-                            'test_details': test_details,
-                            'gpu_model': gpu_model
-                        })
-                    except Exception as e:
-                        logger.warning(f"Cannot access local RMA directory {item}: {e}")
-                        
-                        # Get test status if requested (even for errored directories)
-                        test_details = {}
-                        if include_status:
-                            test_details = await get_test_status_async(item)
-                        
-                        # Get GPU model (even for errored directories)
-                        gpu_model = await get_gpu_model_async(item)
-                        
-                        rma_directories.append({
-                            'name': item,
-                            'base_sn': base_sn,
-                            'rma_number': rma_number,
-                            'path': item,
-                            'full_path': item_path,
-                            'file_count': 0,
-                            'total_size': '0 B',
-                            'mtime': 'Unknown',
-                            'exists': True,
-                            'error': str(e),
-                            'stats_loaded': False,
-                            'test_details': test_details,
-                            'gpu_model': gpu_model
-                        })
-            
-            # Sort by RMA number (newest first), then by base_sn
-            def sort_key(x):
-                try:
-                    return (int(x['rma_number']), x['base_sn'])
-                except ValueError:
-                    return (x['rma_number'], x['base_sn'])
-            
-            rma_directories.sort(key=sort_key, reverse=True)
-            
-            # Cache the basic directory listing
-            cache.set(cache_key, rma_directories, RMA_CACHE_TIMEOUT)
-            
-        except Exception as e:
-            logger.error(f"Error scanning remote RMA directories: {e}")
-            return []
-    else:
-        rma_directories = cached_dirs
-    
-    # If stats are requested, load them for visible directories only
-    if include_stats:
-        rma_directories = await load_directory_stats_async(rma_directories)
-    
-    return rma_directories
 
 def get_rma_directories(include_stats=False, include_status=False):
     """
@@ -480,12 +355,20 @@ def get_rma_directories(include_stats=False, include_status=False):
                             'gpu_model': gpu_model
                         })
             
-            # Sort by RMA number (newest first), then by base_sn
+            # Sort by modified time (newest first), then by RMA number
             def sort_key(x):
                 try:
-                    return (int(x['rma_number']), x['base_sn'])
-                except ValueError:
-                    return (x['rma_number'], x['base_sn'])
+                    # Parse mtime string to datetime for proper sorting
+                    # mtime format is "YYYY-MM-DD HH:MM:SS"
+                    if x['mtime'] != 'Unknown':
+                        mtime_dt = datetime.strptime(x['mtime'], "%Y-%m-%d %H:%M:%S")
+                        return (mtime_dt, int(x['rma_number']) if x['rma_number'].isdigit() else x['rma_number'])
+                    else:
+                        # Put unknown dates at the end
+                        return (datetime.min, int(x['rma_number']) if x['rma_number'].isdigit() else x['rma_number'])
+                except (ValueError, TypeError):
+                    # Fallback to original sorting if mtime parsing fails
+                    return (datetime.min, x['rma_number'])
             
             rma_directories.sort(key=sort_key, reverse=True)
             
@@ -504,69 +387,6 @@ def get_rma_directories(include_stats=False, include_status=False):
     
     return rma_directories
 
-async def load_directory_stats_async(directories, max_concurrent=5):
-    """
-    Load file count and size stats for directories asynchronously.
-    Only loads stats for directories that don't have them cached.
-    """
-    try:
-        for i, rma_dir in enumerate(directories):
-            # Limit concurrent operations to prevent overwhelming the system
-            if i >= max_concurrent:
-                break
-                
-            if rma_dir.get('stats_loaded', False):
-                continue
-                
-            item = rma_dir['name']
-            cache_key = f"rma_stats_{item}"
-            cached_stats = cache.get(cache_key)
-            
-            if cached_stats:
-                rma_dir.update(cached_stats)
-                rma_dir['stats_loaded'] = True
-                continue
-            
-            # Load stats locally
-            file_count = 0
-            total_size = 0
-            
-            try:
-                item_path = os.path.join(RMA_BASE_DIR, item)
-                
-                # Count files locally
-                for root, dirs, files in os.walk(item_path):
-                    file_count += len(files)
-                
-                # Calculate size locally (only if file count is reasonable)
-                if file_count > 0 and file_count < 10000:  # Skip size calc for very large directories
-                    for root, dirs, files in os.walk(item_path):
-                        for file in files:
-                            try:
-                                file_path = os.path.join(root, file)
-                                total_size += os.path.getsize(file_path)
-                            except (OSError, IOError):
-                                pass  # Skip files that can't be accessed
-                
-            except (ValueError, AttributeError) as e:
-                logger.warning(f"Error calculating stats for {item}: {e}")
-            
-            # Update directory with stats
-            stats = {
-                'file_count': file_count,
-                'total_size': format_size(total_size) if total_size > 0 else ('Large directory' if file_count > 10000 else '0 B'),
-                'stats_loaded': True
-            }
-            
-            rma_dir.update(stats)
-            
-            # Cache the stats
-            cache.set(cache_key, stats, RMA_STATS_CACHE_TIMEOUT)
-            
-    except Exception as e:
-        logger.error(f"Error loading directory stats: {e}")
-    
-    return directories
 
 def load_directory_stats(directories, max_concurrent=5):
     """
@@ -788,74 +608,7 @@ def get_test_status(directory_name):
         logger.warning(f"Error reading test status for {directory_name}: {e}")
         return {'Overall': 'Unknown'}
 
-async def get_gpu_model_async(directory_name):
-    """
-    Get GPU model from gpu_model.txt file in RMA directory (ASYNC VERSION)
-    
-    Args:
-        directory_name (str): The RMA directory name
-        
-    Returns:
-        str: GPU model string or 'Unknown' if not found
-    """
-    try:
-        # Read gpu_model.txt from the local directory
-        gpu_model_file_path = os.path.join(RMA_BASE_DIR, directory_name, "gpu_model.txt")
-        
-        if os.path.exists(gpu_model_file_path):
-            try:
-                with open(gpu_model_file_path, 'r', encoding='utf-8') as f:
-                    content = f.read().strip()
-                
-                if content:
-                    return content
-                else:
-                    return 'Unknown'
-            except Exception as e:
-                logger.warning(f"Error reading GPU model file for {directory_name}: {e}")
-                return 'Unknown'
-        else:
-            # File doesn't exist
-            return 'Unknown'
-            
-    except Exception as e:
-        logger.warning(f"Error reading GPU model for {directory_name}: {e}")
-        return 'Unknown'
 
-async def get_test_status_async(directory_name):
-    """
-    Get test status from test_status.txt file in RMA directory (ASYNC VERSION)
-    
-    Args:
-        directory_name (str): The RMA directory name
-        
-    Returns:
-        dict: Dictionary of test details with individual test statuses
-    """
-    try:
-        # Read test_status.txt from the local directory
-        status_file_path = os.path.join(RMA_BASE_DIR, directory_name, "test_status.txt")
-        
-        if os.path.exists(status_file_path):
-            try:
-                with open(status_file_path, 'r', encoding='utf-8') as f:
-                    content = f.read().strip()
-                test_details = parse_test_status_content(content)
-                
-                if test_details:
-                    return test_details
-                else:
-                    return {'Overall': 'No Status'}
-            except Exception as e:
-                logger.warning(f"Error reading test status file for {directory_name}: {e}")
-                return {'Overall': 'Unknown'}
-        else:
-            # File doesn't exist
-            return {'Overall': 'No Status'}
-            
-    except Exception as e:
-        logger.warning(f"Error reading test status for {directory_name}: {e}")
-        return {'Overall': 'Unknown'}
 
 
 def get_file_extension(filename):
