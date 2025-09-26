@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
-{% block title %}RMA PXE Manager{% endblock %}
+{% block title %}RMA GPU TEST{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <!-- Page Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="h3 mb-0 text-gray-800">RMA PXE Manager</h1>
+            <h1 class="h3 mb-0 text-gray-800">RMA GPU TEST</h1>
             <p class="mb-0 text-muted">Configure PXE boot settings for RMA systems</p>
         </div>
         <div class="d-flex gap-2">
@@ -22,7 +22,7 @@
             <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                     <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-tools me-2"></i>RMA PXE Configuration
+                        <i class="fas fa-tools me-2"></i>RMA GPU TEST Configuration
                     </h6>
                 </div>
                 <div class="card-body">
@@ -222,15 +222,13 @@
                         <h6 class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i>Important Notes</h6>
                         <ul class="small text-muted">
                             <li>Base SN and RMA Number are required for tracking</li>
-                            <li>MAC addresses must be valid network identifiers</li>
                             <li>Select appropriate image based on system architecture</li>
-                            <li>Check existing configurations before adding new ones</li>
                         </ul>
                     </div>
                     <div class="mb-3">
                         <h6 class="text-success"><i class="fas fa-cogs me-1"></i>Actions</h6>
-                        <p class="small text-muted mb-1"><strong>Check:</strong> Verify if MAC addresses are already configured</p>
-                        <p class="small text-muted mb-1"><strong>Remove:</strong> Delete PXE configurations for specified MACs</p>
+                        <p class="small text-muted mb-1"><strong>Check:</strong> Verify if BMC IP is already configured</p>
+                        <p class="small text-muted mb-1"><strong>Remove:</strong> Delete PXE configurations for specified BMC IP</p>
                         <p class="small text-muted mb-1"><strong>Add:</strong> Create new PXE boot configurations (default action)</p>
                     </div>
                 </div>
@@ -285,7 +283,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="helpModalLabel">
-                    <i class="fas fa-question-circle me-2"></i>RMA PXE Manager Help
+                    <i class="fas fa-question-circle me-2"></i>RMA GPU TEST Help
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -293,20 +291,10 @@
                 <h6>RMA Information</h6>
                 <p><strong>Base SN:</strong> The serial number of the base system being processed for RMA.</p>
                 <p><strong>RMA Number:</strong> The unique identifier assigned to this RMA case for tracking purposes.</p>
-                
-                <h6>MAC Address Format</h6>
-                <p>Enter MAC addresses in any of these formats:</p>
-                <ul>
-                    <li><code>aa:bb:cc:dd:ee:ff</code> (colon separated)</li>
-                    <li><code>aa-bb-cc-dd-ee-ff</code> (dash separated)</li>
-                    <li><code>aabbccddeeff</code> (no separators)</li>
-                </ul>
-                
-
                 <h6>Available Actions</h6>
                 <ul>
-                    <li><strong>Check:</strong> Verify if the specified MAC addresses already have PXE configurations</li>
-                    <li><strong>Remove:</strong> Delete existing PXE boot configurations for the specified MAC addresses</li>
+                    <li><strong>Check:</strong> Verify if the specified BMC IP already have PXE configurations</li>
+                    <li><strong>Remove:</strong> Delete existing PXE boot configurations for the specified BMC IP</li>
                     <li><strong>Add (Default):</strong> Create new PXE boot configurations with RMA parameters</li>
                 </ul>
             </div>
