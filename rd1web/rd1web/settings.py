@@ -12,6 +12,9 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+from pxe.remote_config import remote_dict
+host_ip = remote_dict['us_b3'].host
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -29,7 +32,7 @@ DEBUG = True
 ALLOWED_HOSTS = ['*']  # Allow all IP addresses to access
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://172.31.56.135:5003"
+    f"http://{host_ip}:5003"
 ]
 # Application definition
 
@@ -102,7 +105,7 @@ DATABASES = {
         'NAME': 'pxe_db',
         'USER': 'devin',
         'PASSWORD': 'devin123',
-        'HOST': '172.31.56.135',
+        'HOST': host_ip,
         'PORT': '5432',
         'CONN_MAX_AGE': 600,  # Connection pooling for 10 minutes
     }

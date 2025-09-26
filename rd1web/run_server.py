@@ -14,6 +14,8 @@ import time
 import argparse
 from django.core.management import execute_from_command_line
 from django.conf import settings
+from pxe.remote_config import remote_dict
+host_ip = remote_dict['us_b3'].host
 
 # Global list to track worker processes
 worker_processes = []
@@ -134,8 +136,8 @@ def main():
     print(f"✓ SOL terminal functionality will be enabled")
     print(f"⚡ Redis caching: User tracking optimized for high performance")
     print(f"🌐 Nginx should proxy external requests from port 80 to these backends")
-    print(f"📁 Public access via: http://172.31.56.135/ (through Nginx)")
-    print(f"🔌 WebSocket SOL terminals: ws://172.31.56.135/ws/sol/<folder_name>/ (through Nginx)")
+    print(f"📁 Public access via: http://{host_ip}/ (through Nginx)")
+    print(f"🔌 WebSocket SOL terminals: ws://{host_ip}/ws/sol/<folder_name>/ (through Nginx)")
     print(f"⚡ Static files served directly by Nginx for better performance")
     print()
     

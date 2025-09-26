@@ -18,7 +18,7 @@ from ..remote_config import remote_dict, async_rma
 from asgiref.sync import sync_to_async
 
 logger = logging.getLogger(__name__)
-RMA_BASE_DIR = '/srv/rma-b38'
+RMA_BASE_DIR = '/srv/rma-b31'
 
 # Cache timeout settings (shorter for faster new directory detection)
 RMA_CACHE_TIMEOUT = 60  # 1 minute cache for directory listings
@@ -256,7 +256,7 @@ def rma_log_ajax(request):
 
 async def get_rma_directories_async(include_stats=False, include_status=False):
     """
-    Get list of RMA directories from local /srv/rma-b38 matching pattern {base_sn}_{rma_number} (ASYNC VERSION)
+    Get list of RMA directories from local /srv/rma-b31 matching pattern {base_sn}_{rma_number} (ASYNC VERSION)
     
     Args:
         include_stats (bool): Whether to include file count and size stats (slower)
@@ -381,7 +381,7 @@ async def get_rma_directories_async(include_stats=False, include_status=False):
 
 def get_rma_directories(include_stats=False, include_status=False):
     """
-    Get list of RMA directories from local /srv/rma-b38 matching pattern {base_sn}_{rma_number}
+    Get list of RMA directories from local /srv/rma-b31 matching pattern {base_sn}_{rma_number}
     
     Args:
         include_stats (bool): Whether to include file count and size stats (slower)
