@@ -166,9 +166,13 @@ def main():
         
         try:
             print(f"🔄 Starting worker {worker_id + 1}/{workers} on {host}:{port}")
-            
-            # Set environment variable to identify worker
             worker_env = os.environ.copy()
+            if port == 5003:
+                worker_env['DJANGO_DEBUG'] = '1'
+            else:
+                worker_env['DJANGO_DEBUG'] = '0'
+            # Set environment variable to identify worker
+            
             worker_env['DAPHNE_WORKER_ID'] = str(worker_id)
             worker_env['DAPHNE_WORKER_PORT'] = str(port)
             

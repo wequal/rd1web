@@ -1,8 +1,5 @@
 from django.shortcuts import render
-from django.http import JsonResponse
 from ..form import RmaForm
-import subprocess
-import re
 from fabric import Connection
 from django.contrib.auth.decorators import login_required, permission_required
 from ..models import PxeEntry, RmaTestingDb

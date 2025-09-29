@@ -6,6 +6,8 @@ from django.contrib import messages
 import requests
 import json
 import logging
+from ..remote_config import remote_dict
+rma_host = remote_dict['rma'].host
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +23,7 @@ def rma_dhcp_leases(request):
     context = {
         'leases': leases_data.get('leases', []) if leases_data else [],
         'error_message': leases_data.get('error') if leases_data and 'error' in leases_data else None,
-        'api_endpoint': 'http://10.4.4.80:8000/leases'
+        'api_endpoint': f'http://{rma_host}:8000/leases'
     }
     
     return render(request, 'features/rma_dhcp_leases.html', context)
@@ -58,7 +60,7 @@ def fetch_dhcp_leases():
     try:
         # Make API request with timeout
         response = requests.get(
-            'http://10.4.4.80:8000/leases',
+            f'http://{rma_host}:8000/leases',
             timeout=10,  # 10 second timeout
             headers={'Content-Type': 'application/json'}
         )
@@ -110,7 +112,7 @@ def fetch_dhcp_leases():
         return {'error': error_msg}
         
     except requests.exceptions.ConnectionError:
-        error_msg = 'Connection error - Unable to connect to DHCP server at 10.4.4.80:8000'
+        error_msg = f'Connection error - Unable to connect to DHCP server at {rma_host}:8000'
         logger.error(error_msg)
         return {'error': error_msg}
         

@@ -14,6 +14,8 @@ from pathlib import Path
 import os
 from pxe.remote_config import remote_dict
 host_ip = remote_dict['us_b3'].host
+DEBUG = os.environ.get("DJANGO_DEBUG") == "1"
+
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -27,7 +29,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-(oql-%h*1h4%2+1-s&vkc+ls*4+l&atr*+(hajf)l4q76rf_ay'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG = True
 
 ALLOWED_HOSTS = ['*']  # Allow all IP addresses to access
 

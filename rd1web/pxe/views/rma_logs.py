@@ -13,7 +13,6 @@ import logging
 import re
 import io
 import threading
-import time
 from ..remote_config import remote_dict
 
 logger = logging.getLogger(__name__)
