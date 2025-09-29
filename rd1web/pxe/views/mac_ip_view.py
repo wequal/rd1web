@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # Subnet configurations for network scanning
 SUBNET_CONFIGS = {
     'local': {
-        'interface': 'eno1',
+        'interface': 'eno1np0',
         'network': '172.31.0.0/16',
         'description': 'US Network',
         'scan_method': 'arp-scan',  # Use arp-scan directly
