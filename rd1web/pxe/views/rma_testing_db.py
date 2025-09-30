@@ -10,6 +10,7 @@ import json
 
 from ..models import RmaTestingDb
 from ..form import RmaTestingDbForm, RmaTestingDbSearchForm
+from ..remote_config import remote_dict
 
 
 @login_required
@@ -63,6 +64,7 @@ def rma_testing_db_add(request):
         try:
             entry = form.save()
             messages.success(request, f'Successfully added RMA entry for BMC MAC: {entry.bmc_mac}')
+            remote_dict['rma'].run(f"/srv/share/scripts/rma/rma_fixed_ip {entry.golden_number} {entry.bmc_mac} {entry.bmc_ip} change")
             return JsonResponse({
                 'success': True,
                 'message': 'Entry added successfully',
@@ -102,6 +104,7 @@ def rma_testing_db_edit(request, entry_id):
         try:
             updated_entry = form.save()
             messages.success(request, f'Successfully updated RMA entry for BMC MAC: {updated_entry.bmc_mac}')
+            remote_dict['rma'].run(f"/srv/share/scripts/rma/rma_fixed_ip {entry.golden_number} {entry.bmc_mac} {entry.bmc_ip} change")
             return JsonResponse({
                 'success': True,
                 'message': 'Entry updated successfully',
@@ -139,6 +142,7 @@ def rma_testing_db_delete(request, entry_id):
     try:
         bmc_mac = entry.bmc_mac
         entry.delete()
+        remote_dict['rma'].run(f"/srv/share/scripts/rma/rma_fixed_ip {entry.golden_number} {entry.bmc_mac} {entry.bmc_ip} delete")
         messages.success(request, f'Successfully deleted RMA entry for BMC MAC: {bmc_mac}')
         return JsonResponse({
             'success': True,

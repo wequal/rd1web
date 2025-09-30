@@ -94,7 +94,7 @@ CHANNEL_LAYERS = {
 
 # ASGI/Daphne timeout configurations for better file serving
 ASGI_APPLICATION_CLOSE_TIMEOUT = 60  # Allow 60 seconds for apps to close
-ASGI_HTTP_TIMEOUT = 120  # Allow 2 minutes for HTTP requests (large files)
+ASGI_HTTP_TIMEOUT = 600  # Allow 10 minutes for HTTP requests (large files)
 ASGI_WEBSOCKET_HANDSHAKE_TIMEOUT = 10  # WebSocket handshake timeout
 
 
