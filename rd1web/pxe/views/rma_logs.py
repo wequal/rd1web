@@ -313,6 +313,9 @@ def get_rma_directories(include_stats=False, include_status=False):
                         # Get GPU model
                         gpu_model = get_gpu_model(item)
                         
+                        # Get golden number
+                        golden_number = get_golden_number(item)
+                        
                         rma_directories.append({
                             'name': item,
                             'base_sn': base_sn,
@@ -325,7 +328,8 @@ def get_rma_directories(include_stats=False, include_status=False):
                             'exists': True,
                             'stats_loaded': False,
                             'test_details': test_details,
-                            'gpu_model': gpu_model
+                            'gpu_model': gpu_model,
+                            'golden_number': golden_number
                         })
                     except Exception as e:
                         logger.warning(f"Cannot access local RMA directory {item}: {e}")
@@ -337,6 +341,9 @@ def get_rma_directories(include_stats=False, include_status=False):
                         
                         # Get GPU model (even for errored directories)
                         gpu_model = get_gpu_model(item)
+                        
+                        # Get golden number (even for errored directories)
+                        golden_number = get_golden_number(item)
                         
                         rma_directories.append({
                             'name': item,
@@ -351,7 +358,8 @@ def get_rma_directories(include_stats=False, include_status=False):
                             'error': str(e),
                             'stats_loaded': False,
                             'test_details': test_details,
-                            'gpu_model': gpu_model
+                            'gpu_model': gpu_model,
+                            'golden_number': golden_number
                         })
             
             # Sort by modified time (newest first), then by RMA number
@@ -571,6 +579,66 @@ def get_gpu_model(directory_name):
     except Exception as e:
         logger.warning(f"Error reading GPU model for {directory_name}: {e}")
         return 'Unknown'
+
+def get_golden_number(directory_name):
+    """
+    Get golden number from RMA Testing DB by reading BMC IP from bmc_ip.txt
+    
+    Args:
+        directory_name (str): The RMA directory name
+        
+    Returns:
+        str: Golden number or 'N/A' if not found
+    """
+    try:
+        # Check cache first
+        cache_key = f"rma_golden_{directory_name}"
+        cached_golden = cache.get(cache_key)
+        if cached_golden is not None:
+            return cached_golden
+        
+        # Read bmc_ip.txt from the local directory
+        bmc_ip_file_path = os.path.join(RMA_BASE_DIR, directory_name, "bmc_ip.txt")
+        
+        if os.path.exists(bmc_ip_file_path):
+            try:
+                with open(bmc_ip_file_path, 'r', encoding='utf-8') as f:
+                    bmc_ip = f.read().strip()
+                
+                if bmc_ip:
+                    # Import RmaTestingDb model
+                    from ..models import RmaTestingDb
+                    
+                    # Query database for matching BMC IP
+                    try:
+                        rma_entry = RmaTestingDb.objects.filter(bmc_ip=bmc_ip).first()
+                        if rma_entry and rma_entry.golden_number:
+                            golden_number = rma_entry.golden_number
+                            # Cache the result for 5 minutes
+                            cache.set(cache_key, golden_number, 300)
+                            return golden_number
+                        else:
+                            # IP found but no golden number or entry not found
+                            cache.set(cache_key, 'N/A', 300)
+                            return 'N/A'
+                    except Exception as e:
+                        logger.warning(f"Error querying RMA Testing DB for {directory_name}: {e}")
+                        return 'N/A'
+                else:
+                    cache.set(cache_key, 'N/A', 300)
+                    return 'N/A'
+            except Exception as e:
+                logger.warning(f"Error reading BMC IP file for {directory_name}: {e}")
+                cache.set(cache_key, 'N/A', 300)
+                return 'N/A'
+        else:
+            # File doesn't exist
+            cache.set(cache_key, 'N/A', 300)
+            return 'N/A'
+            
+    except Exception as e:
+        logger.warning(f"Error getting golden number for {directory_name}: {e}")
+        return 'N/A'
 
 def get_test_status(directory_name):
     """

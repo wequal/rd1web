@@ -92,6 +92,7 @@
                                             <th><i class="fas  me-1"></i>Base SN</th>
                                             <th><i class="fas  me-1"></i>RMA Number</th>
                                             <th><i class="fas  me-1"></i>GPU Model</th>
+                                            <th><i class="fas  me-1"></i>Golden</th>
                                             <th><i class="fas  me-1"></i>Status</th>
                                             <th><i class="fas  me-1"></i>Modified</th>
                                         </tr>
@@ -113,6 +114,9 @@
                                                 </td>
                                                 <td>
                                                     <span class="badge bg-success">{{ rma_dir.gpu_model|default:"Unknown" }}</span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-warning text-dark">{{ rma_dir.golden_number|default:"N/A" }}</span>
                                                 </td>
                                                 <td>
                                                     <div class="test-status-container">
@@ -415,6 +419,7 @@ function updateDirectoriesTable(data) {
                             <th><i class="fas  me-1"></i>Base SN</th>
                             <th><i class="fas  me-1"></i>RMA Number</th>
                             <th><i class="fas  me-1"></i>GPU Model</th>
+                            <th><i class="fas  me-1"></i>Golden</th>
                             <th><i class="fas  me-1"></i>Status</th>
                             <th><i class="fas  me-1"></i>Modified</th>
                         </tr>
@@ -472,6 +477,9 @@ function updateDirectoriesTable(data) {
             </td>
             <td>
                 <span class="badge bg-success">${dir.gpu_model || 'Unknown'}</span>
+            </td>
+            <td>
+                <span class="badge bg-warning text-dark">${dir.golden_number || 'N/A'}</span>
             </td>
             <td>
                 <div class="test-status-container">
