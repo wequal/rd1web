@@ -27,7 +27,9 @@ from .views.rma_testing_db import (
     rma_testing_db_edit, 
     rma_testing_db_delete, 
     rma_testing_db_get, 
-    rma_testing_db_api
+    rma_testing_db_api,
+    golden_link,
+    golden_unlink
 )
 from .views.rma_dhcp_leases import rma_dhcp_leases, rma_dhcp_leases_refresh
 from .api.system_api import systems_summary, systems_category
@@ -71,6 +73,10 @@ urlpatterns = [
     path('rma/logs/', rma_log, name='rma_log'),
     path('rma/logs/<path:path>/', rma_log, name='rma_log_browse'),
     path('rma/view/<path:path>/', rma_view_file, name='rma_view_file'),
+    
+    # Golden Number Link/Unlink URLs
+    path('rma/golden/link/<int:entry_id>/', golden_link, name='golden_link'),
+    path('rma/golden/unlink/<int:entry_id>/', golden_unlink, name='golden_unlink'),
     
     # RMA Testing DB URLs
     path('rma/testing-db/', rma_testing_db_list, name='rma_testing_db'),

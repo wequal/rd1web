@@ -1,54 +1,151 @@
-# RMA DHCP Leases Implementation Plan
+# RMA GPU TEST Page Enhancement - Implementation Plan
 
 ## Overview
-Add a new page under RMA Management called "RMA DHCP Leases" that fetches DHCP lease data from an external API and displays it in a table format.
+Enhance the RMA GPU TEST page with Golden Number availability tracking, user linking system, and improved UI layout.
 
-## Requirements
-1. **Page Name**: "RMA DHCP Leases"
-2. **Location**: Under RMA Management section in sidebar
-3. **API Endpoint**: `http://10.4.4.80:8000/leases`
-4. **Expected Response**: `{"leases":[{"mac":"7c:c2:55:1a:29:7a","ip":"192.168.40.18","hostname":"-NA-"}...]}`
-5. **Table Columns**: MAC, IP, Hostname
-6. **Refresh Functionality**: Page load and manual refresh button
+## Requirements Summary
+1. Remove RMA Testing Guide from RMA GPU TEST page
+2. Layout: Left side = RMA GPU TEST Configuration, Right side = Golden status panel
+3. Add 'link' column to RMA Testing DB (ForeignKey to User, can be null/empty)
+4. Golden status displays all Golden Numbers with availability indicators:
+   - Linked to user: show username + red circle icon
+   - Available (not linked): show green circle icon
+5. Users can link available goldens; only linked user can unlink their own golden
+6. Add permission "can_force_unlink_golden" - users with this permission can unlink any golden
+7. Change BMC IP field to dropdown - users only see BMC IPs linked to them
+
+---
 
 ## Implementation Tasks
 
-### 1. Create Permission and Model Updates ✅
-- [x] Add new permission `can_access_rma_dhcp_leases` to PxeEntry model
-- [x] Run migration to apply permission changes
+### Task 1: Update RMA Testing DB Model ✅
+- [x] Add `linked_user` field as ForeignKey to User model (null=True, blank=True)
+- [x] Add new permission `can_force_unlink_golden` to model Meta
+- [x] Create and run migration for the model changes
+- [x] Update admin interface to show linked_user field
 
-### 2. Create View Function ✅
-- [x] Create `rma_dhcp_leases.py` view file in `rd1web/pxe/views/`
-- [x] Implement view with permission required decorator
-- [x] Add API call functionality to fetch leases from external endpoint
-- [x] Handle API errors gracefully (timeout, connection error, invalid response)
-- [x] Implement refresh functionality
+**Files modified:**
+- `rd1web/pxe/models.py` - Added linked_user field and permission
+- Migration `0016_alter_rmatestingdb_options_rmatestingdb_linked_user.py` created and applied
 
-### 3. Create Template ✅
-- [x] Create `rma_dhcp_leases.html` template in `rd1web/templates/features/`
-- [x] Design table layout with MAC, IP, Hostname columns
-- [x] Add refresh button functionality
-- [x] Add loading states and error handling
-- [x] Make it responsive and follow existing design patterns
+**Expected changes:** Minimal impact - just adding one field and one permission to existing model
 
-### 4. URL Configuration ✅
-- [x] Add URL pattern in `rd1web/pxe/urls.py`
-- [x] Add API endpoint for refresh functionality if needed
+---
 
-### 5. Update Navigation ✅
-- [x] Update sidebar template to include new RMA DHCP Leases link
-- [x] Add permission check in template for link visibility
+### Task 2: Update RMA PXE Form ✅
+- [x] Change `bmc_ip` field from CharField to ChoiceField
+- [x] Add method to dynamically populate BMC IP choices based on current user's linked entries
+- [x] Update form initialization to accept user parameter
 
-### 6. Testing ✅
-- [x] Test page loads correctly with proper permissions
-- [x] Test API call functionality
-- [x] Test refresh button functionality
-- [x] Test error handling scenarios
-- [x] Test responsive design
+**Files modified:**
+- `rd1web/pxe/form.py` - Modified RmaForm class with __init__ method
 
-## Technical Notes
-- Use existing permission system pattern (`@permission_required('pxe.can_access_rma_dhcp_leases')`)
-- Follow existing RMA view patterns for consistency
-- Use requests library for API calls with timeout handling
-- Implement AJAX for refresh functionality to avoid full page reload
-- Use existing CSS/JS frameworks for consistent styling
+**Expected changes:** Minimal impact - only changing one field type in the form
+
+---
+
+### Task 3: Update RMA PXE View ✅
+- [x] Pass current user to RmaForm initialization
+- [x] Add logic to fetch golden status data for display
+- [x] Add permission checks for force unlink
+- [x] Pass golden entries and permission flag to template
+
+**Files modified:**
+- `rd1web/pxe/views/rma_pxe.py` - Updated rma_pxe view
+
+**Expected changes:** Minimal impact - enhancing existing view with new functionality
+
+---
+
+### Task 4: Update RMA PXE Template Layout ✅
+- [x] Remove "RMA Testing Guide" panel
+- [x] Add "Golden Status" panel on right side (col-lg-4)
+- [x] Display all golden numbers from RmaTestingDb
+- [x] Show availability status with color-coded icons (green=available, red=linked)
+- [x] Add link/unlink buttons based on user permissions
+- [x] Maintain proper layout with Configuration card on left
+
+**Files modified:**
+- `rd1web/templates/features/rma_pxe.html` - Replaced guide panel with golden status panel
+
+**Expected changes:** Minimal impact - replacing one panel with another, maintaining same structure
+
+---
+
+### Task 5: Add JavaScript for Golden Linking ✅
+- [x] Add AJAX functions for link/unlink operations
+- [x] Add real-time UI updates when linking/unlinking
+- [x] Add confirmation dialogs for link/unlink operations
+- [x] Add error handling and user feedback
+- [x] Add CSRF token handling
+
+**Files modified:**
+- `rd1web/templates/features/rma_pxe.html` - Added JavaScript in scripts block
+
+**Expected changes:** Minimal impact - only adding new JavaScript functionality
+
+---
+
+### Task 6: Update RMA Testing DB Views ✅
+- [x] Add API endpoint for linking golden numbers
+- [x] Add API endpoint for unlinking golden numbers
+- [x] Add permission checks in views
+- [x] Return JSON responses for AJAX calls
+- [x] Add validation for already linked/unlinked status
+
+**Files modified:**
+- `rd1web/pxe/views/rma_testing_db.py` - Added golden_link and golden_unlink views
+
+**Expected changes:** Minimal impact - adding new API endpoints
+
+---
+
+### Task 7: Update URL Configuration ✅
+- [x] Import golden_link and golden_unlink views
+- [x] Add URL routes for golden link/unlink API endpoints
+
+**Files modified:**
+- `rd1web/pxe/urls.py` - Added new URL patterns
+
+**Expected changes:** Minimal impact - just adding new URL patterns
+
+---
+
+### Task 8: Testing
+- [ ] Test BMC IP dropdown shows only user's linked entries
+- [ ] Test golden linking/unlinking functionality
+- [ ] Test permission system for force unlink
+- [ ] Test UI layout and responsiveness
+- [ ] Test with multiple users simultaneously
+
+---
+
+## Database Changes
+**New field:** `RmaTestingDb.linked_user` (ForeignKey to User, null=True, blank=True)
+**New permission:** `pxe.can_force_unlink_golden`
+
+## UI Changes
+- Remove RMA Testing Guide panel
+- Add Golden Status panel showing:
+  - Golden Number
+  - Availability status (icon: green circle = available, red circle = linked)
+  - Linked username (if applicable)
+  - Link/Unlink button (based on permissions)
+
+## Permission Logic
+1. Any user can link an available (unlinked) golden number
+2. Only the linked user can unlink their own golden number
+3. Users with `can_force_unlink_golden` permission can unlink any golden number
+
+## Estimated Impact
+- **Low risk** - All changes are additive or non-breaking
+- **Minimal impact** - Only affects RMA GPU TEST page and RMA Testing DB
+- **No breaking changes** - Existing functionality remains intact
+
+---
+
+## Notes
+- All changes follow Django best practices
+- Maintains existing code structure
+- Uses AJAX for smooth user experience
+- Proper permission checks at both view and template levels

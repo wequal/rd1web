@@ -7,10 +7,13 @@ from django.db.models import Q
 from django.core.paginator import Paginator
 from django.views.decorators.csrf import csrf_exempt
 import json
+import logging
 
 from ..models import RmaTestingDb
 from ..form import RmaTestingDbForm, RmaTestingDbSearchForm
 from ..remote_config import remote_dict
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -226,3 +229,85 @@ def rma_testing_db_api(request):
         'recordsFiltered': filtered_records,
         'data': data
     })
+
+
+@login_required
+@permission_required('pxe.can_access_rma_pxe', raise_exception=True)
+@require_http_methods(["POST"])
+def golden_link(request, entry_id):
+    """API endpoint to link a golden number to the current user"""
+    try:
+        entry = RmaTestingDb.objects.get(id=entry_id)
+        
+        # Check if already linked
+        if entry.linked_user is not None:
+            return JsonResponse({
+                'success': False,
+                'error': f'Golden number "{entry.golden_number}" is already linked to {entry.linked_user.username}'
+            })
+        
+        # Link to current user
+        entry.linked_user = request.user
+        entry.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Successfully linked golden number "{entry.golden_number}"'
+        })
+        
+    except RmaTestingDb.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Golden number entry not found'
+        })
+    except Exception as e:
+        logger.error(f"Error linking golden number: {e}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+
+@login_required
+@permission_required('pxe.can_access_rma_pxe', raise_exception=True)
+@require_http_methods(["POST"])
+def golden_unlink(request, entry_id):
+    """API endpoint to unlink a golden number"""
+    try:
+        entry = RmaTestingDb.objects.get(id=entry_id)
+        
+        # Check if not linked
+        if entry.linked_user is None:
+            return JsonResponse({
+                'success': False,
+                'error': 'Golden number is not linked to any user'
+            })
+        
+        # Check permissions: only the linked user or users with force_unlink permission can unlink
+        can_force_unlink = request.user.has_perm('pxe.can_force_unlink_golden')
+        if entry.linked_user != request.user and not can_force_unlink:
+            return JsonResponse({
+                'success': False,
+                'error': 'You do not have permission to unlink this golden number'
+            })
+        
+        # Unlink the golden number
+        entry.linked_user = None
+        entry.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Successfully unlinked golden number "{entry.golden_number}"'
+        })
+        
+    except RmaTestingDb.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Golden number entry not found'
+        })
+    except Exception as e:
+        logger.error(f"Error unlinking golden number: {e}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })

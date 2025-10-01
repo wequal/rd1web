@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.contrib.auth.models import User
 import re
 
 # Create your models here.
@@ -96,6 +97,15 @@ class RmaTestingDb(models.Model):
         help_text='Golden Number identifier',
         verbose_name='Golden Number'
     )
+    linked_user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='linked_golden_numbers',
+        help_text='User currently linked to this golden number',
+        verbose_name='Linked User'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -105,6 +115,7 @@ class RmaTestingDb(models.Model):
         verbose_name_plural = 'RMA Testing DB Entries'
         permissions = [
             ('can_access_rma_testing_db', 'Can access RMA Testing DB'),
+            ('can_force_unlink_golden', 'Can force unlink any golden number'),
         ]
     
     def clean(self):

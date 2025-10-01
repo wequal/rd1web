@@ -254,7 +254,7 @@ class UniquePasswordForm(forms.Form):
 class RmaForm(forms.Form):
     base_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Base SN',required=False)
     rma_number=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='RMA Number',required=False)
-    bmc_ip=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='BMC IP')
+    bmc_ip=forms.ChoiceField(choices=[], widget=forms.Select(attrs={'class':'form-control','style': 'width: 500px;',}),label='BMC IP')
     image=forms.ChoiceField(choices=[('ubuntu2204-x86-rma','Ubuntu2204-X86'),('ubuntu2204-arm64-rma','Ubuntu2204-ARM64'),],label='Image')
     remove=forms.BooleanField(required=False,label="Remove",initial=False)
     check=forms.BooleanField(required=False,label="Check",initial=False)
@@ -270,6 +270,18 @@ class RmaForm(forms.Form):
     label='Tests',
     required=False
     )
+    
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Populate BMC IP choices based on user's linked golden numbers
+        if user:
+            from .models import RmaTestingDb
+            linked_entries = RmaTestingDb.objects.filter(linked_user=user).order_by('bmc_ip')
+            self.fields['bmc_ip'].choices = [(entry.bmc_ip, f"{entry.bmc_ip} - {entry.golden_number}") for entry in linked_entries]
+        else:
+            self.fields['bmc_ip'].choices = []
     
     def clean_tests(self):
         """Validate that default test is not combined with specific tests"""

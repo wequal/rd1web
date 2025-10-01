@@ -45,7 +45,7 @@ def run_rma_command_sync(command, timeout=30):
 def rma_pxe(request):
     result = {}
     if request.method == "POST":
-        bound_form = RmaForm(request.POST)
+        bound_form = RmaForm(request.POST, user=request.user)
         if bound_form.is_valid():
             base_sn = bound_form.cleaned_data.get('base_sn', '')
             rma_number = bound_form.cleaned_data.get('rma_number', '')
@@ -104,14 +104,24 @@ def rma_pxe(request):
                     if not success:
                         result['actions'].append(f"Warning: Failed to generate PXE config for {x}: {error}")
 
-            form=RmaForm()
+            form=RmaForm(user=request.user)
         else:
-            form = RmaForm()
+            form = RmaForm(user=request.user)
             form._errors = bound_form.errors
             form.data = {}
             form.cleaned_data = {}
     else:
-        form=RmaForm()
+        form=RmaForm(user=request.user)
     
+    # Get all golden numbers for status display
+    golden_entries = RmaTestingDb.objects.all().order_by('golden_number')
     
-    return render(request,'features/rma_pxe.html',{'form':form,'result':result})    
+    # Check if user has force unlink permission
+    can_force_unlink = request.user.has_perm('pxe.can_force_unlink_golden')
+    
+    return render(request,'features/rma_pxe.html',{
+        'form':form,
+        'result':result,
+        'golden_entries': golden_entries,
+        'can_force_unlink': can_force_unlink
+    })    
