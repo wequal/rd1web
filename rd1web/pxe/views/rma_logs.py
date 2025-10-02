@@ -13,13 +13,16 @@ import logging
 import re
 import io
 import threading
+import asyncio
+from asgiref.sync import sync_to_async
 from ..remote_config import remote_dict
 
 logger = logging.getLogger(__name__)
 RMA_BASE_DIR = '/srv/rma-b31'
 
 # Cache timeout settings (shorter for faster new directory detection)
-RMA_CACHE_TIMEOUT = 60  # 1 minute cache for directory listings
+RMA_CACHE_TIMEOUT = 30  # 30 seconds cache for basic directory listings
+RMA_DETAILS_CACHE_TIMEOUT = 60  # 1 minute cache for directory details (test_status, gpu_model, golden_number)
 RMA_STATS_CACHE_TIMEOUT = 300  # 5 minutes cache for file stats
 
 class TimeoutError(Exception):
@@ -120,10 +123,10 @@ def rma_log(request, path=""):
     refresh_cache = request.GET.get('refresh', 'false').lower() == 'true'
     if refresh_cache:
         from django.core.cache import cache
-        cache.delete('rma_directories_basic')
+        cache.delete('rma_directories_basic_v2')
     
-    # Get all RMA directories (fast mode for initial load)
-    all_rma_directories = get_rma_directories(include_stats=False, include_status=True)
+    # Get all RMA directories BASIC INFO ONLY (super fast - just listdir + stat)
+    all_rma_directories = get_rma_directories_basic()
     
     # Filter directories based on search query
     if search_query:
@@ -147,8 +150,20 @@ def rma_log(request, path=""):
     except EmptyPage:
         page_obj = paginator.get_page(paginator.num_pages)
     
-    # Use page directories as-is (status already loaded)
-    page_directories_with_stats = list(page_obj.object_list)
+    # LAZY LOAD: Load details only for the current page (20 items) with ASYNC optimization
+    page_directories = list(page_obj.object_list)
+    page_dir_names = [d['name'] for d in page_directories]
+    
+    # Load details for visible directories (uses async internally for better performance)
+    details_map = load_directory_details_batch_optimized(page_dir_names)
+    
+    # Merge details into page directories
+    page_directories_with_stats = []
+    for rma_dir in page_directories:
+        dir_name = rma_dir['name']
+        if dir_name in details_map:
+            rma_dir.update(details_map[dir_name])
+        page_directories_with_stats.append(rma_dir)
     
     # Main RMA logs page - show RMA directories
     context = {
@@ -177,10 +192,10 @@ def rma_log_ajax(request):
         refresh_cache = request.GET.get('refresh', 'false').lower() == 'true'
         if refresh_cache:
             from django.core.cache import cache
-            cache.delete('rma_directories_basic')
+            cache.delete('rma_directories_basic_v2')
         
-        # Get all RMA directories (fast mode for initial load)
-        all_rma_directories = get_rma_directories(include_stats=False, include_status=True)
+        # Get all RMA directories BASIC INFO ONLY (super fast)
+        all_rma_directories = get_rma_directories_basic()
         
         # Filter directories based on search query
         if search_query:
@@ -204,8 +219,20 @@ def rma_log_ajax(request):
         except EmptyPage:
             page_obj = paginator.get_page(paginator.num_pages)
         
-        # Use page directories as-is (status already loaded)
-        page_directories_with_stats = list(page_obj.object_list)
+        # LAZY LOAD: Load details only for the current page (20 items) with ASYNC optimization
+        page_directories = list(page_obj.object_list)
+        page_dir_names = [d['name'] for d in page_directories]
+        
+        # Load details for visible directories (uses async internally for better performance)
+        details_map = load_directory_details_batch_optimized(page_dir_names)
+        
+        # Merge details into page directories
+        page_directories_with_stats = []
+        for rma_dir in page_directories:
+            dir_name = rma_dir['name']
+            if dir_name in details_map:
+                rma_dir.update(details_map[dir_name])
+            page_directories_with_stats.append(rma_dir)
         
         # Prepare data for JSON response
         directories_data = []
@@ -253,8 +280,283 @@ def rma_log_ajax(request):
         }, status=500)
 
 
+def get_rma_directories_basic():
+    """
+    Get BASIC list of RMA directories (fast - only name, base_sn, rma_number, mtime)
+    Does NOT load test_status, gpu_model, or golden_number (use load_directory_details_batch for those)
+    
+    Returns:
+        list: List of dictionaries with basic directory info
+    """
+    # Check cache first
+    cache_key = "rma_directories_basic_v2"
+    cached_dirs = cache.get(cache_key)
+    
+    if cached_dirs is not None:
+        return cached_dirs
+    
+    rma_directories = []
+    
+    try:
+        # Check if local directory exists
+        if not os.path.exists(RMA_BASE_DIR):
+            logger.warning(f"RMA base directory does not exist: {RMA_BASE_DIR}")
+            return []
+        
+        # List directories locally
+        try:
+            items = os.listdir(RMA_BASE_DIR)
+        except Exception as e:
+            logger.error(f"Cannot list local RMA directory: {e}")
+            return []
+        
+        # Pattern to match {base_sn}_{rma_number}
+        pattern = re.compile(r'^(.+)_(.+)$')
+        
+        # Process local directory items - BASIC INFO ONLY
+        for item in items:
+            item_path = os.path.join(RMA_BASE_DIR, item)
+            
+            # Skip non-directories
+            if not os.path.isdir(item_path):
+                continue
+                
+            # Check if it matches pattern
+            if pattern.match(item):
+                match = pattern.match(item)
+                base_sn, rma_number = match.groups()
+                
+                try:
+                    # Get basic directory stats locally
+                    stat_info = os.stat(item_path)
+                    mtime = datetime.fromtimestamp(stat_info.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+                except Exception:
+                    mtime = 'Unknown'
+                
+                # Store ONLY basic info - no file reads or DB queries
+                rma_directories.append({
+                    'name': item,
+                    'base_sn': base_sn,
+                    'rma_number': rma_number,
+                    'path': item,
+                    'full_path': item_path,
+                    'mtime': mtime,
+                    'exists': True,
+                    # Details will be loaded separately
+                    'details_loaded': False,
+                })
+        
+        # Sort by modified time (newest first), then by RMA number
+        def sort_key(x):
+            try:
+                if x['mtime'] != 'Unknown':
+                    mtime_dt = datetime.strptime(x['mtime'], "%Y-%m-%d %H:%M:%S")
+                    return (mtime_dt, int(x['rma_number']) if x['rma_number'].isdigit() else x['rma_number'])
+                else:
+                    return (datetime.min, int(x['rma_number']) if x['rma_number'].isdigit() else x['rma_number'])
+            except (ValueError, TypeError):
+                return (datetime.min, x['rma_number'])
+        
+        rma_directories.sort(key=sort_key, reverse=True)
+        
+        # Cache the basic directory listing (30 seconds)
+        cache.set(cache_key, rma_directories, RMA_CACHE_TIMEOUT)
+        
+    except Exception as e:
+        logger.error(f"Error scanning RMA directories: {e}")
+        return []
+    
+    return rma_directories
+
+
+def load_directory_details_batch(directory_names):
+    """
+    Load details (test_status, gpu_model, golden_number) for a batch of directories
+    Uses individual caching for each directory's details
+    
+    SYNC VERSION - For compatibility with Celery tasks
+    For better performance in views, use async_load_directory_details_batch()
+    
+    Args:
+        directory_names (list): List of directory names to load details for
+        
+    Returns:
+        dict: Dictionary mapping directory name to its details
+    """
+    details_map = {}
+    
+    for dir_name in directory_names:
+        # Check cache first
+        cache_key = f"rma_details_{dir_name}"
+        cached_details = cache.get(cache_key)
+        
+        if cached_details is not None:
+            details_map[dir_name] = cached_details
+            continue
+        
+        # Load details if not cached
+        try:
+            test_details = get_test_status(dir_name)
+            gpu_model = get_gpu_model(dir_name)
+            golden_number = get_golden_number(dir_name)
+            
+            details = {
+                'test_details': test_details,
+                'gpu_model': gpu_model,
+                'golden_number': golden_number,
+                'details_loaded': True,
+            }
+            
+            # Cache for 1 minute
+            cache.set(cache_key, details, RMA_DETAILS_CACHE_TIMEOUT)
+            details_map[dir_name] = details
+            
+        except Exception as e:
+            logger.warning(f"Error loading details for {dir_name}: {e}")
+            # Return minimal details on error
+            details = {
+                'test_details': {'Overall': 'Unknown'},
+                'gpu_model': 'Unknown',
+                'golden_number': 'N/A',
+                'details_loaded': True,
+                'error': str(e),
+            }
+            details_map[dir_name] = details
+    
+    return details_map
+
+
+async def async_load_directory_details_batch(directory_names, max_concurrent=10):
+    """
+    Load details ASYNC for a batch of directories with concurrent file I/O
+    Much faster than sync version when loading multiple directories
+    
+    Args:
+        directory_names (list): List of directory names to load details for
+        max_concurrent (int): Maximum number of concurrent operations
+        
+    Returns:
+        dict: Dictionary mapping directory name to its details
+    """
+    details_map = {}
+    uncached_dirs = []
+    
+    # First pass: Check cache (sync, very fast)
+    for dir_name in directory_names:
+        cache_key = f"rma_details_{dir_name}"
+        cached_details = cache.get(cache_key)
+        
+        if cached_details is not None:
+            details_map[dir_name] = cached_details
+        else:
+            uncached_dirs.append(dir_name)
+    
+    if not uncached_dirs:
+        return details_map
+    
+    # Second pass: Load uncached details concurrently
+    # Use semaphore to limit concurrent operations
+    semaphore = asyncio.Semaphore(max_concurrent)
+    
+    async def load_single_directory_details(dir_name):
+        """Load details for a single directory asynchronously"""
+        async with semaphore:
+            try:
+                # Run all three operations concurrently
+                test_details_task = asyncio.to_thread(get_test_status, dir_name)
+                gpu_model_task = asyncio.to_thread(get_gpu_model, dir_name)
+                golden_number_task = asyncio.to_thread(get_golden_number, dir_name)
+                
+                # Wait for all three to complete
+                test_details, gpu_model, golden_number = await asyncio.gather(
+                    test_details_task,
+                    gpu_model_task,
+                    golden_number_task,
+                    return_exceptions=True
+                )
+                
+                # Handle exceptions
+                if isinstance(test_details, Exception):
+                    logger.warning(f"Error loading test_status for {dir_name}: {test_details}")
+                    test_details = {'Overall': 'Unknown'}
+                
+                if isinstance(gpu_model, Exception):
+                    logger.warning(f"Error loading gpu_model for {dir_name}: {gpu_model}")
+                    gpu_model = 'Unknown'
+                
+                if isinstance(golden_number, Exception):
+                    logger.warning(f"Error loading golden_number for {dir_name}: {golden_number}")
+                    golden_number = 'N/A'
+                
+                details = {
+                    'test_details': test_details,
+                    'gpu_model': gpu_model,
+                    'golden_number': golden_number,
+                    'details_loaded': True,
+                }
+                
+                # Cache for 1 minute
+                cache.set(f"rma_details_{dir_name}", details, RMA_DETAILS_CACHE_TIMEOUT)
+                
+                return dir_name, details
+                
+            except Exception as e:
+                logger.error(f"Unexpected error loading details for {dir_name}: {e}")
+                return dir_name, {
+                    'test_details': {'Overall': 'Unknown'},
+                    'gpu_model': 'Unknown',
+                    'golden_number': 'N/A',
+                    'details_loaded': True,
+                    'error': str(e),
+                }
+    
+    # Load all uncached directories concurrently
+    tasks = [load_single_directory_details(dir_name) for dir_name in uncached_dirs]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    # Collect results
+    for result in results:
+        if isinstance(result, Exception):
+            logger.error(f"Task failed: {result}")
+            continue
+        dir_name, details = result
+        details_map[dir_name] = details
+    
+    return details_map
+
+
+def load_directory_details_batch_optimized(directory_names):
+    """
+    Optimized wrapper that uses async loading if possible, falls back to sync
+    This is the recommended function to use in views
+    
+    Args:
+        directory_names (list): List of directory names to load details for
+        
+    Returns:
+        dict: Dictionary mapping directory name to its details
+    """
+    try:
+        # Try to use async version for better performance
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            details_map = loop.run_until_complete(
+                async_load_directory_details_batch(directory_names)
+            )
+            return details_map
+        finally:
+            loop.close()
+    except Exception as e:
+        logger.warning(f"Async loading failed, falling back to sync: {e}")
+        # Fall back to sync version
+        return load_directory_details_batch(directory_names)
+
+
 def get_rma_directories(include_stats=False, include_status=False):
     """
+    DEPRECATED: Use get_rma_directories_basic() + load_directory_details_batch() for better performance
+    
     Get list of RMA directories from local /srv/rma-b31 matching pattern {base_sn}_{rma_number}
     
     Args:
@@ -614,26 +916,26 @@ def get_golden_number(directory_name):
                         rma_entry = RmaTestingDb.objects.filter(bmc_ip=bmc_ip).first()
                         if rma_entry and rma_entry.golden_number:
                             golden_number = rma_entry.golden_number
-                            # Cache the result for 5 minutes
-                            cache.set(cache_key, golden_number, 300)
+                            # Cache the result for 1 minute
+                            cache.set(cache_key, golden_number, RMA_DETAILS_CACHE_TIMEOUT)
                             return golden_number
                         else:
                             # IP found but no golden number or entry not found
-                            cache.set(cache_key, 'N/A', 300)
+                            cache.set(cache_key, 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
                             return 'N/A'
                     except Exception as e:
                         logger.warning(f"Error querying RMA Testing DB for {directory_name}: {e}")
                         return 'N/A'
                 else:
-                    cache.set(cache_key, 'N/A', 300)
+                    cache.set(cache_key, 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
                     return 'N/A'
             except Exception as e:
                 logger.warning(f"Error reading BMC IP file for {directory_name}: {e}")
-                cache.set(cache_key, 'N/A', 300)
+                cache.set(cache_key, 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
                 return 'N/A'
         else:
             # File doesn't exist
-            cache.set(cache_key, 'N/A', 300)
+            cache.set(cache_key, 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
             return 'N/A'
             
     except Exception as e:
