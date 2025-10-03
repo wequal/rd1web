@@ -6,6 +6,7 @@ from django.views.decorators.http import require_http_methods
 from django.db.models import Q
 from django.core.paginator import Paginator
 from django.views.decorators.csrf import csrf_exempt
+from django.db import transaction
 import json
 import logging
 
@@ -14,6 +15,13 @@ from ..form import RmaTestingDbForm, RmaTestingDbSearchForm
 from ..remote_config import remote_dict
 
 logger = logging.getLogger(__name__)
+
+def change(golden_number, bmc_mac, bmc_ip):
+    remote_dict['rma'].run(f"/srv/share/scripts/rma/rma_fixed_ip {golden_number} {bmc_mac} {bmc_ip} change")
+
+def delete(golden_number, bmc_mac, bmc_ip):
+    remote_dict['rma'].run(f"/srv/share/scripts/rma/rma_fixed_ip {golden_number} {bmc_mac} {bmc_ip} delete")
+    
 
 
 @login_required
@@ -66,8 +74,8 @@ def rma_testing_db_add(request):
     if form.is_valid():
         try:
             entry = form.save()
+            transaction.commit(change(entry.golden_number, entry.bmc_mac, entry.bmc_ip))
             messages.success(request, f'Successfully added RMA entry for BMC MAC: {entry.bmc_mac}')
-            remote_dict['rma'].run(f"/srv/share/scripts/rma/rma_fixed_ip {entry.golden_number} {entry.bmc_mac} {entry.bmc_ip} change")
             return JsonResponse({
                 'success': True,
                 'message': 'Entry added successfully',
@@ -106,8 +114,8 @@ def rma_testing_db_edit(request, entry_id):
     if form.is_valid():
         try:
             updated_entry = form.save()
+            transaction.commit(change(updated_entry.golden_number, updated_entry.bmc_mac, updated_entry.bmc_ip))
             messages.success(request, f'Successfully updated RMA entry for BMC MAC: {updated_entry.bmc_mac}')
-            remote_dict['rma'].run(f"/srv/share/scripts/rma/rma_fixed_ip {entry.golden_number} {entry.bmc_mac} {entry.bmc_ip} change")
             return JsonResponse({
                 'success': True,
                 'message': 'Entry updated successfully',
@@ -145,7 +153,7 @@ def rma_testing_db_delete(request, entry_id):
     try:
         bmc_mac = entry.bmc_mac
         entry.delete()
-        remote_dict['rma'].run(f"/srv/share/scripts/rma/rma_fixed_ip {entry.golden_number} {entry.bmc_mac} {entry.bmc_ip} delete")
+        transaction.commit(delete(entry.golden_number, entry.bmc_mac, entry.bmc_ip))
         messages.success(request, f'Successfully deleted RMA entry for BMC MAC: {bmc_mac}')
         return JsonResponse({
             'success': True,
