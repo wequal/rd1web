@@ -243,6 +243,8 @@ def rma_log_ajax(request):
                 'rma_number': rma_dir['rma_number'],
                 'test_details': rma_dir.get('test_details', {}),
                 'gpu_model': rma_dir.get('gpu_model', 'Unknown'),
+                'golden_number': rma_dir.get('golden_number', 'N/A'),
+                'tester_name': rma_dir.get('tester_name', 'N/A'),
                 'mtime': rma_dir['mtime'],
                 'path': rma_dir['path'],
                 'error': rma_dir.get('error', None)
@@ -399,11 +401,13 @@ def load_directory_details_batch(directory_names):
             test_details = get_test_status(dir_name)
             gpu_model = get_gpu_model(dir_name)
             golden_number = get_golden_number(dir_name)
+            tester_name = get_tester_name(dir_name)
             
             details = {
                 'test_details': test_details,
                 'gpu_model': gpu_model,
                 'golden_number': golden_number,
+                'tester_name': tester_name,
                 'details_loaded': True,
             }
             
@@ -418,6 +422,7 @@ def load_directory_details_batch(directory_names):
                 'test_details': {'Overall': 'Unknown'},
                 'gpu_model': 'Unknown',
                 'golden_number': 'N/A',
+                'tester_name': 'N/A',
                 'details_loaded': True,
                 'error': str(e),
             }
@@ -462,16 +467,18 @@ async def async_load_directory_details_batch(directory_names, max_concurrent=10)
         """Load details for a single directory asynchronously"""
         async with semaphore:
             try:
-                # Run all three operations concurrently
+                # Run all four operations concurrently
                 test_details_task = asyncio.to_thread(get_test_status, dir_name)
                 gpu_model_task = asyncio.to_thread(get_gpu_model, dir_name)
                 golden_number_task = asyncio.to_thread(get_golden_number, dir_name)
+                tester_name_task = asyncio.to_thread(get_tester_name, dir_name)
                 
-                # Wait for all three to complete
-                test_details, gpu_model, golden_number = await asyncio.gather(
+                # Wait for all four to complete
+                test_details, gpu_model, golden_number, tester_name = await asyncio.gather(
                     test_details_task,
                     gpu_model_task,
                     golden_number_task,
+                    tester_name_task,
                     return_exceptions=True
                 )
                 
@@ -488,10 +495,15 @@ async def async_load_directory_details_batch(directory_names, max_concurrent=10)
                     logger.warning(f"Error loading golden_number for {dir_name}: {golden_number}")
                     golden_number = 'N/A'
                 
+                if isinstance(tester_name, Exception):
+                    logger.warning(f"Error loading tester_name for {dir_name}: {tester_name}")
+                    tester_name = 'N/A'
+                
                 details = {
                     'test_details': test_details,
                     'gpu_model': gpu_model,
                     'golden_number': golden_number,
+                    'tester_name': tester_name,
                     'details_loaded': True,
                 }
                 
@@ -506,6 +518,7 @@ async def async_load_directory_details_batch(directory_names, max_concurrent=10)
                     'test_details': {'Overall': 'Unknown'},
                     'gpu_model': 'Unknown',
                     'golden_number': 'N/A',
+                    'tester_name': 'N/A',
                     'details_loaded': True,
                     'error': str(e),
                 }
@@ -788,6 +801,55 @@ def format_size(size):
         size /= 1024
     return f"{size:.1f} TB"
 
+def parse_sys_info_file(directory_name):
+    """
+    Parse sys_info.txt file to extract GPU model and BMC IP
+    
+    Args:
+        directory_name (str): The RMA directory name
+        
+    Returns:
+        dict: Dictionary with 'gpu_model' and 'bmc_ip' keys, or None if file doesn't exist
+    """
+    try:
+        sys_info_file_path = os.path.join(RMA_BASE_DIR, directory_name, "sys_info.txt")
+        
+        if not os.path.exists(sys_info_file_path):
+            return None
+        
+        result = {'gpu_model': None, 'bmc_ip': None}
+        
+        try:
+            with open(sys_info_file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Parse line by line
+            for line in content.strip().split('\n'):
+                line = line.strip()
+                if not line:
+                    continue
+                
+                # Parse "KEY: VALUE" format
+                if ':' in line:
+                    key, value = line.split(':', 1)
+                    key = key.strip()
+                    value = value.strip()
+                    
+                    if key == 'GPU_Model':
+                        result['gpu_model'] = value if value else None
+                    elif key == 'BMC_IP':
+                        result['bmc_ip'] = value if value else None
+            
+            return result
+            
+        except Exception as e:
+            logger.warning(f"Error reading sys_info.txt for {directory_name}: {e}")
+            return None
+            
+    except Exception as e:
+        logger.warning(f"Error accessing sys_info.txt for {directory_name}: {e}")
+        return None
+
 def parse_test_status_content(content):
     """
     Parse test status content to extract individual test items and their statuses
@@ -850,7 +912,7 @@ def parse_test_status_content(content):
 
 def get_gpu_model(directory_name):
     """
-    Get GPU model from gpu_model.txt file in RMA directory
+    Get GPU model from sys_info.txt (primary) or gpu_model.txt (fallback) file in RMA directory
     
     Args:
         directory_name (str): The RMA directory name
@@ -859,7 +921,12 @@ def get_gpu_model(directory_name):
         str: GPU model string or 'Unknown' if not found
     """
     try:
-        # Read gpu_model.txt from the local directory
+        # Primary source: sys_info.txt
+        sys_info = parse_sys_info_file(directory_name)
+        if sys_info and sys_info.get('gpu_model'):
+            return sys_info['gpu_model']
+        
+        # Fallback: gpu_model.txt
         gpu_model_file_path = os.path.join(RMA_BASE_DIR, directory_name, "gpu_model.txt")
         
         if os.path.exists(gpu_model_file_path):
@@ -884,7 +951,7 @@ def get_gpu_model(directory_name):
 
 def get_golden_number(directory_name):
     """
-    Get golden number from RMA Testing DB by reading BMC IP from bmc_ip.txt
+    Get golden number from RMA Testing DB by reading BMC IP from sys_info.txt (primary) or bmc_ip.txt (fallback)
     
     Args:
         directory_name (str): The RMA directory name
@@ -899,47 +966,115 @@ def get_golden_number(directory_name):
         if cached_golden is not None:
             return cached_golden
         
-        # Read bmc_ip.txt from the local directory
-        bmc_ip_file_path = os.path.join(RMA_BASE_DIR, directory_name, "bmc_ip.txt")
+        bmc_ip = None
         
-        if os.path.exists(bmc_ip_file_path):
+        # Primary source: sys_info.txt
+        sys_info = parse_sys_info_file(directory_name)
+        if sys_info and sys_info.get('bmc_ip'):
+            bmc_ip = sys_info['bmc_ip']
+        
+        # Fallback: bmc_ip.txt
+        if not bmc_ip:
+            bmc_ip_file_path = os.path.join(RMA_BASE_DIR, directory_name, "bmc_ip.txt")
+            
+            if os.path.exists(bmc_ip_file_path):
+                try:
+                    with open(bmc_ip_file_path, 'r', encoding='utf-8') as f:
+                        bmc_ip = f.read().strip()
+                except Exception as e:
+                    logger.warning(f"Error reading BMC IP file for {directory_name}: {e}")
+        
+        # Query database if we have BMC IP
+        if bmc_ip:
+            # Import RmaTestingDb model
+            from ..models import RmaTestingDb
+            
+            # Query database for matching BMC IP
             try:
-                with open(bmc_ip_file_path, 'r', encoding='utf-8') as f:
-                    bmc_ip = f.read().strip()
-                
-                if bmc_ip:
-                    # Import RmaTestingDb model
-                    from ..models import RmaTestingDb
-                    
-                    # Query database for matching BMC IP
-                    try:
-                        rma_entry = RmaTestingDb.objects.filter(bmc_ip=bmc_ip).first()
-                        if rma_entry and rma_entry.golden_number:
-                            golden_number = rma_entry.golden_number
-                            # Cache the result for 1 minute
-                            cache.set(cache_key, golden_number, RMA_DETAILS_CACHE_TIMEOUT)
-                            return golden_number
-                        else:
-                            # IP found but no golden number or entry not found
-                            cache.set(cache_key, 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
-                            return 'N/A'
-                    except Exception as e:
-                        logger.warning(f"Error querying RMA Testing DB for {directory_name}: {e}")
-                        return 'N/A'
+                rma_entry = RmaTestingDb.objects.filter(bmc_ip=bmc_ip).first()
+                if rma_entry and rma_entry.golden_number:
+                    golden_number = rma_entry.golden_number
+                    # Cache the result for 1 minute
+                    cache.set(cache_key, golden_number, RMA_DETAILS_CACHE_TIMEOUT)
+                    return golden_number
                 else:
+                    # IP found but no golden number or entry not found
                     cache.set(cache_key, 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
                     return 'N/A'
             except Exception as e:
-                logger.warning(f"Error reading BMC IP file for {directory_name}: {e}")
+                logger.warning(f"Error querying RMA Testing DB for {directory_name}: {e}")
                 cache.set(cache_key, 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
                 return 'N/A'
         else:
-            # File doesn't exist
             cache.set(cache_key, 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
             return 'N/A'
             
     except Exception as e:
         logger.warning(f"Error getting golden number for {directory_name}: {e}")
+        return 'N/A'
+
+def get_tester_name(directory_name):
+    """
+    Get tester name from RMA Testing DB by reading BMC IP and finding linked user
+    
+    Args:
+        directory_name (str): The RMA directory name
+        
+    Returns:
+        str: Tester username or 'N/A' if not found
+    """
+    try:
+        # Check cache first
+        cache_key = f"rma_tester_{directory_name}"
+        cached_tester = cache.get(cache_key)
+        if cached_tester is not None:
+            return cached_tester
+        
+        bmc_ip = None
+        
+        # Primary source: sys_info.txt
+        sys_info = parse_sys_info_file(directory_name)
+        if sys_info and sys_info.get('bmc_ip'):
+            bmc_ip = sys_info['bmc_ip']
+        
+        # Fallback: bmc_ip.txt
+        if not bmc_ip:
+            bmc_ip_file_path = os.path.join(RMA_BASE_DIR, directory_name, "bmc_ip.txt")
+            
+            if os.path.exists(bmc_ip_file_path):
+                try:
+                    with open(bmc_ip_file_path, 'r', encoding='utf-8') as f:
+                        bmc_ip = f.read().strip()
+                except Exception as e:
+                    logger.warning(f"Error reading BMC IP file for {directory_name}: {e}")
+        
+        # Query database if we have BMC IP
+        if bmc_ip:
+            # Import RmaTestingDb model
+            from ..models import RmaTestingDb
+            
+            # Query database for matching BMC IP
+            try:
+                rma_entry = RmaTestingDb.objects.filter(bmc_ip=bmc_ip).select_related('linked_user').first()
+                if rma_entry and rma_entry.linked_user:
+                    tester_name = rma_entry.linked_user.username
+                    # Cache the result for 1 minute
+                    cache.set(cache_key, tester_name, RMA_DETAILS_CACHE_TIMEOUT)
+                    return tester_name
+                else:
+                    # IP found but no linked user or entry not found
+                    cache.set(cache_key, 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
+                    return 'N/A'
+            except Exception as e:
+                logger.warning(f"Error querying RMA Testing DB for tester of {directory_name}: {e}")
+                cache.set(cache_key, 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
+                return 'N/A'
+        else:
+            cache.set(cache_key, 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
+            return 'N/A'
+            
+    except Exception as e:
+        logger.warning(f"Error getting tester name for {directory_name}: {e}")
         return 'N/A'
 
 def get_test_status(directory_name):

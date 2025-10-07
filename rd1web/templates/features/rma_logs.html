@@ -8,11 +8,6 @@
         <div>
             <h1 class="h3 mb-0 text-gray-800">RMA Logs</h1>
         </div>
-        <div class="d-flex gap-2">
-            <button type="button" id="refresh-btn" class="btn btn-outline-primary" onclick="refreshData()">
-                <i class="fas fa-sync-alt me-1"></i>Refresh
-            </button>
-        </div>
     </div>
 
     <!-- Search Function -->
@@ -92,6 +87,7 @@
                                             <th><i class="fas  me-1"></i>Base SN</th>
                                             <th><i class="fas  me-1"></i>RMA Number</th>
                                             <th><i class="fas  me-1"></i>GPU Model</th>
+                                            <th><i class="fas  me-1"></i>Tester</th>
                                             <th><i class="fas  me-1"></i>Golden</th>
                                             <th><i class="fas  me-1"></i>Status</th>
                                             <th><i class="fas  me-1"></i>Modified</th>
@@ -114,6 +110,9 @@
                                                 </td>
                                                 <td>
                                                     <span class="badge bg-success">{{ rma_dir.gpu_model|default:"Unknown" }}</span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-info text-dark">{{ rma_dir.tester_name|default:"N/A" }}</span>
                                                 </td>
                                                 <td>
                                                     <span class="badge bg-warning text-dark">{{ rma_dir.golden_number|default:"N/A" }}</span>
@@ -419,6 +418,7 @@ function updateDirectoriesTable(data) {
                             <th><i class="fas  me-1"></i>Base SN</th>
                             <th><i class="fas  me-1"></i>RMA Number</th>
                             <th><i class="fas  me-1"></i>GPU Model</th>
+                            <th><i class="fas  me-1"></i>Tester</th>
                             <th><i class="fas  me-1"></i>Golden</th>
                             <th><i class="fas  me-1"></i>Status</th>
                             <th><i class="fas  me-1"></i>Modified</th>
@@ -477,6 +477,9 @@ function updateDirectoriesTable(data) {
             </td>
             <td>
                 <span class="badge bg-success">${dir.gpu_model || 'Unknown'}</span>
+            </td>
+            <td>
+                <span class="badge bg-info text-dark">${dir.tester_name || 'N/A'}</span>
             </td>
             <td>
                 <span class="badge bg-warning text-dark">${dir.golden_number || 'N/A'}</span>
@@ -609,87 +612,6 @@ function performSearch(searchValue) {
     }, 300); // 300ms debounce for better responsiveness
 }
 
-// Function to refresh data
-function refreshData() {
-    if (isLoading) return;
-    
-    // Add refresh parameter to force cache refresh
-    const params = new URLSearchParams();
-    params.append('page', currentPage);
-    params.append('refresh', 'true');
-    if (currentSearch && currentSearch.trim()) {
-        params.append('search', currentSearch.trim());
-    }
-    
-    const requestUrl = `${rmaLogUrl}?${params}`;
-    
-    isLoading = true;
-    const spinner = document.getElementById('loading-spinner');
-    const content = document.getElementById('directory-content');
-    const refreshBtn = document.getElementById('refresh-btn');
-    
-    // Update refresh button state
-    if (refreshBtn) {
-        refreshBtn.disabled = true;
-        refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Refreshing...';
-    }
-    
-    if (spinner) spinner.style.display = 'block';
-    if (content) content.style.display = 'none';
-    
-    fetch(requestUrl, {
-        method: 'GET',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json',
-        },
-        credentials: 'same-origin'
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success === false) {
-            throw new Error(data.error || 'Unknown server error');
-        }
-        
-        updateDirectoriesTable(data);
-        updatePaginationInfo(data);
-        updatePaginationControls(data);
-        
-        // Hide loading spinner and show content
-        if (spinner) spinner.style.display = 'none';
-        if (content) content.style.display = 'block';
-        
-        // Reset refresh button state
-        if (refreshBtn) {
-            refreshBtn.disabled = false;
-            refreshBtn.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Refresh';
-        }
-        
-        isLoading = false;
-    })
-    .catch(error => {
-        console.error('Error refreshing data:', error);
-        showError(error.message || 'Failed to refresh RMA directories. Please try again.');
-        
-        // Hide loading spinner
-        if (spinner) spinner.style.display = 'none';
-        if (content) content.style.display = 'block';
-        
-        // Reset refresh button state
-        if (refreshBtn) {
-            refreshBtn.disabled = false;
-            refreshBtn.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Refresh';
-        }
-        
-        isLoading = false;
-    });
-}
-
 // Handle search form submission and real-time search
 document.addEventListener('DOMContentLoaded', function() {
     const searchForm = document.querySelector('form');
@@ -719,16 +641,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     }
-    
-    // Handle refresh button
-    const refreshBtn = document.getElementById('refresh-btn');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            refreshData();
-        });
-    }
-    
 });
 </script>
 {% endblock %}

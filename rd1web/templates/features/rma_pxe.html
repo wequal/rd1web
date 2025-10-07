@@ -22,7 +22,7 @@
             <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                     <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-tools me-2"></i>RMA GPU TEST Configuration
+                        <i class="fas me-2"></i>RMA GPU TEST Configuration
                     </h6>
                 </div>
                 <div class="card-body">
@@ -32,7 +32,7 @@
                         <!-- Base Serial Number -->
                         <div class="mb-4">
                             <label for="{{ form.base_sn.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas fa-barcode me-2 text-primary"></i>{{ form.base_sn.label }}
+                                <i class="fas me-2 text-primary"></i>{{ form.base_sn.label }}
                             </label>
                             {{ form.base_sn }}
                             {% if form.base_sn.errors %}
@@ -43,7 +43,7 @@
                                 </div>
                             {% endif %}
                             <small class="form-text text-muted">
-                                <i class="fas fa-info-circle me-1"></i>
+                                <i class="fas me-1"></i>
                                 Enter the base system serial number for RMA tracking.
                             </small>
                         </div>
@@ -51,7 +51,7 @@
                         <!-- RMA Number -->
                         <div class="mb-4">
                             <label for="{{ form.rma_number.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas fa-ticket-alt me-2 text-warning"></i>{{ form.rma_number.label }}
+                                <i class="fas me-2 text-warning"></i>{{ form.rma_number.label }}
                             </label>
                             {{ form.rma_number }}
                             {% if form.rma_number.errors %}
@@ -62,7 +62,7 @@
                                 </div>
                             {% endif %}
                             <small class="form-text text-muted">
-                                <i class="fas fa-info-circle me-1"></i>
+                                <i class="fas me-1"></i>
                                 Enter the RMA number for tracking and identification.
                             </small>
                         </div>
@@ -70,7 +70,7 @@
                         <!-- BMC IP -->
                         <div class="mb-4">
                             <label for="{{ form.bmc_ip.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas fa-network-wired me-2 text-success"></i>{{ form.bmc_ip.label }}
+                                <i class="fas me-2 text-success"></i>{{ form.bmc_ip.label }}
                             </label>
                             {{ form.bmc_ip }}
                             {% if form.bmc_ip.errors %}
@@ -81,7 +81,7 @@
                                 </div>
                             {% endif %}
                             <small class="form-text text-muted">
-                                <i class="fas fa-info-circle me-1"></i>
+                                <i class="fas me-1"></i>
                                 Enter the BMC IP address for RMA systems.
                             </small>
                         </div>
@@ -89,7 +89,7 @@
                         <!-- Image Selection -->
                         <div class="mb-4">
                             <label for="{{ form.image.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas fa-compact-disc me-2 text-info"></i>{{ form.image.label }}
+                                <i class="fas me-2 text-info"></i>{{ form.image.label }}
                             </label>
                             {{ form.image }}
                             {% if form.image.errors %}
@@ -100,7 +100,7 @@
                                 </div>
                             {% endif %}
                             <small class="form-text text-muted">
-                                <i class="fas fa-info-circle me-1"></i>
+                                <i class="fas  me-1"></i>
                                 Select the boot image for RMA testing.
                             </small>
                         </div>
@@ -108,7 +108,7 @@
                         <!-- Tests Selection -->
                         <div class="mb-4">
                             <label class="form-label fw-bold">
-                                <i class="fas fa-vial me-2 text-danger"></i>{{ form.tests.label }}
+                                <i class="fas me-2 text-danger"></i>{{ form.tests.label }}
                             </label>
                             <div id="tests-container" class="row">
                                 <div class="col-md-3">
@@ -165,7 +165,7 @@
                                 </small>
                             </div>
                             <small class="form-text text-muted mt-2">
-                                <i class="fas fa-info-circle me-1"></i>
+                                <i class="fas  me-1"></i>
                                 Select either Default test OR any combination of specific tests (Pre GPU Test, DCGM, FD2, GPU Field Diag). Default cannot be combined with others.
                             </small>
                         </div>
@@ -173,7 +173,7 @@
                         <!-- Action Options -->
                         <div class="mb-4">
                             <label class="form-label fw-bold">
-                                <i class="fas fa-tasks me-2 text-info"></i>Actions
+                                <i class="fas me-2 text-info"></i>Actions
                             </label>
                             <div class="row">
                                 <div class="col-md-4">
@@ -214,7 +214,7 @@
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-star me-2"></i>Golden Status
+                        <i class="fas me-2"></i>Golden Status
                     </h6>
                 </div>
                 <div class="card-body" style="max-height: 600px; overflow-y: auto;">
