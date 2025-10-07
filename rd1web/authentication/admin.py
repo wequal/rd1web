@@ -87,18 +87,18 @@ class UserActivityAdmin(admin.ModelAdmin):
         week_start = today - timedelta(days=today.weekday())
         month_start = today.replace(day=1)
         
-        # Calculate statistics
+        # Calculate statistics (exclude 'devin' user from statistics)
         daily_stats = UserActivity.objects.filter(
             timestamp__date=today
-        ).values('action').annotate(count=Count('id')).order_by('-count')
+        ).exclude(user__username='devin').values('action').annotate(count=Count('id')).order_by('-count')
         
         weekly_stats = UserActivity.objects.filter(
             timestamp__date__gte=week_start
-        ).values('action').annotate(count=Count('id')).order_by('-count')
+        ).exclude(user__username='devin').values('action').annotate(count=Count('id')).order_by('-count')
         
         monthly_stats = UserActivity.objects.filter(
             timestamp__date__gte=month_start
-        ).values('action').annotate(count=Count('id')).order_by('-count')
+        ).exclude(user__username='devin').values('action').annotate(count=Count('id')).order_by('-count')
         
         # Totals
         daily_total = sum(item['count'] for item in daily_stats)
@@ -110,18 +110,18 @@ class UserActivityAdmin(admin.ModelAdmin):
         weekly_chart_data = list(weekly_stats)
         monthly_chart_data = list(monthly_stats)
         
-        # User activity summary
+        # User activity summary (exclude 'devin' user)
         user_daily = UserActivity.objects.filter(
             timestamp__date=today
-        ).values('user__username').annotate(count=Count('id')).order_by('-count')[:10]
+        ).exclude(user__username='devin').values('user__username').annotate(count=Count('id')).order_by('-count')[:10]
         
         user_weekly = UserActivity.objects.filter(
             timestamp__date__gte=week_start
-        ).values('user__username').annotate(count=Count('id')).order_by('-count')[:10]
+        ).exclude(user__username='devin').values('user__username').annotate(count=Count('id')).order_by('-count')[:10]
         
         user_monthly = UserActivity.objects.filter(
             timestamp__date__gte=month_start
-        ).values('user__username').annotate(count=Count('id')).order_by('-count')[:10]
+        ).exclude(user__username='devin').values('user__username').annotate(count=Count('id')).order_by('-count')[:10]
         
         extra_context = extra_context or {}
         extra_context.update({
