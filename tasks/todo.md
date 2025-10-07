@@ -1,76 +1,60 @@
-# RMA Logs - Show Last Tester Enhancement
+# Admin Panel User Activity Timezone Fix
 
 ## Overview
-Show current tester if linked, or show last tester if no one is currently linked to the golden number.
+Fix the admin panel user activity statistics to use LA timezone instead of UTC. Currently, "Most Active Users Today" resets at midnight UTC instead of midnight LA time.
+
+## Problem
+- Django setting: `TIME_ZONE = 'America/Los_Angeles'`
+- Admin panel uses `timezone.now().date()` which returns UTC date
+- Daily statistics reset at 5:00 PM LA time (PDT) or 4:00 PM LA time (PST) instead of midnight LA time
+
+## Solution
+Convert timezone-aware datetime to LA timezone before extracting the date.
 
 ## Tasks
 
-- [x] 1. Add last_tester field to RmaTestingDb model
-- [x] 2. Update golden_unlink() function to save current user before unlinking
-- [x] 3. Update get_tester_name() function to show current or last tester
-- [x] 4. Create and run Django migrations
+- [x] 1. Update `changelist_view()` in UserActivityAdmin to use LA timezone
+- [ ] 2. Test the fix to ensure daily stats reset at midnight LA time
 
 ## Files Modified
-- ✅ rd1web/pxe/models.py - Added last_tester field
-- ✅ rd1web/pxe/views/rma_testing_db.py - Updated golden_unlink()
-- ✅ rd1web/pxe/views/rma_logs.py - Updated get_tester_name()
-- ✅ rd1web/pxe/migrations/0017_rmatestingdb_last_tester.py - Created migration
+- ✅ rd1web/authentication/admin.py - Updated timezone calculation in changelist_view()
 
-## Implementation Summary
+## Implementation Details
 
-### 1. Database Model Change (models.py:110-116)
-Added new field after linked_user:
+### Current Code (admin.py:82-86)
 ```python
-last_tester = models.CharField(
-    max_length=150,
-    null=True,
-    blank=True,
-    help_text='Last user who was linked to this golden number',
-    verbose_name='Last Tester'
-)
+# Get current date
+now = timezone.now()
+today = now.date()  # This uses UTC!
+week_start = today - timedelta(days=today.weekday())
+month_start = today.replace(day=1)
 ```
 
-### 2. Updated Golden Unlink Logic (rma_testing_db.py:302-308)
-Before unlinking, save current tester:
+### Fixed Code
 ```python
-# Save current tester before unlinking
-if entry.linked_user:
-    entry.last_tester = entry.linked_user.username
-
-# Unlink the golden number
-entry.linked_user = None
-entry.save()
+# Get current date in LA timezone
+now = timezone.now()
+la_tz = zoneinfo.ZoneInfo('America/Los_Angeles')
+today = now.astimezone(la_tz).date()  # Convert to LA timezone first
+week_start = today - timedelta(days=today.weekday())
+month_start = today.replace(day=1)
 ```
 
-### 3. Updated Tester Display Logic (rma_logs.py:1059-1074)
-Show current tester if linked, otherwise show last tester:
+### Required Import
+Add `zoneinfo` import at the top of the file:
 ```python
-# Show current tester if linked, otherwise show last tester
-if rma_entry and rma_entry.linked_user:
-    tester_name = rma_entry.linked_user.username  # Current tester
-    cache.set(cache_key, tester_name, RMA_DETAILS_CACHE_TIMEOUT)
-    return tester_name
-elif rma_entry and hasattr(rma_entry, 'last_tester') and rma_entry.last_tester:
-    tester_name = rma_entry.last_tester  # Last tester
-    cache.set(cache_key, tester_name, RMA_DETAILS_CACHE_TIMEOUT)
-    return tester_name
-else:
-    cache.set(cache_key, 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
-    return 'N/A'
+import zoneinfo
 ```
-
-## How It Works
-
-1. **When a golden number is linked**: The tester column shows the current user's username
-2. **When a golden number is unlinked**: The system saves the current user's username to `last_tester` field
-3. **When viewing RMA logs**: 
-   - If golden is currently linked → shows current tester
-   - If golden is unlinked but has history → shows last tester
-   - If no history → shows 'N/A'
 
 ## Impact
-- ✅ Preserves historical tester information
-- ✅ Backward compatible (nullable field)
-- ✅ Minimal code changes
-- ✅ Database migration applied successfully
-- ✅ Shows current or last tester automatically
+- ✅ Minimal code change (one import, one line modification)
+- ✅ Daily statistics will reset at midnight LA time
+- ✅ Weekly and monthly statistics will also use LA timezone
+- ✅ No database changes required
+- ✅ Backward compatible
+
+## Expected Result
+After the fix:
+- "Most Active Users Today" resets at 00:00 LA time (not UTC)
+- All daily/weekly/monthly filters use LA timezone
+- Admin panel displays consistent with local timezone setting

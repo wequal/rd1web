@@ -5,6 +5,7 @@ from django.utils.html import format_html
 from django.db.models import Count, Sum, Q
 from django.utils import timezone
 from datetime import timedelta
+import zoneinfo
 from .models import UserSession, UserActivity, UserStats
 
 class UserSessionInline(admin.TabularInline):
@@ -79,9 +80,10 @@ class UserActivityAdmin(admin.ModelAdmin):
     
     # Custom views for different time periods
     def changelist_view(self, request, extra_context=None):
-        # Get current date
+        # Get current date in LA timezone
         now = timezone.now()
-        today = now.date()
+        la_tz = zoneinfo.ZoneInfo('America/Los_Angeles')
+        today = now.astimezone(la_tz).date()
         week_start = today - timedelta(days=today.weekday())
         month_start = today.replace(day=1)
         
