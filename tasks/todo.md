@@ -1,78 +1,76 @@
-# RMA Logs Enhancement - Task Plan
+# RMA Logs - Show Last Tester Enhancement
 
 ## Overview
-Add sys_info.txt parsing for BMC IP and GPU model, add Tester column, and remove refresh button.
+Show current tester if linked, or show last tester if no one is currently linked to the golden number.
 
 ## Tasks
 
-- [x] 1. Create function to parse sys_info.txt for BMC IP and GPU model
-  - [x] 1.1 Add `parse_sys_info_file()` function to extract GPU_Model and BMC_IP
-  - [x] 1.2 Add `get_bmc_ip_from_sys_info()` function (primary source)
-  - [x] 1.3 Add `get_gpu_model_from_sys_info()` function (primary source)
-
-- [x] 2. Update existing functions to use sys_info.txt as primary source
-  - [x] 2.1 Update `get_gpu_model()` to check sys_info.txt first, fallback to gpu_model.txt
-  - [x] 2.2 Update `get_golden_number()` to check sys_info.txt for BMC IP first, fallback to bmc_ip.txt
-
-- [x] 3. Add tester name functionality
-  - [x] 3.1 Add `get_tester_name()` function to extract linked_user from RmaTestingDb
-  - [x] 3.2 Update `load_directory_details_batch()` to include tester
-  - [x] 3.3 Update `async_load_directory_details_batch()` to include tester
-
-- [x] 4. Update template to add Tester column
-  - [x] 4.1 Add Tester column header between GPU Model and Golden
-  - [x] 4.2 Add tester data in table rows
-  - [x] 4.3 Update JavaScript to handle tester data
-
-- [x] 5. Remove refresh button
-  - [x] 5.1 Remove refresh button HTML from template
-  - [x] 5.2 Remove refresh button JavaScript functionality
+- [x] 1. Add last_tester field to RmaTestingDb model
+- [x] 2. Update golden_unlink() function to save current user before unlinking
+- [x] 3. Update get_tester_name() function to show current or last tester
+- [x] 4. Create and run Django migrations
 
 ## Files Modified
-- `rd1web/pxe/views/rma_logs.py` - Add new functions and update existing ones
-- `rd1web/templates/features/rma_logs.html` - Add Tester column and remove refresh button
+- ✅ rd1web/pxe/models.py - Added last_tester field
+- ✅ rd1web/pxe/views/rma_testing_db.py - Updated golden_unlink()
+- ✅ rd1web/pxe/views/rma_logs.py - Updated get_tester_name()
+- ✅ rd1web/pxe/migrations/0017_rmatestingdb_last_tester.py - Created migration
 
 ## Implementation Summary
 
-### 1. New sys_info.txt Parsing (Lines 791-838)
-- Added `parse_sys_info_file()` function to parse sys_info.txt format:
-  ```
-  GPU_Model: MI325X
-  BMC_IP: 10.10.10.22
-  ```
-- Returns dictionary with `gpu_model` and `bmc_ip` keys
+### 1. Database Model Change (models.py:110-116)
+Added new field after linked_user:
+```python
+last_tester = models.CharField(
+    max_length=150,
+    null=True,
+    blank=True,
+    help_text='Last user who was linked to this golden number',
+    verbose_name='Last Tester'
+)
+```
 
-### 2. Updated get_gpu_model() (Lines 900-937)
-- Now checks sys_info.txt first (primary source)
-- Falls back to gpu_model.txt if sys_info.txt not available
-- Preserves backward compatibility
+### 2. Updated Golden Unlink Logic (rma_testing_db.py:302-308)
+Before unlinking, save current tester:
+```python
+# Save current tester before unlinking
+if entry.linked_user:
+    entry.last_tester = entry.linked_user.username
 
-### 3. Updated get_golden_number() (Lines 939-1001)
-- Now checks sys_info.txt for BMC IP first (primary source)
-- Falls back to bmc_ip.txt if sys_info.txt not available
-- Queries RmaTestingDb to get golden number from BMC IP
+# Unlink the golden number
+entry.linked_user = None
+entry.save()
+```
 
-### 4. New get_tester_name() Function (Lines 1003-1065)
-- Reads BMC IP from sys_info.txt (primary) or bmc_ip.txt (fallback)
-- Queries RmaTestingDb to find linked_user
-- Returns username or 'N/A' if not found
-- Includes caching for performance
+### 3. Updated Tester Display Logic (rma_logs.py:1059-1074)
+Show current tester if linked, otherwise show last tester:
+```python
+# Show current tester if linked, otherwise show last tester
+if rma_entry and rma_entry.linked_user:
+    tester_name = rma_entry.linked_user.username  # Current tester
+    cache.set(cache_key, tester_name, RMA_DETAILS_CACHE_TIMEOUT)
+    return tester_name
+elif rma_entry and hasattr(rma_entry, 'last_tester') and rma_entry.last_tester:
+    tester_name = rma_entry.last_tester  # Last tester
+    cache.set(cache_key, tester_name, RMA_DETAILS_CACHE_TIMEOUT)
+    return tester_name
+else:
+    cache.set(cache_key, 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
+    return 'N/A'
+```
 
-### 5. Updated Batch Loading Functions
-- `load_directory_details_batch()` - Added tester_name to details
-- `async_load_directory_details_batch()` - Added tester_name_task for concurrent loading
-- Updated AJAX response to include tester_name data
+## How It Works
 
-### 6. Template Changes
-- Removed refresh button from page header
-- Added "Tester" column between "GPU Model" and "Golden"
-- Updated table headers in both server-side and AJAX-generated HTML
-- Updated JavaScript to display tester_name badge with bg-info styling
-- Removed `refreshData()` function and related event listeners
+1. **When a golden number is linked**: The tester column shows the current user's username
+2. **When a golden number is unlinked**: The system saves the current user's username to `last_tester` field
+3. **When viewing RMA logs**: 
+   - If golden is currently linked → shows current tester
+   - If golden is unlinked but has history → shows last tester
+   - If no history → shows 'N/A'
 
 ## Impact
+- ✅ Preserves historical tester information
+- ✅ Backward compatible (nullable field)
 - ✅ Minimal code changes
-- ✅ Preserves backward compatibility
-- ✅ No database changes required
-- ✅ Adds useful tester information
-- ✅ Cleaner UI without unnecessary refresh button
+- ✅ Database migration applied successfully
+- ✅ Shows current or last tester automatically

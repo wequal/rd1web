@@ -107,6 +107,13 @@ class RmaTestingDb(models.Model):
         verbose_name='Linked User'
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    last_tester = models.CharField(
+        max_length=150,
+        null=True,
+        blank=True,
+        help_text='Last user who was linked to this golden number',
+        verbose_name='Last Tester'
+    )
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:

@@ -1056,15 +1056,21 @@ def get_tester_name(directory_name):
             # Query database for matching BMC IP
             try:
                 rma_entry = RmaTestingDb.objects.filter(bmc_ip=bmc_ip).select_related('linked_user').first()
+                # Show current tester if linked, otherwise show last tester
                 if rma_entry and rma_entry.linked_user:
-                    tester_name = rma_entry.linked_user.username
+                    tester_name = rma_entry.linked_user.username  # Current tester
+                    # Cache the result for 1 minute
+                    cache.set(cache_key, tester_name, RMA_DETAILS_CACHE_TIMEOUT)
+                    return tester_name
+                elif rma_entry and hasattr(rma_entry, 'last_tester') and rma_entry.last_tester:
+                    tester_name = rma_entry.last_tester  # Last tester
                     # Cache the result for 1 minute
                     cache.set(cache_key, tester_name, RMA_DETAILS_CACHE_TIMEOUT)
                     return tester_name
                 else:
-                    # IP found but no linked user or entry not found
+                    # No current or last tester
                     cache.set(cache_key, 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
-                    return 'N/A'
+                    return 'N/A' 
             except Exception as e:
                 logger.warning(f"Error querying RMA Testing DB for tester of {directory_name}: {e}")
                 cache.set(cache_key, 'N/A', RMA_DETAILS_CACHE_TIMEOUT)

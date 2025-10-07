@@ -299,6 +299,10 @@ def golden_unlink(request, entry_id):
                 'error': 'You do not have permission to unlink this golden number'
             })
         
+        # Save current tester before unlinking
+        if entry.linked_user:
+            entry.last_tester = entry.linked_user.username
+        
         # Unlink the golden number
         entry.linked_user = None
         entry.save()
