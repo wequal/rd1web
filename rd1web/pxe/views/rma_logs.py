@@ -387,8 +387,8 @@ def load_directory_details_batch(directory_names):
     """
     details_map = {}
     
-    # Batch query all testers at once to prevent connection pool exhaustion
-    tester_map = get_all_testers_batch(directory_names)
+    # Batch query BOTH testers AND golden numbers at once to prevent connection pool exhaustion
+    tester_map, golden_map = get_all_rma_data_batch(directory_names)
     
     for dir_name in directory_names:
         # Check cache first
@@ -403,7 +403,7 @@ def load_directory_details_batch(directory_names):
         try:
             test_details = get_test_status(dir_name)
             gpu_model = get_gpu_model(dir_name)
-            golden_number = get_golden_number(dir_name)
+            golden_number = golden_map.get(dir_name, 'N/A')  # Use batch lookup instead of individual query
             tester_name = tester_map.get(dir_name, 'N/A')  # Use batch lookup instead of individual query
             
             details = {
@@ -991,6 +991,7 @@ def get_golden_number(directory_name):
         if bmc_ip:
             # Import RmaTestingDb model
             from ..models import RmaTestingDb
+            from django.db import connection
             
             # Query database for matching BMC IP
             try:
@@ -1008,6 +1009,9 @@ def get_golden_number(directory_name):
                 logger.warning(f"Error querying RMA Testing DB for {directory_name}: {e}")
                 cache.set(cache_key, 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
                 return 'N/A'
+            finally:
+                # Always close connection to prevent pool exhaustion
+                connection.close()
         else:
             cache.set(cache_key, 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
             return 'N/A'
@@ -1016,30 +1020,33 @@ def get_golden_number(directory_name):
         logger.warning(f"Error getting golden number for {directory_name}: {e}")
         return 'N/A'
 
-def get_all_testers_batch(directory_names):
+def get_all_rma_data_batch(directory_names):
     """
-    Get tester names for multiple directories in a single database query.
+    Get BOTH golden numbers AND tester names for multiple directories in a SINGLE database query.
     This prevents connection pool exhaustion by batching all queries together.
     
     Args:
         directory_names (list): List of RMA directory names
         
     Returns:
-        dict: Dictionary mapping directory_name -> tester_name
+        tuple: (tester_map, golden_map) - two dictionaries mapping directory_name -> value
     """
     from ..models import RmaTestingDb
     from django.db import connection
     
     tester_map = {}
-    bmc_ip_to_dirs = {}  # Map BMC IP to list of directory names (one IP might have multiple dirs)
+    golden_map = {}
+    bmc_ip_to_dirs = {}  # Map BMC IP to list of directory names
     
     # Step 1: Collect all BMC IPs from all directories and check cache
     for dir_name in directory_names:
         # Check cache first
-        cache_key = f"rma_tester_{dir_name}"
-        cached_tester = cache.get(cache_key)
-        if cached_tester is not None:
+        cached_tester = cache.get(f"rma_tester_{dir_name}")
+        cached_golden = cache.get(f"rma_golden_{dir_name}")
+        
+        if cached_tester is not None and cached_golden is not None:
             tester_map[dir_name] = cached_tester
+            golden_map[dir_name] = cached_golden
             continue
         
         # Get BMC IP for this directory
@@ -1069,7 +1076,7 @@ def get_all_testers_batch(directory_names):
                 bmc_ip_to_dirs[bmc_ip] = []
             bmc_ip_to_dirs[bmc_ip].append(dir_name)
     
-    # Step 2: Query database ONCE for all BMC IPs
+    # Step 2: Query database ONCE for all BMC IPs - get BOTH tester and golden number
     if bmc_ip_to_dirs:
         try:
             # Single query for all BMC IPs
@@ -1077,9 +1084,10 @@ def get_all_testers_batch(directory_names):
                 bmc_ip__in=bmc_ip_to_dirs.keys()
             ).select_related('linked_user')
             
-            # Step 3: Build lookup dictionary
+            # Step 3: Build lookup dictionaries for BOTH tester and golden number
             for entry in entries:
                 bmc_ip = entry.bmc_ip
+                
                 # Determine tester name
                 if entry.linked_user:
                     tester = entry.linked_user.username
@@ -1088,25 +1096,33 @@ def get_all_testers_batch(directory_names):
                 else:
                     tester = 'N/A'
                 
+                # Get golden number
+                golden = entry.golden_number if entry.golden_number else 'N/A'
+                
                 # Apply to all directories with this BMC IP
                 for dir_name in bmc_ip_to_dirs[bmc_ip]:
                     tester_map[dir_name] = tester
-                    # Cache the result
+                    golden_map[dir_name] = golden
+                    # Cache both results
                     cache.set(f"rma_tester_{dir_name}", tester, RMA_DETAILS_CACHE_TIMEOUT)
+                    cache.set(f"rma_golden_{dir_name}", golden, RMA_DETAILS_CACHE_TIMEOUT)
                     
         except Exception as e:
-            logger.warning(f"Error in batch tester query: {e}")
+            logger.warning(f"Error in batch RMA data query: {e}")
         finally:
             # Explicitly close connection to prevent pool exhaustion
             connection.close()
     
-    # Step 4: Fill in N/A for directories without tester info
+    # Step 4: Fill in N/A for directories without data
     for dir_name in directory_names:
         if dir_name not in tester_map:
             tester_map[dir_name] = 'N/A'
             cache.set(f"rma_tester_{dir_name}", 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
+        if dir_name not in golden_map:
+            golden_map[dir_name] = 'N/A'
+            cache.set(f"rma_golden_{dir_name}", 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
     
-    return tester_map
+    return tester_map, golden_map
 
 
 def get_tester_name(directory_name):
@@ -1148,6 +1164,7 @@ def get_tester_name(directory_name):
         if bmc_ip:
             # Import RmaTestingDb model
             from ..models import RmaTestingDb
+            from django.db import connection
             
             # Query database for matching BMC IP
             try:
@@ -1171,6 +1188,9 @@ def get_tester_name(directory_name):
                 logger.warning(f"Error querying RMA Testing DB for tester of {directory_name}: {e}")
                 cache.set(cache_key, 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
                 return 'N/A'
+            finally:
+                # Always close connection to prevent pool exhaustion
+                connection.close()
         else:
             cache.set(cache_key, 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
             return 'N/A'

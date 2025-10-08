@@ -117,32 +117,52 @@ for dir_name in directory_names:
 
 ---
 
-## Implementation Summary
+## Implementation Summary - COMPREHENSIVE FIX v2
 
 ### Changes Applied (Lines in rma_logs.py):
 
-1. **New Function `get_all_testers_batch()`** (Lines 1016-1106)
+1. **New Function `get_all_rma_data_batch()`** (Lines 1019-1121)
    - Collects all BMC IPs from directories
-   - Makes a single batched database query for all BMC IPs at once
-   - Creates a lookup dictionary mapping directory → tester
-   - Includes caching to avoid repeated queries
-   - **Explicitly closes database connection** to prevent pool exhaustion
+   - Makes **ONE single database query** for all BMC IPs at once
+   - Gets **BOTH golden numbers AND tester names** in the same query
+   - Creates TWO lookup dictionaries: tester_map and golden_map
+   - Includes caching for both values to avoid repeated queries
+   - **Explicitly closes database connection** in finally block to prevent pool exhaustion
 
-2. **Updated `load_directory_details_batch()`** (Lines 374-432)
-   - Added batch query call before the loop (Line 391)
-   - Changed individual `get_tester_name()` call to dictionary lookup (Line 407)
-   - Reduced from N database queries to 1 database query
+2. **Updated `load_directory_details_batch()`** (Lines 390-407)
+   - Calls combined batch query for both testers and golden numbers (Line 391)
+   - Uses dictionary lookups instead of individual queries (Lines 406-407)
+   - **Reduced from 2N database queries to 1 database query**
+   - (Was: N queries for testers + N queries for golden numbers = 2N total)
+   - (Now: 1 query for both = 1 total)
+
+3. **Added connection.close() to `get_golden_number()`** (Lines 1012-1014)
+   - Ensures connection is released even if function is called individually
+   - Prevents connection leaks in edge cases
+
+4. **Added connection.close() to `get_tester_name()`** (Lines 1191-1193)
+   - Ensures connection is released even if function is called individually
+   - Prevents connection leaks in edge cases
 
 ### Key Optimizations:
-- **Database Queries**: Reduced from N queries (one per directory) to 1 query (all directories)
-- **Connection Management**: Added `connection.close()` in finally block to ensure connections are released
-- **Caching**: Results are cached to avoid repeated database hits
+- **Database Queries**: Reduced from 2N queries (N for testers + N for golden) to 1 query total
+- **Connection Management**: Added `connection.close()` in 3 places to ensure ALL connections are released
+- **Caching**: Both tester and golden results are cached to avoid repeated database hits
 - **Error Handling**: Graceful fallback to 'N/A' if any errors occur
+- **Batch Processing**: ONE query fetches everything needed for all directories
+
+### Why This Fix Works:
+1. **Eliminates N+N Query Problem**: Instead of querying once per directory for each field, we query once for ALL directories
+2. **Explicit Connection Closing**: Django's connection pooling can leak connections; we now explicitly close them
+3. **Reduced Database Load**: From 200+ queries to 1 query for 100 directories
+4. **Connection Pool Safety**: Even if individual functions are called, connections are properly closed
 
 ### Testing Notes:
 The fix should be tested by:
 1. Loading RMA logs page with many directories (100+)
 2. Monitoring PostgreSQL connections: `SELECT count(*) FROM pg_stat_activity WHERE datname='rd1web';`
-3. Checking logs for the warning message - should not appear anymore
-4. Verifying tester names still display correctly
+3. Checking logs - the warning messages should not appear anymore:
+   - "Error querying RMA Testing DB for {directory}" - should be gone
+   - "Error querying RMA Testing DB for tester of {directory}" - should be gone
+4. Verifying both tester names AND golden numbers still display correctly
 
