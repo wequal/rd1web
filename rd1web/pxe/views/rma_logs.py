@@ -387,6 +387,9 @@ def load_directory_details_batch(directory_names):
     """
     details_map = {}
     
+    # Batch query all testers at once to prevent connection pool exhaustion
+    tester_map = get_all_testers_batch(directory_names)
+    
     for dir_name in directory_names:
         # Check cache first
         cache_key = f"rma_details_{dir_name}"
@@ -401,7 +404,7 @@ def load_directory_details_batch(directory_names):
             test_details = get_test_status(dir_name)
             gpu_model = get_gpu_model(dir_name)
             golden_number = get_golden_number(dir_name)
-            tester_name = get_tester_name(dir_name)
+            tester_name = tester_map.get(dir_name, 'N/A')  # Use batch lookup instead of individual query
             
             details = {
                 'test_details': test_details,
@@ -1012,6 +1015,99 @@ def get_golden_number(directory_name):
     except Exception as e:
         logger.warning(f"Error getting golden number for {directory_name}: {e}")
         return 'N/A'
+
+def get_all_testers_batch(directory_names):
+    """
+    Get tester names for multiple directories in a single database query.
+    This prevents connection pool exhaustion by batching all queries together.
+    
+    Args:
+        directory_names (list): List of RMA directory names
+        
+    Returns:
+        dict: Dictionary mapping directory_name -> tester_name
+    """
+    from ..models import RmaTestingDb
+    from django.db import connection
+    
+    tester_map = {}
+    bmc_ip_to_dirs = {}  # Map BMC IP to list of directory names (one IP might have multiple dirs)
+    
+    # Step 1: Collect all BMC IPs from all directories and check cache
+    for dir_name in directory_names:
+        # Check cache first
+        cache_key = f"rma_tester_{dir_name}"
+        cached_tester = cache.get(cache_key)
+        if cached_tester is not None:
+            tester_map[dir_name] = cached_tester
+            continue
+        
+        # Get BMC IP for this directory
+        bmc_ip = None
+        
+        # Try sys_info.txt first
+        try:
+            sys_info = parse_sys_info_file(dir_name)
+            if sys_info and sys_info.get('bmc_ip'):
+                bmc_ip = sys_info['bmc_ip']
+        except Exception:
+            pass
+        
+        # Try bmc_ip.txt as fallback
+        if not bmc_ip:
+            bmc_ip_file_path = os.path.join(RMA_BASE_DIR, dir_name, "bmc_ip.txt")
+            if os.path.exists(bmc_ip_file_path):
+                try:
+                    with open(bmc_ip_file_path, 'r', encoding='utf-8') as f:
+                        bmc_ip = f.read().strip()
+                except Exception:
+                    pass
+        
+        # Store mapping if we found a BMC IP
+        if bmc_ip:
+            if bmc_ip not in bmc_ip_to_dirs:
+                bmc_ip_to_dirs[bmc_ip] = []
+            bmc_ip_to_dirs[bmc_ip].append(dir_name)
+    
+    # Step 2: Query database ONCE for all BMC IPs
+    if bmc_ip_to_dirs:
+        try:
+            # Single query for all BMC IPs
+            entries = RmaTestingDb.objects.filter(
+                bmc_ip__in=bmc_ip_to_dirs.keys()
+            ).select_related('linked_user')
+            
+            # Step 3: Build lookup dictionary
+            for entry in entries:
+                bmc_ip = entry.bmc_ip
+                # Determine tester name
+                if entry.linked_user:
+                    tester = entry.linked_user.username
+                elif hasattr(entry, 'last_tester') and entry.last_tester:
+                    tester = entry.last_tester
+                else:
+                    tester = 'N/A'
+                
+                # Apply to all directories with this BMC IP
+                for dir_name in bmc_ip_to_dirs[bmc_ip]:
+                    tester_map[dir_name] = tester
+                    # Cache the result
+                    cache.set(f"rma_tester_{dir_name}", tester, RMA_DETAILS_CACHE_TIMEOUT)
+                    
+        except Exception as e:
+            logger.warning(f"Error in batch tester query: {e}")
+        finally:
+            # Explicitly close connection to prevent pool exhaustion
+            connection.close()
+    
+    # Step 4: Fill in N/A for directories without tester info
+    for dir_name in directory_names:
+        if dir_name not in tester_map:
+            tester_map[dir_name] = 'N/A'
+            cache.set(f"rma_tester_{dir_name}", 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
+    
+    return tester_map
+
 
 def get_tester_name(directory_name):
     """
