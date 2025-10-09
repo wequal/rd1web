@@ -162,9 +162,14 @@
                                     </td>
                                     <td>
                                         {% if item.is_dir %}
-                                            <a href="{% url 'rma_log_browse' path=item.path %}" class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-folder-open me-1"></i>Open
-                                            </a>
+                                            <div class="btn-group" role="group">
+                                                <a href="{% url 'rma_log_browse' path=item.path %}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-folder-open me-1"></i>Open
+                                                </a>
+                                                <a href="{% url 'rma_download_folder' path=item.path %}" class="btn btn-sm btn-success download-folder-btn" data-folder-name="{{ item.name }}">
+                                                    <i class="fas fa-download me-1"></i>Download
+                                                </a>
+                                            </div>
                                         {% else %}
                                             <div class="btn-group" role="group">
                                                 <a href="{% url 'rma_view_file' path=item.path %}" class="btn btn-sm btn-outline-success" target="_blank">
@@ -193,6 +198,152 @@
         </div>
     </div>
 </div>
+
+<!-- Loading Modal for Folder Download -->
+<div class="modal fade" id="downloadProgressModal" tabindex="-1" aria-labelledby="downloadProgressModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-5">
+                <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h5 class="mb-2">Preparing Download...</h5>
+                <p class="text-muted mb-0" id="downloadFolderName">Creating zip archive</p>
+                <small class="text-muted d-block mt-2">This may take a few moments for large folders</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle folder download with async polling
+    const downloadButtons = document.querySelectorAll('.download-folder-btn');
+    const progressModal = new bootstrap.Modal(document.getElementById('downloadProgressModal'));
+    const folderNameElement = document.getElementById('downloadFolderName');
+    
+    let pollInterval = null;
+    
+    downloadButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const folderName = this.getAttribute('data-folder-name');
+            const downloadUrl = this.getAttribute('href');
+            
+            // Convert sync URL to async URL
+            const asyncUrl = downloadUrl.replace('/rma/download-folder/', '/rma/download-folder-async/');
+            
+            // Update modal text
+            folderNameElement.textContent = `Creating zip archive for: ${folderName}`;
+            
+            // Show progress modal
+            progressModal.show();
+            
+            // Start async zip creation
+            fetch(asyncUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const taskId = data.task_id;
+                        
+                        // Update modal
+                        folderNameElement.textContent = `Creating zip archive for: ${data.folder_name} (this may take a while)`;
+                        
+                        // Start polling for status
+                        pollInterval = setInterval(() => {
+                            checkDownloadStatus(taskId);
+                        }, 2000); // Poll every 2 seconds
+                    } else {
+                        // Error starting zip creation
+                        folderNameElement.textContent = `Error: ${data.error}`;
+                        setTimeout(() => {
+                            progressModal.hide();
+                        }, 3000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error starting download:', error);
+                    folderNameElement.textContent = `Error starting download`;
+                    setTimeout(() => {
+                        progressModal.hide();
+                    }, 3000);
+                });
+        });
+    });
+    
+    function checkDownloadStatus(taskId) {
+        const statusUrl = `/rma/download-folder-status/${taskId}/`;
+        
+        fetch(statusUrl)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.status === 'completed') {
+                        // Zip is ready!
+                        clearInterval(pollInterval);
+                        pollInterval = null;
+                        
+                        // Update modal
+                        folderNameElement.textContent = 'Download starting...';
+                        
+                        // Trigger download by opening Apache URL in new window
+                        window.open(data.download_url, '_blank');
+                        
+                        // Close modal after brief delay
+                        setTimeout(() => {
+                            progressModal.hide();
+                        }, 1000);
+                        
+                    } else if (data.status === 'failed') {
+                        // Zip creation failed
+                        clearInterval(pollInterval);
+                        pollInterval = null;
+                        
+                        folderNameElement.textContent = `Error: ${data.error || 'Failed to create zip'}`;
+                        
+                        setTimeout(() => {
+                            progressModal.hide();
+                        }, 3000);
+                        
+                    } else if (data.status === 'processing' || data.status === 'initializing') {
+                        // Still processing, keep polling
+                        // Modal already shows "this may take a while"
+                    }
+                } else {
+                    // Error checking status
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                    
+                    folderNameElement.textContent = `Error: ${data.error}`;
+                    
+                    setTimeout(() => {
+                        progressModal.hide();
+                    }, 3000);
+                }
+            })
+            .catch(error => {
+                console.error('Error checking status:', error);
+                clearInterval(pollInterval);
+                pollInterval = null;
+                
+                folderNameElement.textContent = 'Error checking download status';
+                
+                setTimeout(() => {
+                    progressModal.hide();
+                }, 3000);
+            });
+    }
+    
+    // Clean up interval when modal is hidden
+    document.getElementById('downloadProgressModal').addEventListener('hidden.bs.modal', function () {
+        if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+        }
+    });
+});
+</script>
 
 <style>
     .card-header {

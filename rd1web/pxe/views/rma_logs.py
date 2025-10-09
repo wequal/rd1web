@@ -14,16 +14,21 @@ import re
 import io
 import threading
 import asyncio
+import time
 from asgiref.sync import sync_to_async
 from ..remote_config import remote_dict
 
 logger = logging.getLogger(__name__)
 RMA_BASE_DIR = '/srv/rma-b31'
+TEMP_ZIPS_DIR = '/srv/rma-b31/.TempZips'
 
 # Cache timeout settings (shorter for faster new directory detection)
 RMA_CACHE_TIMEOUT = 30  # 30 seconds cache for basic directory listings
 RMA_DETAILS_CACHE_TIMEOUT = 60  # 1 minute cache for directory details (test_status, gpu_model, golden_number)
 RMA_STATS_CACHE_TIMEOUT = 300  # 5 minutes cache for file stats
+
+# Task tracking for async zip creation
+ZIP_CREATION_TASKS = {}  # Format: {task_id: {'status': 'processing/completed/failed', 'zip_filename': str, 'error': str}}
 
 class TimeoutError(Exception):
     """Custom timeout exception"""
@@ -100,6 +105,245 @@ def get_rma_host_ip():
     if '@' in rma_host:
         return rma_host.split('@')[1]
     return rma_host
+
+def cleanup_old_temp_zips():
+    """
+    Remove temporary zip files older than 1 hour from the temp directory
+    """
+    try:
+        # Create temp directory if it doesn't exist
+        if not os.path.exists(TEMP_ZIPS_DIR):
+            os.makedirs(TEMP_ZIPS_DIR, exist_ok=True)
+            logger.info(f"Created temp zips directory: {TEMP_ZIPS_DIR}")
+            return
+        
+        current_time = time.time()
+        one_hour_ago = current_time - 3600  # 1 hour in seconds
+        
+        # Iterate through files in temp directory
+        for filename in os.listdir(TEMP_ZIPS_DIR):
+            if not filename.endswith('.zip'):
+                continue
+            
+            file_path = os.path.join(TEMP_ZIPS_DIR, filename)
+            
+            try:
+                # Get file modification time
+                file_mtime = os.path.getmtime(file_path)
+                
+                # Remove if older than 1 hour
+                if file_mtime < one_hour_ago:
+                    os.remove(file_path)
+                    logger.info(f"Removed old temp zip: {filename}")
+            except Exception as e:
+                logger.warning(f"Error removing temp zip {filename}: {e}")
+                
+    except Exception as e:
+        logger.error(f"Error cleaning up temp zips: {e}")
+
+def create_temp_zip(source_dir, dir_name):
+    """
+    Create a temporary zip file of a directory using system zip command (much faster)
+    
+    Args:
+        source_dir (str): Full path to the directory to zip
+        dir_name (str): Name of the directory (used for zip filename)
+        
+    Returns:
+        str: Filename of the created zip file, or None on error
+    """
+    import subprocess
+    
+    try:
+        # Clean up old zips first
+        cleanup_old_temp_zips()
+        
+        # Create temp directory if it doesn't exist
+        if not os.path.exists(TEMP_ZIPS_DIR):
+            os.makedirs(TEMP_ZIPS_DIR, exist_ok=True)
+            logger.info(f"Created temp zips directory: {TEMP_ZIPS_DIR}")
+        
+        # Generate unique filename with timestamp
+        timestamp = int(time.time())
+        zip_filename = f"{dir_name}_{timestamp}.zip"
+        zip_path = os.path.join(TEMP_ZIPS_DIR, zip_filename)
+        
+        # Create zip file using system zip command (2-5x faster than Python zipfile)
+        logger.info(f"Creating zip file: {zip_path} from {source_dir}")
+        
+        # Change to parent directory so zip contains proper directory structure
+        parent_dir = os.path.dirname(source_dir)
+        target_dir = os.path.basename(source_dir)
+        
+        # Use system zip command with fast compression
+        # -r = recursive, -q = quiet, -1 = fast compression
+        result = subprocess.run(
+            ['zip', '-r', '-q', '-1', zip_path, target_dir],
+            cwd=parent_dir,
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minute timeout
+        )
+        
+        if result.returncode != 0:
+            logger.error(f"Zip command failed: {result.stderr}")
+            return None
+        
+        logger.info(f"Successfully created zip file: {zip_filename}")
+        return zip_filename
+        
+    except subprocess.TimeoutExpired:
+        logger.error(f"Zip creation timed out for {dir_name}")
+        return None
+    except Exception as e:
+        logger.error(f"Error creating temp zip for {dir_name}: {e}")
+        return None
+
+def create_zip_async(task_id, source_dir, dir_name):
+    """
+    Create zip in background thread and update task status
+    
+    Args:
+        task_id (str): Unique task identifier
+        source_dir (str): Full path to directory to zip
+        dir_name (str): Name of the directory
+    """
+    try:
+        logger.info(f"Starting async zip creation for task {task_id}: {dir_name}")
+        
+        # Update status to processing
+        ZIP_CREATION_TASKS[task_id]['status'] = 'processing'
+        
+        # Create the zip file
+        zip_filename = create_temp_zip(source_dir, dir_name)
+        
+        if zip_filename:
+            # Update status to completed
+            ZIP_CREATION_TASKS[task_id]['status'] = 'completed'
+            ZIP_CREATION_TASKS[task_id]['zip_filename'] = zip_filename
+            logger.info(f"Async zip creation completed for task {task_id}: {zip_filename}")
+        else:
+            # Update status to failed
+            ZIP_CREATION_TASKS[task_id]['status'] = 'failed'
+            ZIP_CREATION_TASKS[task_id]['error'] = 'Failed to create zip file'
+            logger.error(f"Async zip creation failed for task {task_id}")
+            
+    except Exception as e:
+        # Update status to failed
+        ZIP_CREATION_TASKS[task_id]['status'] = 'failed'
+        ZIP_CREATION_TASKS[task_id]['error'] = str(e)
+        logger.error(f"Exception in async zip creation for task {task_id}: {e}")
+
+@login_required
+def rma_download_folder_async(request, path):
+    """
+    Start async zip creation and return task ID immediately
+    Returns JSON with task_id for polling
+    """
+    import uuid
+    
+    decoded_path = unquote(path)
+    remote_path = os.path.normpath(os.path.join(RMA_BASE_DIR, decoded_path))
+
+    # Security check
+    if not remote_path.startswith(RMA_BASE_DIR):
+        return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+
+    try:
+        # Check if directory exists
+        if not os.path.exists(remote_path):
+            return JsonResponse({'success': False, 'error': 'Directory does not exist'}, status=404)
+        
+        if not os.path.isdir(remote_path):
+            return JsonResponse({'success': False, 'error': 'Path is not a directory'}, status=400)
+
+        # Generate unique task ID
+        task_id = str(uuid.uuid4())
+        
+        # Initialize task tracking
+        ZIP_CREATION_TASKS[task_id] = {
+            'status': 'initializing',
+            'zip_filename': None,
+            'error': None,
+            'created_at': time.time()
+        }
+        
+        # Get directory name
+        dir_name = os.path.basename(remote_path)
+        
+        # Start zip creation in background thread
+        thread = threading.Thread(
+            target=create_zip_async,
+            args=(task_id, remote_path, dir_name),
+            daemon=True
+        )
+        thread.start()
+        
+        logger.info(f"Started async zip creation task {task_id} for {dir_name}")
+        
+        return JsonResponse({
+            'success': True,
+            'task_id': task_id,
+            'folder_name': dir_name
+        })
+        
+    except Exception as e:
+        logger.error(f"Error starting async zip creation: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@login_required
+def rma_download_folder_status(request, task_id):
+    """
+    Check status of async zip creation task
+    Returns JSON with status and download URL when ready
+    """
+    try:
+        # Check if task exists
+        if task_id not in ZIP_CREATION_TASKS:
+            return JsonResponse({'success': False, 'error': 'Task not found'}, status=404)
+        
+        task = ZIP_CREATION_TASKS[task_id]
+        status = task['status']
+        
+        response_data = {
+            'success': True,
+            'status': status
+        }
+        
+        if status == 'completed':
+            # Zip is ready, return download URL
+            zip_filename = task['zip_filename']
+            apache_url = f"http://{get_rma_host_ip()}/.TempZips/{zip_filename}"
+            response_data['download_url'] = apache_url
+            
+            # Clean up task (client will no longer poll)
+            # Keep task for 5 minutes in case client needs to retry
+            cleanup_time = time.time() + 300
+            task['cleanup_at'] = cleanup_time
+            
+        elif status == 'failed':
+            # Zip creation failed
+            response_data['error'] = task.get('error', 'Unknown error')
+            
+            # Clean up failed task
+            del ZIP_CREATION_TASKS[task_id]
+        
+        # Clean up old completed tasks (older than 5 minutes)
+        current_time = time.time()
+        tasks_to_delete = []
+        for tid, t in ZIP_CREATION_TASKS.items():
+            if 'cleanup_at' in t and current_time > t['cleanup_at']:
+                tasks_to_delete.append(tid)
+        
+        for tid in tasks_to_delete:
+            del ZIP_CREATION_TASKS[tid]
+            logger.info(f"Cleaned up old task {tid}")
+        
+        return JsonResponse(response_data)
+        
+    except Exception as e:
+        logger.error(f"Error checking task status {task_id}: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @login_required  
 def rma_log(request, path=""):
@@ -1749,3 +1993,50 @@ def is_text_file(file_path):
             return False
     except:
         return False
+
+@login_required
+def rma_download_folder(request, path):
+    """
+    Download RMA folder as a zip file
+    Creates a temporary zip file and redirects to Apache server for direct download
+    """
+    from django.shortcuts import redirect
+    
+    decoded_path = unquote(path)
+    # Construct directory path
+    remote_path = os.path.normpath(os.path.join(RMA_BASE_DIR, decoded_path))
+
+    # Security check - ensure path stays within RMA_BASE_DIR
+    if not remote_path.startswith(RMA_BASE_DIR):
+        raise Http404("Access denied")
+
+    try:
+        # Check if directory exists and is actually a directory
+        if not os.path.exists(remote_path):
+            raise Http404("Directory does not exist")
+        
+        if not os.path.isdir(remote_path):
+            raise Http404("Path is not a directory")
+
+        # Get directory name for zip filename
+        dir_name = os.path.basename(remote_path)
+        
+        # Create temporary zip file
+        zip_filename = create_temp_zip(remote_path, dir_name)
+        
+        if zip_filename is None:
+            raise Http404("Failed to create zip file")
+        
+        # Generate Apache URL for direct download
+        apache_url = f"http://{get_rma_host_ip()}/.TempZips/{zip_filename}"
+        
+        logger.info(f"Redirecting to Apache for folder download: {apache_url}")
+        
+        # Redirect to Apache server for direct download
+        return redirect(apache_url)
+        
+    except Http404:
+        raise
+    except Exception as e:
+        logger.error(f"Error preparing folder download for {remote_path}: {e}")
+        raise Http404(f"Cannot prepare folder for download: {str(e)}")

@@ -20,7 +20,7 @@ from .views.remote_control import (
 from .views.archive import archive_system
 from .views.mac_ip_view import mac_ip_results, mac_ip_api, manual_scan, scan_status_api
 from .views.rma_pxe import rma_pxe
-from .views.rma_logs import rma_log, rma_view_file
+from .views.rma_logs import rma_log, rma_view_file, rma_download_folder, rma_download_folder_async, rma_download_folder_status
 from .views.rma_testing_db import (
     rma_testing_db_list, 
     rma_testing_db_add, 
@@ -73,6 +73,9 @@ urlpatterns = [
     path('rma/logs/', rma_log, name='rma_log'),
     path('rma/logs/<path:path>/', rma_log, name='rma_log_browse'),
     path('rma/view/<path:path>/', rma_view_file, name='rma_view_file'),
+    path('rma/download-folder/<path:path>/', rma_download_folder, name='rma_download_folder'),
+    path('rma/download-folder-async/<path:path>/', rma_download_folder_async, name='rma_download_folder_async'),
+    path('rma/download-folder-status/<str:task_id>/', rma_download_folder_status, name='rma_download_folder_status'),
     
     # Golden Number Link/Unlink URLs
     path('rma/golden/link/<int:entry_id>/', golden_link, name='golden_link'),
