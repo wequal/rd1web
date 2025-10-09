@@ -407,6 +407,7 @@
         
         // Image selection handler - show/hide test options based on selected image
         const imageSelect = document.getElementById('{{ form.image.id_for_label }}');
+        const defaultCheckbox = document.getElementById('id_tests_0');
         const dcgmCheckbox = document.getElementById('id_tests_2');
         const fd2Checkbox = document.getElementById('id_tests_3');
         const gpudiagCheckbox = document.getElementById('id_tests_4');
@@ -433,6 +434,11 @@
                 if (gpudiagContainer) {
                     gpudiagContainer.style.display = 'none';
                     gpudiagCheckbox.checked = false;
+                }
+                
+                // Auto-check Default test for MI300X and MI325X
+                if (defaultCheckbox) {
+                    defaultCheckbox.checked = true;
                 }
             } else {
                 // Show all test options for other images

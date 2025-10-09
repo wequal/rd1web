@@ -41,6 +41,7 @@
   - Hides DCGM, FD2, and GPU Field Diag test options
   - Automatically unchecks them if they were previously selected
   - Only shows Default and Pre GPU TEST options
+  - **Automatically checks the Default test checkbox**
 - When other images (like Nvidia) are selected:
   - All test options are visible
   - Users can select any combination as before
@@ -50,3 +51,4 @@
 - Clean, minimal code change
 - No impact on existing functionality
 - Automatic form cleanup (unchecks hidden options)
+- Auto-selects Default test for MI300X and MI325X images
