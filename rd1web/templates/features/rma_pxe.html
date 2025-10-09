@@ -164,10 +164,6 @@
                                     You can select either 'Default' test OR any combination of 'Pre GPU Test', 'DCGM', 'GPU Field Diag', 'FD2', but 'Default' cannot be combined with other tests.
                                 </small>
                             </div>
-                            <small class="form-text text-muted mt-2">
-                                <i class="fas  me-1"></i>
-                                Select either Default test OR any combination of specific tests (Pre GPU Test, DCGM, FD2, GPU Field Diag). Default cannot be combined with others.
-                            </small>
                         </div>
 
                         <!-- Action Options -->
@@ -407,6 +403,49 @@
                     checkBox.checked = false;
                 }
             });
+        }
+        
+        // Image selection handler - show/hide test options based on selected image
+        const imageSelect = document.getElementById('{{ form.image.id_for_label }}');
+        const dcgmCheckbox = document.getElementById('id_tests_2');
+        const fd2Checkbox = document.getElementById('id_tests_3');
+        const gpudiagCheckbox = document.getElementById('id_tests_4');
+        
+        function handleImageSelection() {
+            const selectedImage = imageSelect.value;
+            const isMI300XorMI325X = (selectedImage === 'ubuntu2204-mi300x' || selectedImage === 'ubuntu2204-mi325x');
+            
+            // Get the parent divs that contain the checkboxes
+            const dcgmContainer = dcgmCheckbox ? dcgmCheckbox.closest('.col-md-3') : null;
+            const fd2Container = fd2Checkbox ? fd2Checkbox.closest('.col-md-3') : null;
+            const gpudiagContainer = gpudiagCheckbox ? gpudiagCheckbox.closest('.col-md-3') : null;
+            
+            if (isMI300XorMI325X) {
+                // Hide DCGM, FD2, and GPU Field Diag for MI300X and MI325X
+                if (dcgmContainer) {
+                    dcgmContainer.style.display = 'none';
+                    dcgmCheckbox.checked = false;
+                }
+                if (fd2Container) {
+                    fd2Container.style.display = 'none';
+                    fd2Checkbox.checked = false;
+                }
+                if (gpudiagContainer) {
+                    gpudiagContainer.style.display = 'none';
+                    gpudiagCheckbox.checked = false;
+                }
+            } else {
+                // Show all test options for other images
+                if (dcgmContainer) dcgmContainer.style.display = '';
+                if (fd2Container) fd2Container.style.display = '';
+                if (gpudiagContainer) gpudiagContainer.style.display = '';
+            }
+        }
+        
+        if (imageSelect) {
+            imageSelect.addEventListener('change', handleImageSelection);
+            // Initialize on page load
+            handleImageSelection();
         }
         
         // Tests selection validation logic
