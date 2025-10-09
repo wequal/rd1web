@@ -26,9 +26,7 @@ TEMP_ZIPS_DIR = '/srv/rma-b31/.TempZips'
 RMA_CACHE_TIMEOUT = 30  # 30 seconds cache for basic directory listings
 RMA_DETAILS_CACHE_TIMEOUT = 60  # 1 minute cache for directory details (test_status, gpu_model, golden_number)
 RMA_STATS_CACHE_TIMEOUT = 300  # 5 minutes cache for file stats
-
-# Task tracking for async zip creation
-ZIP_CREATION_TASKS = {}  # Format: {task_id: {'status': 'processing/completed/failed', 'zip_filename': str, 'error': str}}
+ZIP_TASK_TIMEOUT = 3600  # 1 hour timeout for zip creation tasks
 
 class TimeoutError(Exception):
     """Custom timeout exception"""
@@ -201,7 +199,7 @@ def create_temp_zip(source_dir, dir_name):
 
 def create_zip_async(task_id, source_dir, dir_name):
     """
-    Create zip in background thread and update task status
+    Create zip in background thread and update task status in cache
     
     Args:
         task_id (str): Unique task identifier
@@ -212,26 +210,38 @@ def create_zip_async(task_id, source_dir, dir_name):
         logger.info(f"Starting async zip creation for task {task_id}: {dir_name}")
         
         # Update status to processing
-        ZIP_CREATION_TASKS[task_id]['status'] = 'processing'
+        task_data = cache.get(f'zip_task_{task_id}')
+        if task_data:
+            task_data['status'] = 'processing'
+            cache.set(f'zip_task_{task_id}', task_data, ZIP_TASK_TIMEOUT)
         
         # Create the zip file
         zip_filename = create_temp_zip(source_dir, dir_name)
         
         if zip_filename:
             # Update status to completed
-            ZIP_CREATION_TASKS[task_id]['status'] = 'completed'
-            ZIP_CREATION_TASKS[task_id]['zip_filename'] = zip_filename
+            task_data = cache.get(f'zip_task_{task_id}')
+            if task_data:
+                task_data['status'] = 'completed'
+                task_data['zip_filename'] = zip_filename
+                cache.set(f'zip_task_{task_id}', task_data, ZIP_TASK_TIMEOUT)
             logger.info(f"Async zip creation completed for task {task_id}: {zip_filename}")
         else:
             # Update status to failed
-            ZIP_CREATION_TASKS[task_id]['status'] = 'failed'
-            ZIP_CREATION_TASKS[task_id]['error'] = 'Failed to create zip file'
+            task_data = cache.get(f'zip_task_{task_id}')
+            if task_data:
+                task_data['status'] = 'failed'
+                task_data['error'] = 'Failed to create zip file'
+                cache.set(f'zip_task_{task_id}', task_data, ZIP_TASK_TIMEOUT)
             logger.error(f"Async zip creation failed for task {task_id}")
             
     except Exception as e:
         # Update status to failed
-        ZIP_CREATION_TASKS[task_id]['status'] = 'failed'
-        ZIP_CREATION_TASKS[task_id]['error'] = str(e)
+        task_data = cache.get(f'zip_task_{task_id}')
+        if task_data:
+            task_data['status'] = 'failed'
+            task_data['error'] = str(e)
+            cache.set(f'zip_task_{task_id}', task_data, ZIP_TASK_TIMEOUT)
         logger.error(f"Exception in async zip creation for task {task_id}: {e}")
 
 @login_required
@@ -260,13 +270,14 @@ def rma_download_folder_async(request, path):
         # Generate unique task ID
         task_id = str(uuid.uuid4())
         
-        # Initialize task tracking
-        ZIP_CREATION_TASKS[task_id] = {
+        # Initialize task tracking in cache
+        task_data = {
             'status': 'initializing',
             'zip_filename': None,
             'error': None,
             'created_at': time.time()
         }
+        cache.set(f'zip_task_{task_id}', task_data, ZIP_TASK_TIMEOUT)
         
         # Get directory name
         dir_name = os.path.basename(remote_path)
@@ -294,15 +305,16 @@ def rma_download_folder_async(request, path):
 @login_required
 def rma_download_folder_status(request, task_id):
     """
-    Check status of async zip creation task
+    Check status of async zip creation task from cache
     Returns JSON with status and download URL when ready
     """
     try:
-        # Check if task exists
-        if task_id not in ZIP_CREATION_TASKS:
+        # Get task from cache
+        task = cache.get(f'zip_task_{task_id}')
+        
+        if not task:
             return JsonResponse({'success': False, 'error': 'Task not found'}, status=404)
         
-        task = ZIP_CREATION_TASKS[task_id]
         status = task['status']
         
         response_data = {
@@ -315,29 +327,13 @@ def rma_download_folder_status(request, task_id):
             zip_filename = task['zip_filename']
             apache_url = f"http://{get_rma_host_ip()}/.TempZips/{zip_filename}"
             response_data['download_url'] = apache_url
-            
-            # Clean up task (client will no longer poll)
-            # Keep task for 5 minutes in case client needs to retry
-            cleanup_time = time.time() + 300
-            task['cleanup_at'] = cleanup_time
+            # Cache will auto-expire after ZIP_TASK_TIMEOUT
             
         elif status == 'failed':
             # Zip creation failed
             response_data['error'] = task.get('error', 'Unknown error')
-            
-            # Clean up failed task
-            del ZIP_CREATION_TASKS[task_id]
-        
-        # Clean up old completed tasks (older than 5 minutes)
-        current_time = time.time()
-        tasks_to_delete = []
-        for tid, t in ZIP_CREATION_TASKS.items():
-            if 'cleanup_at' in t and current_time > t['cleanup_at']:
-                tasks_to_delete.append(tid)
-        
-        for tid in tasks_to_delete:
-            del ZIP_CREATION_TASKS[tid]
-            logger.info(f"Cleaned up old task {tid}")
+            # Optionally delete failed task immediately
+            cache.delete(f'zip_task_{task_id}')
         
         return JsonResponse(response_data)
         
