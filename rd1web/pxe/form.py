@@ -265,6 +265,7 @@ class RmaForm(forms.Form):
         ('dcgm', 'DCGM'),
         ('fd2', 'FD2'),
         ('gpudiag', 'GPU Field Diag'),
+        ('level3_test', 'AGHFC Level 3'),
     ],
     widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
     label='Tests',

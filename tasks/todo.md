@@ -4,10 +4,11 @@
 
 ### Requirements:
 - When image MI300X or MI325X is selected:
-  - Show: Default, Pre GPU TEST
+  - Show: Default, Pre GPU TEST, AGHFC Level 3
   - Hide: DCGM, FD2, GPU Field Diag
 - When other images are selected:
-  - Show all test options
+  - Show: Default, Pre GPU TEST, DCGM, FD2, GPU Field Diag
+  - Hide: AGHFC Level 3
 
 ### Implementation Plan:
 
@@ -21,12 +22,19 @@
   - Verify form validation still works
   - Verify form submission includes only visible tests
 
-### Files to Modify:
-- `rd1web/templates/features/rma_pxe.html` - Add JavaScript logic in scripts block
+- [x] 3. Add AGHFC Level 3 test option
+  - Add HTML checkbox for AGHFC Level 3
+  - Configure visibility based on image selection
+  - Update validation logic
+
+### Files Modified:
+- `rd1web/templates/features/rma_pxe.html` - Added HTML checkbox and JavaScript logic
+- `rd1web/pxe/form.py` - Added test choice (user modified)
 
 ### Changes Summary:
 - Minimal JavaScript addition to control visibility of test options
-- No backend changes required
+- Added AGHFC Level 3 test option with conditional visibility
+- No backend logic changes required
 - No database changes required
 
 ---
@@ -39,12 +47,22 @@
 - Added JavaScript event handler in `rma_pxe.html` that listens to image selection changes
 - When MI300X or MI325X is selected, the script:
   - Hides DCGM, FD2, and GPU Field Diag test options
-  - Automatically unchecks them if they were previously selected
-  - Only shows Default and Pre GPU TEST options
+  - Shows AGHFC Level 3 test option
+  - Automatically unchecks hidden options if they were previously selected
+  - Shows Default, Pre GPU TEST, and AGHFC Level 3 options
   - **Automatically checks the Default test checkbox**
 - When other images (like Nvidia) are selected:
-  - All test options are visible
+  - Shows DCGM, FD2, GPU Field Diag test options
+  - Hides AGHFC Level 3 test option
   - Users can select any combination as before
+
+**AGHFC Level 3 Test:**
+- Added HTML checkbox with id `id_tests_5`
+- Value: `level3_test`
+- Label: "AGHFC Level 3" with warning icon
+- Visible only for MI300X and MI325X images
+- Not auto-checked (only Default is auto-checked)
+- Included in validation logic (cannot be combined with Default)
 
 **Key Features:**
 - Automatic initialization on page load
@@ -52,3 +70,4 @@
 - No impact on existing functionality
 - Automatic form cleanup (unchecks hidden options)
 - Auto-selects Default test for MI300X and MI325X images
+- Proper validation for all test combinations

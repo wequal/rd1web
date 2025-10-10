@@ -152,6 +152,14 @@
                                         </label>
                                     </div>
                                 </div>
+                            <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" name="tests" value="level3_test" id="id_tests_5">
+                                        <label class="form-check-label" for="id_tests_5">
+                                            <i class="fas me-1 text-warning"></i>AGHFC Level 3
+                                        </label>
+                                    </div>
+                                </div>
                             {% if form.tests.errors %}
                                 <div class="text-danger mt-1">
                                     {% for error in form.tests.errors %}
@@ -161,7 +169,7 @@
                             {% endif %}
                             <div id="tests-validation-message" class="text-warning mt-2" style="display: none;">
                                 <small><i class="fas fa-exclamation-triangle me-1"></i>
-                                    You can select either 'Default' test OR any combination of 'Pre GPU Test', 'DCGM', 'GPU Field Diag', 'FD2', but 'Default' cannot be combined with other tests.
+                                    You can select either 'Default' test OR any combination of 'Pre GPU Test', 'DCGM', 'GPU Field Diag', 'FD2', 'AGHFC Level 3', but 'Default' cannot be combined with other tests.
                                 </small>
                             </div>
                         </div>
@@ -411,6 +419,7 @@
         const dcgmCheckbox = document.getElementById('id_tests_2');
         const fd2Checkbox = document.getElementById('id_tests_3');
         const gpudiagCheckbox = document.getElementById('id_tests_4');
+        const level3Checkbox = document.getElementById('id_tests_5');
         
         function handleImageSelection() {
             const selectedImage = imageSelect.value;
@@ -420,6 +429,7 @@
             const dcgmContainer = dcgmCheckbox ? dcgmCheckbox.closest('.col-md-3') : null;
             const fd2Container = fd2Checkbox ? fd2Checkbox.closest('.col-md-3') : null;
             const gpudiagContainer = gpudiagCheckbox ? gpudiagCheckbox.closest('.col-md-3') : null;
+            const level3Container = level3Checkbox ? level3Checkbox.closest('.col-md-3') : null;
             
             if (isMI300XorMI325X) {
                 // Hide DCGM, FD2, and GPU Field Diag for MI300X and MI325X
@@ -436,15 +446,26 @@
                     gpudiagCheckbox.checked = false;
                 }
                 
+                // Show AGHFC Level 3 for MI300X and MI325X
+                if (level3Container) {
+                    level3Container.style.display = '';
+                }
+                
                 // Auto-check Default test for MI300X and MI325X
                 if (defaultCheckbox) {
                     defaultCheckbox.checked = true;
                 }
             } else {
-                // Show all test options for other images
+                // Show DCGM, FD2, GPU Field Diag for other images
                 if (dcgmContainer) dcgmContainer.style.display = '';
                 if (fd2Container) fd2Container.style.display = '';
                 if (gpudiagContainer) gpudiagContainer.style.display = '';
+                
+                // Hide AGHFC Level 3 for other images
+                if (level3Container) {
+                    level3Container.style.display = 'none';
+                    level3Checkbox.checked = false;
+                }
             }
         }
         
@@ -465,8 +486,9 @@
             const dcgmCheckbox = document.getElementById('id_tests_2');
             const fd2Checkbox = document.getElementById('id_tests_3');
             const gpudiagCheckbox = document.getElementById('id_tests_4');
+            const level3Checkbox = document.getElementById('id_tests_5');
             
-            const otherCheckboxes = [nvidiaCheckbox, dcgmCheckbox, fd2Checkbox, gpudiagCheckbox].filter(cb => cb !== null);
+            const otherCheckboxes = [nvidiaCheckbox, dcgmCheckbox, fd2Checkbox, gpudiagCheckbox, level3Checkbox].filter(cb => cb !== null);
             const testCheckboxes = [defaultCheckbox, ...otherCheckboxes].filter(cb => cb !== null);
             
             // Function to validate test selections
