@@ -214,6 +214,4 @@ class CustomUserAdmin(BaseUserAdmin):
         
         return fieldsets
 
-# Unregister the default User admin and register our custom one
-admin.site.unregister(User)
-admin.site.register(User, CustomUserAdmin)
+# Note: User admin registration moved to authentication/admin.py to avoid conflicts

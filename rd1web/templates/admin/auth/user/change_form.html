@@ -1,0 +1,325 @@
+{% extends "admin/change_form.html" %}
+{% load i18n static %}
+
+{% block after_related_objects %}
+{{ block.super }}
+
+{% if original %}
+<style>
+    .user-activity-section {
+        margin-top: 30px;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    .section-header {
+        background: #417690;
+        color: white;
+        padding: 12px 15px;
+        font-size: 14px;
+        font-weight: bold;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .section-content {
+        padding: 0;
+    }
+    
+    .activity-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+    }
+    
+    .activity-table thead {
+        background: #f8f9fa;
+    }
+    
+    .activity-table th {
+        padding: 10px 12px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 12px;
+        color: #333;
+        border-bottom: 2px solid #ddd;
+    }
+    
+    .activity-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #eee;
+        font-size: 12px;
+        color: #666;
+    }
+    
+    .activity-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+    
+    .activity-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 3px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .badge-success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    
+    .badge-danger {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    
+    .badge-warning {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeeba;
+    }
+    
+    .badge-info {
+        background: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+    }
+    
+    .success-icon {
+        color: #28a745;
+        font-weight: bold;
+    }
+    
+    .failure-icon {
+        color: #dc3545;
+        font-weight: bold;
+    }
+    
+    .pagination-container {
+        padding: 15px;
+        background: #f8f9fa;
+        border-top: 1px solid #ddd;
+        text-align: center;
+    }
+    
+    .pagination {
+        display: inline-block;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .pagination-info {
+        display: inline-block;
+        margin: 0 15px;
+        font-size: 13px;
+        color: #666;
+    }
+    
+    .pagination a,
+    .pagination span {
+        display: inline-block;
+        padding: 6px 12px;
+        margin: 0 2px;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        text-decoration: none;
+        color: #417690;
+        font-size: 13px;
+        background: white;
+    }
+    
+    .pagination a:hover {
+        background: #e9ecef;
+        border-color: #bbb;
+    }
+    
+    .pagination .current {
+        background: #417690;
+        color: white;
+        border-color: #417690;
+        font-weight: bold;
+    }
+    
+    .pagination .disabled {
+        color: #999;
+        cursor: not-allowed;
+        background: #f8f9fa;
+    }
+    
+    .no-data {
+        padding: 30px;
+        text-align: center;
+        color: #999;
+        font-style: italic;
+    }
+    
+    .truncate {
+        max-width: 300px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>
+
+<!-- User Sessions Section -->
+<div class="user-activity-section">
+    <div class="section-header">
+        <span>User Sessions ({{ sessions_total }} total)</span>
+    </div>
+    <div class="section-content">
+        {% if user_sessions %}
+        <table class="activity-table">
+            <thead>
+                <tr>
+                    <th>Login Time</th>
+                    <th>Last Activity</th>
+                    <th>Logout Time</th>
+                    <th>IP Address</th>
+                    <th>Duration</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for session in user_sessions %}
+                <tr>
+                    <td>{{ session.login_time|date:"Y-m-d H:i:s" }}</td>
+                    <td>{{ session.last_activity|date:"Y-m-d H:i:s" }}</td>
+                    <td>
+                        {% if session.logout_time %}
+                            {{ session.logout_time|date:"Y-m-d H:i:s" }}
+                        {% else %}
+                            <span style="color: #999;">-</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ session.ip_address }}</td>
+                    <td>
+                        {% with duration=session.session_duration %}
+                            {{ duration|stringformat:"s"|slice:":-7" }}
+                        {% endwith %}
+                    </td>
+                    <td>
+                        {% if session.is_currently_active %}
+                            <span class="badge badge-success">Active</span>
+                        {% else %}
+                            <span class="badge badge-danger">Inactive</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        {% if sessions_total_pages > 1 %}
+        <div class="pagination-container">
+            <div class="pagination">
+                {% if sessions_has_previous %}
+                    <a href="?sessions_page={{ sessions_previous_page }}{% if activities_page != 1 %}&activities_page={{ activities_page }}{% endif %}">« Previous</a>
+                {% else %}
+                    <span class="disabled">« Previous</span>
+                {% endif %}
+                
+                <span class="pagination-info">Page {{ sessions_page }} of {{ sessions_total_pages }}</span>
+                
+                {% if sessions_has_next %}
+                    <a href="?sessions_page={{ sessions_next_page }}{% if activities_page != 1 %}&activities_page={{ activities_page }}{% endif %}">Next »</a>
+                {% else %}
+                    <span class="disabled">Next »</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="no-data">No sessions recorded</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- User Activities Section -->
+<div class="user-activity-section">
+    <div class="section-header">
+        <span>User Activities ({{ activities_total }} total)</span>
+    </div>
+    <div class="section-content">
+        {% if user_activities %}
+        <table class="activity-table">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Action</th>
+                    <th>Description</th>
+                    <th>URL Path</th>
+                    <th>IP Address</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for activity in user_activities %}
+                <tr>
+                    <td>{{ activity.timestamp|date:"Y-m-d H:i:s" }}</td>
+                    <td>
+                        {% if activity.action == 'login' %}
+                            <span class="badge badge-success">{{ activity.get_action_display }}</span>
+                        {% elif activity.action == 'logout' %}
+                            <span class="badge badge-warning">{{ activity.get_action_display }}</span>
+                        {% elif activity.action == 'admin_access' %}
+                            <span class="badge badge-danger">{{ activity.get_action_display }}</span>
+                        {% else %}
+                            <span class="badge badge-info">{{ activity.get_action_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="truncate" title="{{ activity.description }}">
+                        {{ activity.description|truncatewords:10 }}
+                    </td>
+                    <td class="truncate" title="{{ activity.url_path }}">
+                        {{ activity.url_path|truncatewords:5 }}
+                    </td>
+                    <td>{{ activity.ip_address }}</td>
+                    <td>
+                        {% if activity.success %}
+                            <span class="success-icon">✓</span>
+                        {% else %}
+                            <span class="failure-icon">✗</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        {% if activities_total_pages > 1 %}
+        <div class="pagination-container">
+            <div class="pagination">
+                {% if activities_has_previous %}
+                    <a href="?activities_page={{ activities_previous_page }}{% if sessions_page != 1 %}&sessions_page={{ sessions_page }}{% endif %}">« Previous</a>
+                {% else %}
+                    <span class="disabled">« Previous</span>
+                {% endif %}
+                
+                <span class="pagination-info">Page {{ activities_page }} of {{ activities_total_pages }}</span>
+                
+                {% if activities_has_next %}
+                    <a href="?activities_page={{ activities_next_page }}{% if sessions_page != 1 %}&sessions_page={{ sessions_page }}{% endif %}">Next »</a>
+                {% else %}
+                    <span class="disabled">Next »</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="no-data">No activities recorded</div>
+        {% endif %}
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
