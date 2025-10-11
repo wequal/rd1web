@@ -1,0 +1,555 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block extrahead %}
+{{ block.super }}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ========================================
+   Modern Admin Panel Design System
+   ======================================== */
+
+/* CSS Variables - GitHub Style */
+:root {
+    --primary: #0969da;
+    --primary-hover: #0550ae;
+    --bg-canvas: #ffffff;
+    --bg-secondary: #f6f8fa;
+    --border: #d0d7de;
+    --text-primary: #24292f;
+    --text-secondary: #57606a;
+    --success: #1a7f37;
+    --danger: #cf222e;
+    --warning: #9a6700;
+    --shadow-sm: 0 1px 0 rgba(27, 31, 36, 0.04);
+    --shadow-md: 0 3px 6px rgba(140, 149, 159, 0.15);
+}
+
+/* Base typography */
+* {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+}
+
+body {
+    background: var(--bg-secondary) !important;
+}
+
+/* ========================================
+   Header & Navigation
+   ======================================== */
+#header {
+    background: #24292f !important;
+    box-shadow: none !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+
+#branding h1,
+#branding h1 a:link,
+#branding h1 a:visited {
+    color: white !important;
+    font-weight: 700 !important;
+    font-size: 1.5rem !important;
+}
+
+#user-tools {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+#user-tools a {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
+}
+
+#user-tools a:hover {
+    color: white !important;
+    text-decoration: none !important;
+}
+
+/* Breadcrumbs */
+.breadcrumbs {
+    background: var(--bg-canvas) !important;
+    border-radius: 6px !important;
+    padding: 12px 20px !important;
+    margin: 16px 0 !important;
+    box-shadow: none !important;
+    border: 1px solid var(--border) !important;
+}
+
+.breadcrumbs a {
+    color: var(--primary) !important;
+    font-weight: 500 !important;
+}
+
+.breadcrumbs a:hover {
+    color: var(--primary-hover) !important;
+    text-decoration: underline !important;
+}
+
+/* ========================================
+   Dashboard / Index Page
+   ======================================== */
+#content-main {
+    padding: 24px !important;
+}
+
+#content h1 {
+    color: var(--text-primary) !important;
+    font-weight: 700 !important;
+    font-size: 2rem !important;
+    margin-bottom: 24px !important;
+}
+
+.module {
+    background: var(--bg-canvas) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 6px !important;
+    box-shadow: var(--shadow-sm) !important;
+    margin-bottom: 16px !important;
+    overflow: hidden;
+}
+
+.module h2,
+.module caption {
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    padding: 12px 16px !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+
+/* ========================================
+   Tables & Lists
+   ======================================== */
+#changelist {
+    background: transparent !important;
+}
+
+/* Hide filter sidebar on all pages for cleaner layout */
+#changelist-filter {
+    display: none !important;
+}
+
+/* Make changelist full width when filter is hidden */
+#changelist .results {
+    margin-right: 0 !important;
+    width: 100% !important;
+}
+
+.results {
+    background: var(--bg-canvas) !important;
+    border-radius: 6px !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: var(--shadow-sm) !important;
+    overflow: hidden;
+}
+
+#result_list {
+    border: none !important;
+}
+
+#result_list thead th {
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    font-weight: 600 !important;
+    padding: 12px !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+
+#result_list tbody tr {
+    transition: background 0.15s ease !important;
+}
+
+#result_list tbody tr:hover {
+    background: var(--bg-secondary) !important;
+}
+
+#result_list tbody td {
+    padding: 12px !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+
+/* Row colors */
+#result_list tbody tr.row1 {
+    background: var(--bg-canvas) !important;
+}
+
+#result_list tbody tr.row2 {
+    background: var(--bg-canvas) !important;
+}
+
+/* ========================================
+   Forms & Change Pages
+   ======================================== */
+.form-row {
+    padding: 16px 0 !important;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="url"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+textarea,
+select {
+    border: 1px solid var(--border) !important;
+    border-radius: 6px !important;
+    padding: 8px 12px !important;
+    font-size: 14px !important;
+    transition: border 0.15s ease !important;
+    background: var(--bg-canvas) !important;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus,
+input[type="url"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus,
+input[type="time"]:focus,
+input[type="datetime-local"]:focus,
+textarea:focus,
+select:focus {
+    border-color: var(--primary) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.12) !important;
+}
+
+/* Fieldsets */
+fieldset.module {
+    padding: 0 !important;
+}
+
+.module h2 {
+    margin: 0 !important;
+}
+
+/* ========================================
+   Buttons
+   ======================================== */
+.button,
+input[type="submit"],
+input[type="button"],
+.submit-row input,
+button {
+    background: var(--primary) !important;
+    color: white !important;
+    border: 1px solid rgba(27, 31, 36, 0.15) !important;
+    border-radius: 6px !important;
+    padding: 5px 16px !important;
+    font-weight: 500 !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    transition: background 0.15s ease !important;
+    box-shadow: 0 1px 0 rgba(27, 31, 36, 0.04) !important;
+    /* Fix button text alignment */
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 20px !important;
+}
+
+.button:hover,
+input[type="submit"]:hover,
+input[type="button"]:hover,
+.submit-row input:hover,
+button:hover {
+    background: var(--primary-hover) !important;
+    border-color: rgba(27, 31, 36, 0.15) !important;
+}
+
+.button:active,
+input[type="submit"]:active {
+    background: #033d8b !important;
+}
+
+/* Default button (cancel, etc) */
+.default,
+a.button.default {
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: 0 1px 0 rgba(27, 31, 36, 0.04) !important;
+}
+
+.default:hover {
+    background: #e7e9eb !important;
+    border-color: #afb8c1 !important;
+}
+
+/* Delete button */
+.deletelink,
+.deletelink-box a {
+    background: var(--danger) !important;
+    color: white !important;
+    border: 1px solid rgba(27, 31, 36, 0.15) !important;
+}
+
+.deletelink:hover,
+.deletelink-box a:hover {
+    background: #a40e26 !important;
+}
+
+/* ========================================
+   Pagination
+   ======================================== */
+.paginator {
+    background: var(--bg-canvas) !important;
+    border-radius: 6px !important;
+    padding: 12px 16px !important;
+    margin: 16px 0 !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: var(--shadow-sm) !important;
+    color: var(--text-primary) !important;
+}
+
+.paginator a {
+    color: var(--primary) !important;
+    padding: 5px 10px !important;
+    border-radius: 6px !important;
+    transition: background 0.15s ease !important;
+    font-weight: 500 !important;
+}
+
+.paginator a:hover {
+    background: var(--bg-secondary) !important;
+    text-decoration: none !important;
+}
+
+/* Page number text should be black */
+.paginator,
+.paginator *:not(a) {
+    color: var(--text-primary) !important;
+}
+
+/* ========================================
+   Messages & Notifications
+   ======================================== */
+.messagelist {
+    margin: 20px 0 !important;
+}
+
+.messagelist li {
+    border-radius: 6px !important;
+    padding: 12px 16px !important;
+    margin-bottom: 8px !important;
+    box-shadow: none !important;
+    border: 1px solid !important;
+}
+
+.messagelist .success {
+    background: #dafbe1 !important;
+    border-color: #1a7f37 !important;
+    color: #0e4429 !important;
+}
+
+.messagelist .warning {
+    background: #fff8c5 !important;
+    border-color: #9a6700 !important;
+    color: #4d2d00 !important;
+}
+
+.messagelist .error {
+    background: #ffebe9 !important;
+    border-color: #cf222e !important;
+    color: #82071e !important;
+}
+
+.messagelist .info {
+    background: #ddf4ff !important;
+    border-color: #0969da !important;
+    color: #0550ae !important;
+}
+
+/* ========================================
+   Object Tools (Action buttons)
+   ======================================== */
+/* Hide Add buttons on all admin pages */
+.object-tools {
+    display: none !important;
+}
+
+/* ========================================
+   Dashboard Module Lists
+   ======================================== */
+#content-main > div {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+}
+
+.app-authentication .module,
+.app-auth .module,
+.app-pxe .module {
+    margin: 0 !important;
+}
+
+.module table {
+    width: 100%;
+}
+
+.module th {
+    text-align: left !important;
+    padding: 12px 20px !important;
+    color: var(--text-secondary) !important;
+    font-weight: 600 !important;
+    font-size: 0.875rem !important;
+}
+
+.module td {
+    padding: 12px 20px !important;
+}
+
+.module a {
+    color: var(--primary) !important;
+    font-weight: 500 !important;
+    transition: color 0.2s ease !important;
+}
+
+.module a:hover {
+    color: var(--primary-dark) !important;
+    text-decoration: none !important;
+}
+
+/* ========================================
+   Inline Forms
+   ======================================== */
+.inline-group {
+    background: white !important;
+    border-radius: 16px !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: var(--shadow-sm) !important;
+    margin-bottom: 24px !important;
+    overflow: hidden;
+}
+
+.inline-group .tabular {
+    border: none !important;
+}
+
+/* ========================================
+   Filter Horizontal (permissions widget)
+   ======================================== */
+.selector {
+    background: var(--bg-canvas) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 6px !important;
+    overflow: hidden !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+.selector h2 {
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    padding: 8px 12px !important;
+    font-weight: 600 !important;
+    font-size: 12px !important;
+}
+
+.selector select {
+    border: none !important;
+    border-radius: 0 !important;
+    background: var(--bg-canvas) !important;
+}
+
+.selector .selector-chosen h2 {
+    background: #0969da !important;
+    color: white !important;
+}
+
+/* ========================================
+   Responsive Design
+   ======================================== */
+@media (max-width: 768px) {
+    #content-main > div {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .module {
+        margin: 0 0 20px 0 !important;
+    }
+}
+
+/* ========================================
+   Left Sidebar Navigation
+   ======================================== */
+/* Black/dark gray text for left sidebar - GitHub style */
+#nav-sidebar,
+#nav-sidebar a,
+#nav-sidebar .current-app,
+#nav-sidebar .current-model,
+#nav-sidebar h2,
+#nav-sidebar caption,
+.app-list a {
+    color: var(--text-primary) !important;
+}
+
+#nav-sidebar a:hover {
+    color: var(--primary) !important;
+    text-decoration: none !important;
+}
+
+#nav-sidebar .current-model {
+    background: var(--bg-secondary) !important;
+    border-radius: 6px !important;
+}
+
+/* Hide Recent Actions on admin home */
+#recent-actions-module {
+    display: none !important;
+}
+
+/* Hide Groups from admin home page and sidebar */
+.app-auth .model-group,
+a[href*="/auth/group/"],
+tr.model-group {
+    display: none !important;
+}
+
+/* Hide Add and Change links from admin home page */
+.addlink,
+.changelink {
+    display: none !important;
+}
+
+/* Hide Add button from left sidebar */
+#nav-sidebar .addlink {
+    display: none !important;
+}
+
+/* ========================================
+   Animations
+   ======================================== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.module,
+.results,
+.breadcrumbs {
+    animation: fadeIn 0.3s ease-out;
+}
+</style>
+{% endblock %}
+
+{% block title %}{{ title }} | RD1 Web Admin{% endblock %}
+
+{% block branding %}
+<h1 id="site-name"><a href="{% url 'admin:index' %}">RD1 Web Administration</a></h1>
+{% endblock %}
+
