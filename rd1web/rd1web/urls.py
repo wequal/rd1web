@@ -19,6 +19,14 @@ from django.urls import path,include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.static import serve
+from django.shortcuts import redirect
+
+def admin_index_redirect(request):
+    """Redirect admin home page to UserActivity list"""
+    return redirect('/admin/authentication/useractivity/')
+
+# Override admin index view
+admin.site.index = admin_index_redirect
 
 urlpatterns = [
     path('admin/', admin.site.urls),

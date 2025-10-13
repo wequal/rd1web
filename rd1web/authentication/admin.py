@@ -107,16 +107,16 @@ class UserActivityAdmin(admin.ModelAdmin):
             timestamp__date__gte=month_start
         ).exclude(user__username='devin').values('action').annotate(count=Count('id')).order_by('-count')
         
-        # Totals
-        daily_total = sum(item['count'] for item in daily_stats)
-        weekly_total = sum(item['count'] for item in weekly_stats)
-        monthly_total = sum(item['count'] for item in monthly_stats)
-
-        # Prepare serializable data for charts (list of [label, count])
-        daily_chart_data = list(daily_stats)
-        weekly_chart_data = list(weekly_stats)
-        monthly_chart_data = list(monthly_stats)
+        # Convert QuerySets to lists for proper evaluation
+        daily_stats_list = list(daily_stats)
+        weekly_stats_list = list(weekly_stats)
+        monthly_stats_list = list(monthly_stats)
         
+        # Totals
+        daily_total = sum(item['count'] for item in daily_stats_list)
+        weekly_total = sum(item['count'] for item in weekly_stats_list)
+        monthly_total = sum(item['count'] for item in monthly_stats_list)
+
         # User activity summary (exclude 'devin' user)
         user_daily = UserActivity.objects.filter(
             timestamp__date=today
@@ -130,20 +130,30 @@ class UserActivityAdmin(admin.ModelAdmin):
             timestamp__date__gte=month_start
         ).exclude(user__username='devin').values('user__username').annotate(count=Count('id')).order_by('-count')[:10]
         
+        # Convert user QuerySets to lists for charts
+        user_daily_list = list(user_daily)
+        user_weekly_list = list(user_weekly)
+        user_monthly_list = list(user_monthly)
+        
+        # Prepare chart data for active users (rename keys for JavaScript compatibility)
+        daily_chart_data = [{'action': item['user__username'], 'count': item['count']} for item in user_daily_list]
+        weekly_chart_data = [{'action': item['user__username'], 'count': item['count']} for item in user_weekly_list]
+        monthly_chart_data = [{'action': item['user__username'], 'count': item['count']} for item in user_monthly_list]
+        
         extra_context = extra_context or {}
         extra_context.update({
-            'daily_stats': daily_stats,
-            'weekly_stats': weekly_stats,
-            'monthly_stats': monthly_stats,
+            'daily_stats': daily_stats_list,
+            'weekly_stats': weekly_stats_list,
+            'monthly_stats': monthly_stats_list,
             'daily_total': daily_total,
             'weekly_total': weekly_total,
             'monthly_total': monthly_total,
             'daily_chart_data': daily_chart_data,
             'weekly_chart_data': weekly_chart_data,
             'monthly_chart_data': monthly_chart_data,
-            'user_daily': user_daily,
-            'user_weekly': user_weekly,
-            'user_monthly': user_monthly,
+            'user_daily': user_daily_list,
+            'user_weekly': user_weekly_list,
+            'user_monthly': user_monthly_list,
             'today': today,
             'week_start': week_start,
             'month_start': month_start,

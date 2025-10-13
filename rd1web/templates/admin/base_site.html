@@ -312,7 +312,7 @@ a.button.default {
 }
 
 .paginator a {
-    color: var(--primary) !important;
+    color: var(--text-primary) !important;
     padding: 5px 10px !important;
     border-radius: 6px !important;
     transition: background 0.15s ease !important;
@@ -322,11 +322,15 @@ a.button.default {
 .paginator a:hover {
     background: var(--bg-secondary) !important;
     text-decoration: none !important;
+    color: var(--text-primary) !important;
 }
 
-/* Page number text should be black */
+/* Page number text should be black - all pagination elements */
 .paginator,
-.paginator *:not(a) {
+.paginator *,
+.paginator a,
+.paginator a:link,
+.paginator a:visited {
     color: var(--text-primary) !important;
 }
 
@@ -481,13 +485,32 @@ a.button.default {
 /* ========================================
    Left Sidebar Navigation
    ======================================== */
+/* Hide the sidebar filter input box */
+#nav-filter {
+    display: none !important;
+}
+
+/* Sidebar header styling with distinctive color */
+#nav-sidebar h2,
+#nav-sidebar caption,
+.app-list caption {
+    background: linear-gradient(rgb(44, 122, 167)) !important;
+    color: #f9fafb !important;
+    padding: 12px 16px !important;
+    margin: 0 !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    border-radius: 6px !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
 /* Black/dark gray text for left sidebar - GitHub style */
 #nav-sidebar,
 #nav-sidebar a,
 #nav-sidebar .current-app,
 #nav-sidebar .current-model,
-#nav-sidebar h2,
-#nav-sidebar caption,
 .app-list a {
     color: var(--text-primary) !important;
 }
@@ -501,6 +524,17 @@ a.button.default {
     background: var(--bg-secondary) !important;
     border-radius: 6px !important;
 }
+
+.toggle-nav-sidebar {
+    color: var(--primary) !important; /* Uses your primary blue */
+    background-color: var(--bg-canvas) !important;
+}
+
+.toggle-nav-sidebar:hover {
+    color: var(--primary-hover) !important;
+    background-color: var(--bg-secondary) !important;
+}
+
 
 /* Hide Recent Actions on admin home */
 #recent-actions-module {
@@ -523,6 +557,39 @@ tr.model-group {
 /* Hide Add button from left sidebar */
 #nav-sidebar .addlink {
     display: none !important;
+}
+
+/* ========================================
+   Recent Activity Records Text Color Fix
+   ======================================== */
+/* Ensure "Recent Activity Records" section title is always black */
+.section-title,
+.charts-section h2,
+.charts-section .section-title {
+    color: var(--text-primary) !important;
+}
+
+/* Ensure all text in Recent Activity Records section is black */
+.charts-section h2.section-title,
+.charts-section .section-title,
+.stats-card h3,
+.activity-header h1,
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary) !important;
+}
+
+/* Make sure table headers and content are always black */
+#result_list thead th,
+#result_list tbody td,
+.results table th,
+.results table td {
+    color: var(--text-primary) !important;
+}
+
+/* Ensure pagination text is always black */
+.paginator,
+.paginator *:not(a) {
+    color: var(--text-primary) !important;
 }
 
 /* ========================================

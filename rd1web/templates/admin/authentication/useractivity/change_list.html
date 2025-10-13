@@ -444,37 +444,37 @@
 
 <!-- Charts -->
 <div class="charts-section">
-    <h2 class="section-title">Visual Analytics</h2>
+    <h2 class="section-title">Visual Analytics - Active Users</h2>
     <div class="charts-grid">
         <div class="chart-card">
-            <h4>📊 Today's Activity Distribution</h4>
+            <h4>👤 Today's Active Users</h4>
             <div class="chart-container small">
-                {% if daily_stats %}
+                {% if user_daily %}
                     <canvas id="dailyChart"></canvas>
                 {% else %}
-                    <div class="empty-state">No data available for today</div>
+                    <div class="empty-state">No active users today</div>
                 {% endif %}
             </div>
         </div>
         
         <div class="chart-card">
-            <h4>📈 Weekly Activity Trends</h4>
+            <h4>👥 This Week's Active Users</h4>
             <div class="chart-container small">
-                {% if weekly_stats %}
+                {% if user_weekly %}
                     <canvas id="weeklyChart"></canvas>
                 {% else %}
-                    <div class="empty-state">No data available for this week</div>
+                    <div class="empty-state">No active users this week</div>
                 {% endif %}
             </div>
         </div>
         
         <div class="chart-card">
-            <h4>📅 Monthly Activity Overview</h4>
+            <h4>🏆 This Month's Active Users</h4>
             <div class="chart-container small">
-                {% if monthly_stats %}
+                {% if user_monthly %}
                     <canvas id="monthlyChart"></canvas>
                 {% else %}
-                    <div class="empty-state">No data available for this month</div>
+                    <div class="empty-state">No active users this month</div>
                 {% endif %}
             </div>
         </div>
@@ -488,6 +488,11 @@
         {{ block.super }}
     </div>
 </div>
+
+<!-- JSON Data for Charts - Must be before script -->
+{{ daily_chart_data|json_script:"daily-json" }}
+{{ weekly_chart_data|json_script:"weekly-json" }}
+{{ monthly_chart_data|json_script:"monthly-json" }}
 
 <script>
 // Debug: Check if elements exist
@@ -666,7 +671,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dailyCtx && dailyData && dailyData.length > 0) {
         try {
             console.log('Creating daily pie chart...');
-            createPieChart(dailyCtx, dailyData, 'Today');
+            createPieChart(dailyCtx, dailyData, 'Active Users Today');
             console.log('Daily chart created successfully');
         } catch (e) {
             console.error('Error creating daily chart:', e);
@@ -681,7 +686,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (weeklyCtx && weeklyData && weeklyData.length > 0) {
         try {
             console.log('Creating weekly bar chart...');
-            createBarChart(weeklyCtx, weeklyData, 'This Week');
+            createBarChart(weeklyCtx, weeklyData, 'Active Users This Week');
             console.log('Weekly chart created successfully');
         } catch (e) {
             console.error('Error creating weekly chart:', e);
@@ -696,7 +701,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (monthlyCtx && monthlyData && monthlyData.length > 0) {
         try {
             console.log('Creating monthly bar chart...');
-            createBarChart(monthlyCtx, monthlyData, 'This Month');
+            createBarChart(monthlyCtx, monthlyData, 'Active Users This Month');
             console.log('Monthly chart created successfully');
         } catch (e) {
             console.error('Error creating monthly chart:', e);
@@ -708,8 +713,4 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Chart initialization complete');
 });
 </script>
-
-{{ daily_chart_data|json_script:"daily-json" }}
-{{ weekly_chart_data|json_script:"weekly-json" }}
-{{ monthly_chart_data|json_script:"monthly-json" }}
 {% endblock %}
