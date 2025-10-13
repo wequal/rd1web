@@ -611,6 +611,290 @@ h1, h2, h3, h4, h5, h6 {
 .breadcrumbs {
     animation: fadeIn 0.3s ease-out;
 }
+
+/* ========================================
+   Admin Change Form Layout Fixes
+   ======================================== */
+/* Fix change form layout alignment issues */
+.form-row {
+    overflow: visible !important;
+    clear: both !important;
+}
+
+#content-main {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.aligned label {
+    float: none !important;
+    width: auto !important;
+    display: inline-block !important;
+    padding: 0 !important;
+    margin-bottom: 5px !important;
+}
+
+.aligned .vLargeTextField, 
+.aligned .vTextField,
+.aligned input[type="text"],
+.aligned input[type="email"],
+.aligned input[type="url"],
+.aligned input[type="number"],
+.aligned textarea,
+.aligned select {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* Fix inline tables */
+.inline-group .tabular {
+    overflow-x: auto !important;
+}
+
+.inline-group .tabular table {
+    width: 100% !important;
+}
+
+/* Fix form field wrappers */
+.form-row > div {
+    width: 100% !important;
+}
+
+/* Ensure proper spacing for read-only fields */
+.form-row .readonly {
+    padding: 10px !important;
+}
+
+/* ========================================
+   Button Text Visibility Fixes
+   ======================================== */
+/* Ensure all buttons have visible white text */
+.button,
+input[type="submit"],
+input[type="button"],
+.submit-row input,
+button,
+a.button {
+    color: white !important;
+}
+
+a.button:hover,
+a.button:focus,
+a.button:visited {
+    color: white !important;
+    text-decoration: none !important;
+}
+
+/* ========================================
+   Permission Widget Styling - GitHub Theme
+   ======================================== */
+/* Fix RD1 Web App Permissions section alignment */
+.aligned .form-row:has(.selector) {
+    padding-left: 0 !important;
+}
+
+.aligned .form-row:has(.selector) > div {
+    padding-left: 170px !important;
+}
+
+/* Style the entire permission widget to match base page theme */
+.selector {
+    align-items: center !important;
+    gap: 12px !important;
+    max-width: 1200px !important;
+    width: 100% !important;
+}
+
+/* Style the available and chosen boxes */
+.selector-available, .selector-chosen {
+    background: var(--bg-canvas) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 6px !important;
+    overflow: hidden !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+}
+
+/* Style the title sections */
+.selector-available h2, .selector-chosen h2 {
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    padding: 10px 12px !important;
+    margin: 0 !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+
+/* Style the select boxes - adjust height to fit section */
+.selector select {
+    border: none !important;
+    border-radius: 0 !important;
+    background: var(--bg-canvas) !important;
+    color: var(--text-primary) !important;
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+    height: 450px !important;
+    max-height: 450px !important;
+}
+
+.selector select:focus {
+    outline: 2px solid var(--primary) !important;
+    outline-offset: -2px !important;
+}
+
+/* Style the filter input boxes */
+.selector .selector-filter {
+    background: var(--bg-secondary) !important;
+    border: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding: 8px 12px !important;
+}
+
+.selector .selector-filter input {
+    border: 1px solid var(--border) !important;
+    border-radius: 4px !important;
+    padding: 6px 8px !important;
+    font-size: 13px !important;
+    background: var(--bg-canvas) !important;
+    color: var(--text-primary) !important;
+}
+
+.selector .selector-filter input:focus {
+    outline: none !important;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1) !important;
+}
+
+/* Style the middle button container */
+.selector-chooser {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-direction: column !important;
+    width: 48px !important;
+    gap: 10px !important;
+    background-color: transparent !important;
+    border-radius: 0 !important;
+    padding: 10px 0 !important;
+    transform: none !important;
+    flex-shrink: 0 !important;
+}
+
+.selector-chooser li {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Style the arrow buttons - completely static, no animations or hover effects */
+.selector-add, .selector-remove {
+    width: 36px !important;
+    height: 36px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-indent: -9999px !important;
+    overflow: hidden !important;
+    cursor: pointer !important;
+    opacity: 1 !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 6px !important;
+    background-color: var(--bg-canvas) !important;
+    pointer-events: auto !important;
+}
+
+.selector-add {
+    background-image: url(/static/admin/img/selector-icons.svg) !important;
+    background-position: center -144px !important;
+    background-repeat: no-repeat !important;
+    background-size: 20px auto !important;
+}
+
+.selector-remove {
+    background-image: url(/static/admin/img/selector-icons.svg) !important;
+    background-position: center -96px !important;
+    background-repeat: no-repeat !important;
+    background-size: 20px auto !important;
+}
+
+/* Prevent ALL hover, focus, and active effects */
+.selector-add:hover, .selector-remove:hover,
+.selector-add:focus, .selector-remove:focus,
+.selector-add:active, .selector-remove:active {
+    background-color: var(--bg-canvas) !important;
+    border-color: var(--border) !important;
+    outline: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+/* Disabled state only */
+.selector-add:disabled, .selector-remove:disabled {
+    opacity: 0.3 !important;
+    cursor: not-allowed !important;
+    background-color: var(--bg-secondary) !important;
+}
+
+/* Hide the "Choose all" and "Remove all" links */
+.selector-chooseall, .selector-clearall {
+    display: none !important;
+}
+
+/* ========================================
+   Form Field Visibility Fixes
+   ======================================== */
+/* Fix aligned form layout to prevent field cutoff */
+.aligned label {
+    float: left !important;
+    width: 160px !important;
+    padding-right: 10px !important;
+    text-align: right !important;
+    display: inline-block !important;
+    margin-bottom: 5px !important;
+}
+
+.aligned .form-row > div,
+.aligned .form-row > p {
+    padding-left: 170px !important;
+    margin-left: 0 !important;
+}
+
+/* Ensure form fields are fully visible */
+.aligned input[type="text"],
+.aligned input[type="email"],
+.aligned input[type="url"],
+.aligned input[type="number"],
+.aligned textarea,
+.aligned select {
+    width: 100% !important;
+    max-width: 600px !important;
+    box-sizing: border-box !important;
+}
+
+/* Fix read-only fields alignment */
+.aligned .readonly {
+    padding: 6px 0 !important;
+    margin-left: 0 !important;
+}
+
+/* ========================================
+   Dropdown Select Field Height Fix
+   ======================================== */
+/* Increase select dropdown height to show full text/names */
+.aligned select {
+    height: auto !important;
+    min-height: 36px !important;
+    padding: 8px 10px !important;
+    line-height: 1.5 !important;
+}
+
+/* Ensure select option text is fully visible */
+.aligned select option {
+    padding: 6px 10px !important;
+    line-height: 1.5 !important;
+}
 </style>
 {% endblock %}
 

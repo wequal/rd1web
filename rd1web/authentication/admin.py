@@ -92,6 +92,7 @@ class UserActivityAdmin(admin.ModelAdmin):
         la_tz = zoneinfo.ZoneInfo('America/Los_Angeles')
         today = now.astimezone(la_tz).date()
         week_start = today - timedelta(days=today.weekday())
+        week_end = week_start + timedelta(days=6)  # Sunday
         month_start = today.replace(day=1)
         
         # Calculate statistics (exclude 'devin' user from statistics)
@@ -156,6 +157,7 @@ class UserActivityAdmin(admin.ModelAdmin):
             'user_monthly': user_monthly_list,
             'today': today,
             'week_start': week_start,
+            'week_end': week_end,
             'month_start': month_start,
         })
         
