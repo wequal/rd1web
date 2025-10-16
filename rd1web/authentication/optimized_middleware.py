@@ -75,6 +75,15 @@ class OptimizedUserActivityMiddleware:
         if any(skip_path in request.path for skip_path in skip_paths):
             return
         
+        # Skip status polling endpoints to prevent DB connection exhaustion
+        status_polling_paths = [
+            '/rma/collect-mi3xx-alllog-status/',
+            '/rma/download-folder-status/',
+            '/ipmitool/firmware/sequence_status/',
+        ]
+        if any(status_path in request.path for status_path in status_polling_paths):
+            return
+        
         # Skip AJAX requests for certain endpoints
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             ajax_skip_paths = ['/systems/', '/logs/']

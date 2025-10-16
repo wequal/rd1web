@@ -1617,6 +1617,30 @@ def rma_log_browser(request, path=""):
                 "path": current_build
             })
 
+    # Check if current directory is an RMA directory and determine if MI3XX button should be shown
+    show_mi3xx_button = False
+    base_sn = None
+    rma_number = None
+    
+    # Pattern to match {base_sn}_{rma_number}
+    pattern = re.compile(r'^(.+)_(.+)$')
+    dir_name = os.path.basename(remote_path)
+    
+    if pattern.match(dir_name):
+        match = pattern.match(dir_name)
+        base_sn, rma_number = match.groups()
+        
+        # Read GPU model from sys_info.txt
+        sys_info = parse_sys_info_file(dir_name)
+        if sys_info and sys_info.get('gpu_model'):
+            gpu_model = sys_info['gpu_model'].upper()
+            # Excluded GPU models for MI3XX ALL LOG
+            excluded_models = ['H100', 'H200', 'B200', 'B300', 'GB200', 'GB300']
+            
+            # Check if GPU model is NOT in excluded list
+            if not any(excluded in gpu_model for excluded in excluded_models):
+                show_mi3xx_button = True
+    
     return render(request, "features/rma_logs_browser.html", {
         "items": items,
         "current_path": "/" + decoded_path.strip("/"),
@@ -1627,7 +1651,10 @@ def rma_log_browser(request, path=""):
         "total_size": format_size(total_size),
         "file_count": file_count,
         "dir_count": dir_count,
-        "rma_host_ip": get_rma_host_ip()
+        "rma_host_ip": get_rma_host_ip(),
+        "show_mi3xx_button": show_mi3xx_button,
+        "base_sn": base_sn,
+        "rma_number": rma_number,
     })
 
 def render_csv_as_html(file_content, filename):
@@ -1989,6 +2016,383 @@ def is_text_file(file_path):
             return False
     except:
         return False
+
+def monitor_remote_progress(task_id, progress_file, rma_remote, stop_event):
+    """
+    Monitor remote progress file and update cache
+    """
+    import json
+    
+    while not stop_event.is_set():
+        try:
+            # Read progress file from remote server
+            result = rma_remote.run(f"cat {progress_file} 2>/dev/null", hide=True, warn=True)
+            
+            if result.ok and result.stdout.strip():
+                try:
+                    progress_data = json.loads(result.stdout)
+                    
+                    # Update cache with progress from remote server
+                    task_data = cache.get(f'mi3xx_task_{task_id}')
+                    if task_data and task_data['status'] == 'processing':
+                        task_data['progress'] = progress_data.get('progress', 0)
+                        task_data['message'] = progress_data.get('message', 'Processing...')
+                        cache.set(f'mi3xx_task_{task_id}', task_data, 1800)
+                        # Don't log every update to reduce noise
+                except json.JSONDecodeError:
+                    pass  # Invalid JSON, skip this update
+        except Exception as e:
+            pass  # Silently skip errors during monitoring
+        
+        # Check every 2 seconds
+        time.sleep(2)
+
+def collect_mi3xx_alllog_task(task_id, dir_name, base_sn, rma_number, bmc_ip):
+    """
+    Background task to collect MI3XX ALL LOG on remote RMA server
+    """
+    from datetime import datetime
+    
+    try:
+        # Update cache to processing
+        cache.set(f'mi3xx_task_{task_id}', {
+            'status': 'processing',
+            'progress': 0,
+            'message': 'Initiating log collection from BMC...',
+            'filename': None,
+            'error': None
+        }, 1800)  # 30 minute timeout
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Create Python script with progress reporting
+        remote_script = f'''#!/usr/bin/env python3
+import requests
+import sys
+from time import sleep
+import urllib3
+import json
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+bmc_ip = "{bmc_ip}"
+base_sn = "{base_sn}"
+rma_number = "{rma_number}"
+timestamp = "{timestamp}"
+task_id = "{task_id}"
+user = "ADMIN"
+pwd = "Golden@1234"
+log_path = "/srv/rma"
+
+# Progress file for tracking
+progress_file = f"/tmp/mi3xx_progress_{{task_id}}.json"
+
+def update_progress(percent, message):
+    try:
+        with open(progress_file, 'w') as f:
+            json.dump({{"progress": percent, "message": message}}, f)
+    except:
+        pass
+
+update_progress(0, "Initiating log collection from BMC...")
+
+# Step 1: Initiate log collection
+collect_url = f"https://{{bmc_ip}}/redfish/v1/Systems/UBB/LogServices/DiagLogs/Actions/LogService.CollectDiagnosticData"
+payload = {{"DiagnosticDataType": "OEM", "OEMDiagnosticDataType": "AllLogs"}}
+
+try:
+    response = requests.post(collect_url, json=payload, auth=(user, pwd), verify=False, timeout=30)
+    response.raise_for_status()
+except Exception as e:
+    update_progress(0, f"ERROR: Failed to initiate: {{e}}")
+    print(f"ERROR: Failed to initiate log collection: {{e}}")
+    sys.exit(1)
+
+data = response.json()
+task_uri = data.get('@odata.id')
+
+if not task_uri:
+    update_progress(0, "ERROR: No task URI returned from BMC")
+    print("ERROR: No task URI returned from BMC")
+    sys.exit(1)
+
+update_progress(0, "Polling BMC for task status...")
+
+# Step 2: Poll task status
+max_polls = 60
+poll_count = 0
+
+while poll_count < max_polls:
+    sleep(20)
+    poll_count += 1
+    
+    try:
+        task_resp = requests.get(f"https://{{bmc_ip}}{{task_uri}}", auth=(user, pwd), verify=False, timeout=30)
+        
+        if task_resp.status_code != 200:
+            continue
+
+        task_data = task_resp.json()
+        percent = task_data.get('PercentComplete', 0)
+        state = task_data.get('TaskState', '')
+        
+        # Show actual BMC percentage
+        update_progress(percent, f"BMC collecting logs: {{state}}")
+
+        if state.lower() == "completed" and percent == 100:
+            break
+        elif state.lower() in ["exception", "killed", "cancelled"]:
+            update_progress(0, f"ERROR: Task failed: {{state}}")
+            print(f"ERROR: Task failed or aborted: {{state}}")
+            sys.exit(1)
+            
+    except Exception as e:
+        continue
+
+if poll_count >= max_polls:
+    update_progress(0, "ERROR: Task timeout - exceeded 20 minutes")
+    print("ERROR: Task timeout - exceeded 20 minutes")
+    sys.exit(1)
+
+# Step 3: Extract download location from headers
+headers = task_data.get('Payload', {{}}).get('HttpHeaders', [])
+location = None
+
+for header in headers:
+    if header.lower().startswith('location:'):
+        location = header.split(':', 1)[1].strip()
+        break
+
+if not location:
+    update_progress(0, "ERROR: No download location in task response")
+    print("ERROR: No download location in task response")
+    sys.exit(1)
+
+# Step 4: Get entry data to find download URI
+entry_url = f"https://{{bmc_ip}}{{location}}"
+
+try:
+    entry_resp = requests.get(entry_url, auth=(user, pwd), verify=False, timeout=30)
+    entry_resp.raise_for_status()
+except Exception as e:
+    update_progress(0, f"ERROR: Failed to get entry data: {{e}}")
+    print(f"ERROR: Failed to get entry data: {{e}}")
+    sys.exit(1)
+
+entry_data = entry_resp.json()
+download_uri = entry_data.get('AdditionalDataURI')
+
+if not download_uri:
+    update_progress(0, "ERROR: No download URI found")
+    print("ERROR: No download URI found")
+    sys.exit(1)
+
+# Step 5: Download the log file
+alllog_file_name = f"{{base_sn}}_ALLLOG_{{timestamp}}.tar.gz"
+alllog_file_path = f"{{log_path}}/{{base_sn}}_{{rma_number}}/{{alllog_file_name}}"
+
+try:
+    log_resp = requests.get(f"https://{{bmc_ip}}{{download_uri}}", auth=(user, pwd), verify=False, stream=True, timeout=300)
+    log_resp.raise_for_status()
+    
+    with open(alllog_file_path, 'wb') as f:
+        for chunk in log_resp.iter_content(chunk_size=8192):
+            if chunk:
+                f.write(chunk)
+    
+    update_progress(100, f"Successfully saved: {{alllog_file_name}}")
+    print(f"SUCCESS: {{alllog_file_name}}")
+    
+except Exception as e:
+    update_progress(0, f"ERROR: Failed to download: {{e}}")
+    print(f"ERROR: Failed to download log file: {{e}}")
+    sys.exit(1)
+'''
+        
+        # Get remote connection (Fabric)
+        rma_remote = remote_dict.get('rma')
+        if not rma_remote:
+            cache.set(f'mi3xx_task_{task_id}', {
+                'status': 'failed',
+                'progress': 0,
+                'message': 'Remote RMA server not configured',
+                'filename': None,
+                'error': 'Remote RMA server not configured'
+            }, 1800)
+            return
+        
+        remote_script_path = f"/tmp/mi3xx_alllog_{base_sn}_{timestamp}.py"
+        progress_file = f"/tmp/mi3xx_progress_{task_id}.json"
+        
+        try:
+            # Write script to remote server
+            rma_remote.run(f"cat > {remote_script_path} << 'EOF'\n{remote_script}\nEOF", hide=True)
+            rma_remote.run(f"chmod +x {remote_script_path}", hide=True)
+            
+            # Start progress monitoring thread
+            stop_event = threading.Event()
+            monitor_thread = threading.Thread(
+                target=monitor_remote_progress,
+                args=(task_id, progress_file, rma_remote, stop_event),
+                daemon=True
+            )
+            monitor_thread.start()
+            logger.info(f"Started progress monitoring thread for task {task_id}")
+            
+            # Execute script on remote server
+            logger.info(f"Executing MI3XX ALL LOG collection script on remote server (task {task_id})")
+            result = rma_remote.run(f"python3 {remote_script_path}", hide=True, warn=True, timeout=1300)
+            
+            # Stop progress monitoring
+            stop_event.set()
+            monitor_thread.join(timeout=5)  # Wait max 5 seconds for thread to stop
+            
+            # Clean up remote files
+            rma_remote.run(f"rm -f {remote_script_path}", hide=True, warn=True)
+            rma_remote.run(f"rm -f {progress_file}", hide=True, warn=True)
+            
+            logger.info(f"Remote script completed for task {task_id}")
+            
+            # Check if successful
+            if result.ok and "SUCCESS:" in result.stdout:
+                filename = None
+                for line in result.stdout.split('\n'):
+                    if line.startswith('SUCCESS:'):
+                        filename = line.replace('SUCCESS:', '').strip()
+                        break
+                
+                cache.set(f'mi3xx_task_{task_id}', {
+                    'status': 'completed',
+                    'progress': 100,
+                    'message': f'Successfully saved: {filename}',
+                    'filename': filename,
+                    'error': None
+                }, 1800)
+                logger.info(f"Successfully collected MI3XX ALL LOG: {filename}")
+            else:
+                error_msg = 'Unknown error'
+                for line in result.stdout.split('\n'):
+                    if line.startswith('ERROR:'):
+                        error_msg = line.replace('ERROR:', '').strip()
+                        break
+                if error_msg == 'Unknown error' and result.stderr:
+                    error_msg = result.stderr.strip()
+                
+                cache.set(f'mi3xx_task_{task_id}', {
+                    'status': 'failed',
+                    'progress': 0,
+                    'message': error_msg,
+                    'filename': None,
+                    'error': error_msg
+                }, 1800)
+                logger.error(f"MI3XX ALL LOG collection failed for task {task_id}: {error_msg}")
+                
+        except Exception as e:
+            logger.error(f"Error executing remote script for task {task_id}: {e}")
+            try:
+                rma_remote.run(f"rm -f {remote_script_path}", hide=True, warn=True)
+                rma_remote.run(f"rm -f {progress_file}", hide=True, warn=True)
+            except:
+                pass
+            cache.set(f'mi3xx_task_{task_id}', {
+                'status': 'failed',
+                'progress': 0,
+                'message': f'Remote execution failed: {str(e)}',
+                'filename': None,
+                'error': str(e)
+            }, 1800)
+        
+    except Exception as e:
+        logger.error(f"Error in MI3XX ALL LOG task {task_id}: {e}")
+        cache.set(f'mi3xx_task_{task_id}', {
+            'status': 'failed',
+            'progress': 0,
+            'message': str(e),
+            'filename': None,
+            'error': str(e)
+        }, 1800)
+
+@login_required
+def rma_collect_mi3xx_alllog(request, path):
+    """
+    Start async MI3XX ALL LOG collection and return task ID immediately
+    """
+    import uuid
+    
+    decoded_path = unquote(path)
+    
+    # Extract base_sn and rma_number from path
+    pattern = re.compile(r'^(.+)_(.+)$')
+    dir_name = decoded_path.strip('/')
+    match = pattern.match(dir_name)
+    
+    if not match:
+        return JsonResponse({'success': False, 'error': 'Invalid directory pattern'}, status=400)
+    
+    base_sn, rma_number = match.groups()
+
+    try:
+        # Read BMC IP from sys_info.txt (local copy)
+        sys_info = parse_sys_info_file(dir_name)
+        if not sys_info or not sys_info.get('bmc_ip'):
+            return JsonResponse({'success': False, 'error': 'BMC IP not found in sys_info.txt'}, status=400)
+        
+        bmc_ip = sys_info['bmc_ip']
+        
+        logger.info(f"Starting async MI3XX ALL LOG collection for {dir_name} at BMC IP: {bmc_ip}")
+        
+        # Generate unique task ID
+        task_id = str(uuid.uuid4())
+        
+        # Initialize task in cache
+        cache.set(f'mi3xx_task_{task_id}', {
+            'status': 'initializing',
+            'progress': 0,
+            'message': 'Preparing to collect logs...',
+            'filename': None,
+            'error': None
+        }, 1800)
+        
+        # Start background thread
+        thread = threading.Thread(
+            target=collect_mi3xx_alllog_task,
+            args=(task_id, dir_name, base_sn, rma_number, bmc_ip),
+            daemon=True
+        )
+        thread.start()
+        
+        return JsonResponse({
+            'success': True,
+            'task_id': task_id,
+            'message': 'Log collection started'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error starting MI3XX ALL LOG collection: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@login_required
+def rma_collect_mi3xx_alllog_status(request, task_id):
+    """
+    Check status of MI3XX ALL LOG collection task
+    """
+    try:
+        task_data = cache.get(f'mi3xx_task_{task_id}')
+        
+        if not task_data:
+            return JsonResponse({'success': False, 'error': 'Task not found'}, status=404)
+        
+        return JsonResponse({
+            'success': True,
+            'status': task_data['status'],
+            'progress': task_data['progress'],
+            'message': task_data['message'],
+            'filename': task_data.get('filename'),
+            'error': task_data.get('error')
+        })
+        
+    except Exception as e:
+        logger.error(f"Error checking task status {task_id}: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @login_required
 def rma_download_folder(request, path):
