@@ -169,7 +169,6 @@
                             <th class="text-center">ECC Error</th>
                             <th class="text-center">DCGM Test</th>
                             <th class="text-center">FD2 Test</th>
-                            <th class="text-center">AGFHC Test</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -206,13 +205,6 @@
                             <td class="text-center">
                                 {% if data.failures.fd2_test > 0 %}
                                 <span class="badge bg-danger failure-badge">{{ data.failures.fd2_test }}</span>
-                                {% else %}
-                                <span class="badge bg-secondary failure-badge">0</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-center">
-                                {% if data.failures.agfhc_test > 0 %}
-                                <span class="badge bg-danger failure-badge">{{ data.failures.agfhc_test }}</span>
                                 {% else %}
                                 <span class="badge bg-secondary failure-badge">0</span>
                                 {% endif %}
