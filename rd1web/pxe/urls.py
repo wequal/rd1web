@@ -32,6 +32,7 @@ from .views.rma_testing_db import (
     golden_unlink
 )
 from .views.rma_dhcp_leases import rma_dhcp_leases, rma_dhcp_leases_refresh
+from .views.rma_statistics import rma_statistics, rma_statistics_api, trigger_scan
 from .api.system_api import systems_summary, systems_category
 
 
@@ -92,4 +93,9 @@ urlpatterns = [
     # RMA DHCP Leases URLs
     path('rma/dhcp-leases/', rma_dhcp_leases, name='rma_dhcp_leases'),
     path('rma/dhcp-leases/refresh/', rma_dhcp_leases_refresh, name='rma_dhcp_leases_refresh'),
+    
+    # RMA Statistics URLs
+    path('rma/statistics/', rma_statistics, name='rma_statistics'),
+    path('api/rma/statistics/', rma_statistics_api, name='rma_statistics_api'),
+    path('api/rma/statistics/scan/', trigger_scan, name='rma_statistics_scan'),
 ]

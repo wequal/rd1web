@@ -18,6 +18,7 @@ class PxeEntry(models.Model):
             ('can_use_system_management', 'Can use system management features'),
             ('can_use_tools', 'Can use tools and utilities'),
             ('can_view_rma_logs', 'Can view RMA logs'),
+            ('can_view_rma_statistics', 'Can view RMA statistics'),
             # Admin-only permissions (require manual approval)
             ('can_access_rma_pxe', 'Can access RMA PXE management'),
             ('can_access_rma_dhcp_leases', 'Can access RMA DHCP Leases'),
@@ -158,3 +159,78 @@ class RmaTestingDb(models.Model):
     
     def __str__(self):
         return f"RMA Entry: {self.bmc_mac} ({self.bmc_ip})"
+
+
+class RmaTestStatistic(models.Model):
+    """
+    RMA Test Statistics model for tracking GPU test failures
+    Stores parsed test results from test_results.log files
+    """
+    directory_name = models.CharField(
+        max_length=255,
+        unique=True,
+        help_text='RMA directory name (e.g., 1660224656070_XD250311087)',
+        verbose_name='Directory Name'
+    )
+    base_sn = models.CharField(
+        max_length=100,
+        help_text='Base serial number parsed from directory name',
+        verbose_name='Base SN'
+    )
+    rma_number = models.CharField(
+        max_length=100,
+        help_text='RMA number parsed from directory name',
+        verbose_name='RMA Number'
+    )
+    gpu_model = models.CharField(
+        max_length=100,
+        default='Unknown',
+        help_text='GPU model from sys_info.txt (e.g., H100, A100)',
+        verbose_name='GPU Model'
+    )
+    test_date = models.DateTimeField(
+        help_text='Directory modification time for time grouping',
+        verbose_name='Test Date',
+        db_index=True
+    )
+    test_results = models.JSONField(
+        default=dict,
+        help_text='Test results: {gpu_detection: pass/fail, ecc_error: pass/fail, ...}',
+        verbose_name='Test Results'
+    )
+    file_mtime = models.FloatField(
+        help_text='test_results.log file modification time for change detection',
+        verbose_name='File Mtime'
+    )
+    last_scanned = models.DateTimeField(
+        auto_now=True,
+        help_text='When this directory was last scanned',
+        verbose_name='Last Scanned'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-test_date']
+        verbose_name = 'RMA Test Statistic'
+        verbose_name_plural = 'RMA Test Statistics'
+        indexes = [
+            models.Index(fields=['test_date']),
+            models.Index(fields=['gpu_model']),
+            models.Index(fields=['test_date', 'gpu_model']),
+        ]
+    
+    def __str__(self):
+        return f"RMA Stats: {self.directory_name} ({self.gpu_model})"
+    
+    def has_any_failure(self):
+        """Check if any test failed"""
+        if not self.test_results:
+            return False
+        return any(result == 'fail' for result in self.test_results.values())
+    
+    def get_failure_count(self):
+        """Count number of failed tests"""
+        if not self.test_results:
+            return 0
+        return sum(1 for result in self.test_results.values() if result == 'fail')

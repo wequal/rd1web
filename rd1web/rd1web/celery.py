@@ -29,6 +29,10 @@ app.conf.beat_schedule = {
         'task': 'pxe.tasks.prewarm_rma_details_cache',
         'schedule': 60.0,  # Every 1 minute
     },
+    'scan-rma-statistics-every-hour': {
+        'task': 'pxe.tasks.scan_rma_statistics',
+        'schedule': 3600.0,  # Every 1 hour
+    },
 }
 
 # Celery configuration

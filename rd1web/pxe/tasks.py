@@ -159,3 +159,34 @@ def health_check(self):
             'error': str(e),
         }
 
+
+@shared_task(bind=True, ignore_result=True, max_retries=3)
+def scan_rma_statistics(self):
+    """
+    Scan RMA directories and update statistics database
+    Runs every hour to track test failures with minimal overhead
+    
+    Uses smart scanning - only processes directories where test_results.log has changed
+    """
+    try:
+        logger.info("Starting RMA statistics scan...")
+        
+        # Import here to avoid circular imports
+        from .rma_statistics import scan_all_rma_directories
+        
+        # Perform scan
+        stats = scan_all_rma_directories()
+        
+        logger.info(f"RMA statistics scan completed: {stats['processed']} processed, "
+                   f"{stats['skipped']} skipped, {stats['errors']} errors out of {stats['total']} total")
+        
+        return {
+            'status': 'success',
+            'stats': stats,
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in RMA statistics scan: {e}")
+        # Retry up to 3 times with exponential backoff
+        raise self.retry(exc=e, countdown=300)  # Retry after 5 minutes
+
