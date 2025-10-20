@@ -1,0 +1,334 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ product_info.name }} - ECO Folders{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Main Container */
+    .firmware-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 16px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        padding: 0;
+        margin-bottom: 30px;
+        overflow: hidden;
+    }
+    
+    .firmware-header {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        padding: 25px 30px;
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+    }
+    
+    .firmware-content {
+        background: white;
+        padding: 30px;
+    }
+    
+    /* Page Header */
+    .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+    }
+    
+    .header-left {
+        display: flex;
+        align-items: center;
+    }
+    
+    .page-header h1 {
+        margin: 0;
+        color: #2d3748;
+        font-size: 2rem;
+        font-weight: 700;
+    }
+    
+    .btn-create-eco {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-create-eco:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+    
+    /* ECO Table */
+    .eco-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        margin-top: 20px;
+    }
+    
+    .eco-table thead th {
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        color: #ffffff;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+        padding: 16px;
+        border: none;
+    }
+    
+    .eco-table thead th:first-child {
+        border-radius: 8px 0 0 0;
+    }
+    
+    .eco-table thead th:last-child {
+        border-radius: 0 8px 0 0;
+    }
+    
+    .eco-table tbody td {
+        padding: 16px;
+        border-bottom: 1px solid #f1f5f9;
+        color: #4a5568;
+        vertical-align: middle;
+    }
+    
+    .eco-table tbody tr {
+        transition: all 0.3s ease;
+    }
+    
+    .eco-table tbody tr:hover {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        transform: scale(1.001);
+    }
+    
+    .eco-number {
+        font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+        font-weight: 600;
+        color: #667eea;
+        font-size: 1.1rem;
+    }
+    
+    .file-count-badge {
+        background: #e6f7ff;
+        color: #0066cc;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    
+    .btn-view-eco {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .btn-view-eco:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #718096;
+    }
+    
+    .empty-state h3 {
+        color: #4a5568;
+        margin-bottom: 10px;
+    }
+    
+    /* Modal */
+    .modal-content {
+        border-radius: 12px;
+        border: none;
+    }
+    
+    .modal-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .modal-header .btn-close {
+        filter: brightness(0) invert(1);
+    }
+    
+    /* Breadcrumb */
+    .breadcrumb-custom {
+        background: transparent;
+        padding: 0;
+        margin-bottom: 20px;
+    }
+    
+    .breadcrumb-custom .breadcrumb-item {
+        color: #718096;
+    }
+    
+    .breadcrumb-custom .breadcrumb-item.active {
+        color: #2d3748;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mt-4">
+        <ol class="breadcrumb breadcrumb-custom">
+            <li class="breadcrumb-item"><a href="{% url 'index' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'firmware_inventory' %}">Firmware Inventory</a></li>
+            <li class="breadcrumb-item active">{{ product_info.name }}</li>
+        </ol>
+    </nav>
+    
+    <!-- Main Container -->
+    <div class="firmware-container">
+        <!-- Header -->
+        <div class="firmware-header">
+            <div class="page-header">
+                <div class="header-left">
+                    <h1>{{ product_info.name }}</h1>
+                </div>
+                <button type="button" class="btn btn-create-eco" data-bs-toggle="modal" data-bs-target="#createEcoModal">
+                    Create New ECO
+                </button>
+            </div>
+        </div>
+        
+        <!-- Content -->
+        <div class="firmware-content">
+            {% if eco_folders %}
+            <table class="eco-table">
+                <thead>
+                    <tr>
+                        <th>ECO Number</th>
+                        <th>File Count</th>
+                        <th>Last Modified</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for eco in eco_folders %}
+                    <tr>
+                        <td><span class="eco-number">{{ eco.eco_number }}</span></td>
+                        <td><span class="file-count-badge">{{ eco.file_count }} file(s)</span></td>
+                        <td>{{ eco.last_modified|date:"Y-m-d H:i:s" }}</td>
+                        <td>
+                            <a href="{% url 'firmware_inventory_eco_detail' product_type eco.eco_number %}" class="btn-view-eco">
+                                Manage Files
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <h3>No ECO Folders Yet</h3>
+                <p>Click "Create New ECO" to get started</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Create ECO Modal -->
+<div class="modal fade" id="createEcoModal" tabindex="-1" aria-labelledby="createEcoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createEcoModalLabel">Create New ECO Folder</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createEcoForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        {{ eco_form.eco_number.label_tag }}
+                        {{ eco_form.eco_number }}
+                        <div class="form-text">{{ eco_form.eco_number.help_text }}</div>
+                        <div id="ecoNumberError" class="invalid-feedback" style="display: none;"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="btnCreateEco" onclick="handleCreateEco(this); return false;">Create ECO</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function handleCreateEco(btn) {
+    var ecoNumber = document.getElementById('id_eco_number').value.trim();
+    var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    var errorDiv = document.getElementById('ecoNumberError');
+    var inputField = document.getElementById('id_eco_number');
+    
+    // Reset error
+    errorDiv.style.display = 'none';
+    inputField.classList.remove('is-invalid');
+    
+    if (!ecoNumber) {
+        errorDiv.textContent = 'ECO number is required';
+        errorDiv.style.display = 'block';
+        inputField.classList.add('is-invalid');
+        return false;
+    }
+    
+    // Show loading
+    btn.disabled = true;
+    btn.textContent = 'Creating...';
+    
+    fetch("{% url 'firmware_inventory_eco_create' product_type %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+        },
+        body: 'eco_number=' + encodeURIComponent(ecoNumber)
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            errorDiv.textContent = data.error || 'Failed to create ECO folder';
+            errorDiv.style.display = 'block';
+            inputField.classList.add('is-invalid');
+            btn.disabled = false;
+            btn.textContent = 'Create ECO';
+        }
+    })
+    .catch(function(error) {
+        errorDiv.textContent = 'Error: ' + error.message;
+        errorDiv.style.display = 'block';
+        inputField.classList.add('is-invalid');
+        btn.disabled = false;
+        btn.textContent = 'Create ECO';
+    });
+    
+    return false;
+}
+</script>
+
+{% endblock %}

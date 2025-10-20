@@ -33,6 +33,14 @@ from .views.rma_testing_db import (
 )
 from .views.rma_dhcp_leases import rma_dhcp_leases, rma_dhcp_leases_refresh
 from .views.rma_statistics import rma_statistics, rma_statistics_api, trigger_scan
+from .views.firmware_inventory import (
+    firmware_inventory_main,
+    firmware_inventory_eco_list,
+    firmware_inventory_eco_create,
+    firmware_inventory_eco_detail,
+    firmware_inventory_file_upload,
+    firmware_inventory_file_delete,
+)
 from .api.system_api import systems_summary, systems_category
 
 
@@ -100,4 +108,12 @@ urlpatterns = [
     path('rma/statistics/', rma_statistics, name='rma_statistics'),
     path('api/rma/statistics/', rma_statistics_api, name='rma_statistics_api'),
     path('api/rma/statistics/scan/', trigger_scan, name='rma_statistics_scan'),
+    
+    # Firmware Inventory URLs
+    path('rma/firmware-inventory/', firmware_inventory_main, name='firmware_inventory'),
+    path('rma/firmware-inventory/<str:product_type>/', firmware_inventory_eco_list, name='firmware_inventory_eco_list'),
+    path('rma/firmware-inventory/<str:product_type>/create-eco/', firmware_inventory_eco_create, name='firmware_inventory_eco_create'),
+    path('rma/firmware-inventory/<str:product_type>/<str:eco_number>/', firmware_inventory_eco_detail, name='firmware_inventory_eco_detail'),
+    path('rma/firmware-inventory/<str:product_type>/<str:eco_number>/upload/', firmware_inventory_file_upload, name='firmware_inventory_file_upload'),
+    path('rma/firmware-inventory/file/<int:file_id>/delete/', firmware_inventory_file_delete, name='firmware_inventory_file_delete'),
 ]

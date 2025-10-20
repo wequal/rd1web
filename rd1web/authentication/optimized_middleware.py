@@ -300,6 +300,12 @@ class OptimizedUserActivityMiddleware:
                 action = 'rma_log_view'
             elif path.startswith('/rma/view'):
                 action = 'rma_file_view'
+            elif path.startswith('/rma/firmware-inventory') and '/upload/' in path:
+                action = 'firmware_inventory_upload'
+            elif path.startswith('/rma/firmware-inventory') and '/delete/' in path:
+                action = 'firmware_inventory_delete'
+            elif path.startswith('/rma/firmware-inventory'):
+                action = 'firmware_inventory_view'
             elif path.startswith('/logs'):
                 action = 'log_view'
             elif path.startswith('/view'):
@@ -337,6 +343,9 @@ class OptimizedUserActivityMiddleware:
             'rma_pxe': 'User accessed RMA PXE configuration',
             'rma_log_view': 'User viewed RMA logs',
             'rma_file_view': 'User viewed RMA file',
+            'firmware_inventory_view': 'User viewed Firmware Inventory',
+            'firmware_inventory_upload': 'User uploaded firmware file',
+            'firmware_inventory_delete': 'User deleted firmware file',
             'page_view': f'User visited {path}'
         }
         return descriptions.get(action, f'User visited {path}')

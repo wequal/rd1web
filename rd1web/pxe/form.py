@@ -356,5 +356,90 @@ class RmaTestingDbSearchForm(forms.Form):
         return search
 
 
+class EcoFolderForm(forms.Form):
+    """Form for creating new ECO folder"""
+    eco_number = forms.CharField(
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter ECO number (e.g., 31882)',
+        }),
+        label='ECO Number',
+        help_text='Enter the ECO number for the new folder'
+    )
+    
+    def clean_eco_number(self):
+        """Clean and validate ECO number"""
+        eco_number = self.cleaned_data.get('eco_number', '').strip()
+        if not eco_number:
+            raise forms.ValidationError('ECO number cannot be empty')
+        # Remove any potentially dangerous characters for filesystem
+        import re
+        if re.search(r'[/\\<>:"|?*]', eco_number):
+            raise forms.ValidationError('ECO number contains invalid characters')
+        return eco_number
+
+
+class FirmwareInventoryUploadForm(forms.Form):
+    """Form for uploading firmware files to ECO folder"""
+    
+    # GPU field (required for all products)
+    gpu_file = forms.FileField(
+        required=False,
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': '.bin,.rom,.fw,.img',
+        }),
+        label='GPU Firmware',
+        help_text='Upload GPU firmware file'
+    )
+    
+    # Retimer 5 (only for H100/H200 products)
+    retimer_5_file = forms.FileField(
+        required=False,
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': '.bin,.rom,.fw,.img',
+        }),
+        label='Retimer 5 Firmware',
+        help_text='Upload Retimer 5 firmware file'
+    )
+    
+    # Retimer 0, 1, 2, 3, 4, 6, 7 combined (only for H100/H200 products)
+    retimer_0_1_2_3_4_6_7_file = forms.FileField(
+        required=False,
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': '.bin,.rom,.fw,.img',
+        }),
+        label='Retimer 0, 1, 2, 3, 4, 6, 7 Firmware',
+        help_text='Upload firmware file for Retimers 0, 1, 2, 3, 4, 6, and 7 (same file will be used for all seven)'
+    )
+    
+    def __init__(self, *args, product_type=None, **kwargs):
+        """Initialize form and hide retimer fields for B200/B300 products"""
+        super().__init__(*args, **kwargs)
         
+        # Hide retimer fields for B200/B300 products
+        if product_type and product_type.startswith(('B200', 'B300')):
+            if 'retimer_5_file' in self.fields:
+                del self.fields['retimer_5_file']
+            if 'retimer_0_1_2_3_4_6_7_file' in self.fields:
+                del self.fields['retimer_0_1_2_3_4_6_7_file']
+    
+    def clean(self):
+        """Validate that at least one file is uploaded"""
+        cleaned_data = super().clean()
+        
+        # Check if at least one file was uploaded
+        has_file = any(
+            cleaned_data.get(field_name)
+            for field_name in self.fields.keys()
+            if field_name.endswith('_file')
+        )
+        
+        if not has_file:
+            raise forms.ValidationError('Please upload at least one firmware file')
+        
+        return cleaned_data
     

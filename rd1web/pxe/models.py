@@ -22,6 +22,7 @@ class PxeEntry(models.Model):
             # Admin-only permissions (require manual approval)
             ('can_access_rma_pxe', 'Can access RMA PXE management'),
             ('can_access_rma_dhcp_leases', 'Can access RMA DHCP Leases'),
+            ('can_access_firmware_inventory', 'Can access Firmware Inventory'),
         ]
 
     def __str__(self):
@@ -234,3 +235,113 @@ class RmaTestStatistic(models.Model):
         if not self.test_results:
             return 0
         return sum(1 for result in self.test_results.values() if result == 'fail')
+
+
+class FirmwareFile(models.Model):
+    """
+    Firmware Inventory model for tracking uploaded firmware files
+    Organizes firmware by product type and ECO number
+    """
+    PRODUCT_CHOICES = [
+        ('H100_AC', 'H100_AC'),
+        ('H100_LC', 'H100_LC'),
+        ('H200_AC', 'H200_AC'),
+        ('H200_LC', 'H200_LC'),
+        ('B200_AC', 'B200_AC'),
+        ('B200_LC', 'B200_LC'),
+        ('B300_AC', 'B300_AC'),
+        ('B300_LC', 'B300_LC'),
+    ]
+    
+    FILE_TYPE_CHOICES = [
+        ('GPU', 'GPU'),
+        ('retimer_0', 'Retimer 0'),
+        ('retimer_1', 'Retimer 1'),
+        ('retimer_2', 'Retimer 2'),
+        ('retimer_3', 'Retimer 3'),
+        ('retimer_4', 'Retimer 4'),
+        ('retimer_5', 'Retimer 5'),
+        ('retimer_6', 'Retimer 6'),
+        ('retimer_7', 'Retimer 7'),
+    ]
+    
+    product_type = models.CharField(
+        max_length=20,
+        choices=PRODUCT_CHOICES,
+        help_text='Product type (e.g., H100_AC, B200_LC)',
+        verbose_name='Product Type'
+    )
+    eco_number = models.CharField(
+        max_length=100,
+        help_text='ECO number (free text)',
+        verbose_name='ECO Number'
+    )
+    file_type = models.CharField(
+        max_length=20,
+        choices=FILE_TYPE_CHOICES,
+        help_text='Firmware file type (GPU or retimer)',
+        verbose_name='File Type'
+    )
+    filename = models.CharField(
+        max_length=255,
+        help_text='Stored filename',
+        verbose_name='Filename'
+    )
+    original_filename = models.CharField(
+        max_length=255,
+        help_text='Original uploaded filename',
+        verbose_name='Original Filename',
+        default='',
+        blank=True
+    )
+    file_path = models.CharField(
+        max_length=512,
+        help_text='Full path to the firmware file',
+        verbose_name='File Path'
+    )
+    file_size = models.BigIntegerField(
+        help_text='File size in bytes',
+        verbose_name='File Size'
+    )
+    uploaded_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='uploaded_firmware_files',
+        help_text='User who uploaded this file',
+        verbose_name='Uploaded By'
+    )
+    uploaded_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text='When this file was uploaded',
+        verbose_name='Uploaded At'
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text='Last update time',
+        verbose_name='Updated At'
+    )
+    
+    class Meta:
+        ordering = ['product_type', 'eco_number', 'file_type']
+        verbose_name = 'Firmware File'
+        verbose_name_plural = 'Firmware Files'
+        unique_together = ('product_type', 'eco_number', 'file_type')
+        indexes = [
+            models.Index(fields=['product_type', 'eco_number']),
+            models.Index(fields=['uploaded_by']),
+            models.Index(fields=['uploaded_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.product_type}/{self.eco_number}/{self.file_type} - {self.filename}"
+    
+    def get_file_size_display(self):
+        """Return human-readable file size"""
+        size = self.file_size
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if size < 1024.0:
+                return f"{size:.1f} {unit}"
+            size /= 1024.0
+        return f"{size:.1f} TB"

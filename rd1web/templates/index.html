@@ -183,6 +183,30 @@
                         </a>
                     </div>
                 </div>
+
+                <!-- Firmware Inventory -->
+                {% if perms.pxe.can_access_firmware_inventory %}
+                <div class="feature-card">
+                    <div class="card-icon info">
+                        <i class="fas fa-microchip"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>Firmware Inventory</h3>
+                        <p>Manage and organize firmware files for different GPU models (H100, H200, B200, B300) with ECO-based version control. Upload and track GPU and retimer firmware across product variants.</p>
+                        <div class="card-tags">
+                            <span class="tag primary">Firmware</span>
+                            <span class="tag success">Version Control</span>
+                            <span class="tag warning">GPU/Retimer</span>
+                        </div>
+                    </div>
+                    <div class="card-action">
+                        <a href="{% url 'firmware_inventory' %}" class="btn btn-primary">
+                            <i class="fas fa-folder-open"></i>
+                            Manage Firmware
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </section>
     </div>

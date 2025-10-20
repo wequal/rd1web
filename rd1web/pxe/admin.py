@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.models import User, Group, Permission
 from django.contrib.contenttypes.models import ContentType
-from .models import PxeEntry, ArpScanResult, RmaTestingDb
+from .models import PxeEntry, ArpScanResult, RmaTestingDb, FirmwareFile
 
 
 @admin.register(PxeEntry)
@@ -75,6 +75,50 @@ class RmaTestingDbAdmin(admin.ModelAdmin):
         return request.user.is_superuser
 
 
+@admin.register(FirmwareFile)
+class FirmwareFileAdmin(admin.ModelAdmin):
+    """Admin interface for Firmware Inventory"""
+    
+    list_display = ('product_type', 'eco_number', 'file_type', 'filename', 'file_size_display', 'uploaded_by', 'uploaded_at')
+    list_filter = ('product_type', 'file_type', 'uploaded_at')
+    search_fields = ('product_type', 'eco_number', 'file_type', 'filename')
+    readonly_fields = ('uploaded_at', 'updated_at', 'file_size')
+    ordering = ('-uploaded_at',)
+    
+    fieldsets = (
+        ('Firmware Information', {
+            'fields': ('product_type', 'eco_number', 'file_type')
+        }),
+        ('File Details', {
+            'fields': ('filename', 'file_path', 'file_size')
+        }),
+        ('Tracking', {
+            'fields': ('uploaded_by', 'uploaded_at', 'updated_at')
+        })
+    )
+    
+    def file_size_display(self, obj):
+        """Display human-readable file size"""
+        return obj.get_file_size_display()
+    file_size_display.short_description = "File Size"
+    
+    def has_view_permission(self, request, obj=None):
+        """Only superusers can view Firmware Files in admin"""
+        return request.user.is_superuser
+    
+    def has_add_permission(self, request):
+        """Only superusers can add Firmware Files in admin"""
+        return request.user.is_superuser
+    
+    def has_change_permission(self, request, obj=None):
+        """Only superusers can modify Firmware Files in admin"""
+        return request.user.is_superuser
+    
+    def has_delete_permission(self, request, obj=None):
+        """Only superusers can delete Firmware Files in admin"""
+        return request.user.is_superuser
+
+
 # Create a simpler User admin that doesn't cause TooManyFieldsSent error
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.admin import SimpleListFilter
@@ -117,6 +161,11 @@ class CustomUserForm(forms.ModelForm):
         label='RMA Testing DB Access',
         help_text='Grant access to RMA Testing Database'
     )
+    firmware_inventory_access = forms.BooleanField(
+        required=False,
+        label='Firmware Inventory Access',
+        help_text='Grant access to Firmware Inventory management'
+    )
     
     class Meta:
         model = User
@@ -134,6 +183,7 @@ class CustomUserForm(forms.ModelForm):
             try:
                 self.fields['rma_pxe_access'].initial = self.instance.has_perm('pxe.can_access_rma_pxe')
                 self.fields['rma_testing_db_access'].initial = self.instance.has_perm('pxe.can_access_rma_testing_db')
+                self.fields['firmware_inventory_access'].initial = self.instance.has_perm('pxe.can_access_firmware_inventory')
             except Exception:
                 pass
     
@@ -166,6 +216,19 @@ class CustomUserForm(forms.ModelForm):
                     user.user_permissions.remove(rma_testing_db_perm)
             except Permission.DoesNotExist:
                 pass
+            
+            # Handle Firmware Inventory permission
+            try:
+                firmware_inventory_perm = Permission.objects.get(
+                    content_type__app_label='pxe',
+                    codename='can_access_firmware_inventory'
+                )
+                if self.cleaned_data.get('firmware_inventory_access'):
+                    user.user_permissions.add(firmware_inventory_perm)
+                else:
+                    user.user_permissions.remove(firmware_inventory_perm)
+            except Permission.DoesNotExist:
+                pass
         
         return user
 
@@ -193,7 +256,7 @@ class CustomUserAdmin(BaseUserAdmin):
                     # Add RD1 Web App permissions section
                     new_fieldsets.append((
                         'RD1 Web App Permissions', {
-                            'fields': ('rma_pxe_access', 'rma_testing_db_access'),
+                            'fields': ('rma_pxe_access', 'rma_testing_db_access', 'firmware_inventory_access'),
                             'description': '''
                             <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0;">
                                 <h4>RD1 Web Application Access Control:</h4>

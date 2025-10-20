@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Firmware Inventory{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Main Container */
+    .firmware-container {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        padding: 0;
+        margin-bottom: 30px;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .firmware-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        padding: 40px 40px 30px 40px;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .firmware-content {
+        background: white;
+        padding: 40px;
+    }
+    
+    /* Page Header */
+    .page-header {
+        margin-bottom: 10px;
+        text-align: center;
+    }
+    
+    .page-header h1 {
+        margin: 0;
+        color: #1e293b;
+        font-size: 2.5rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+    }
+    
+    /* Product Cards Grid */
+    .products-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 25px;
+        margin-top: 20px;
+    }
+    
+    @media (max-width: 768px) {
+        .products-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    .product-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border-radius: 16px;
+        padding: 40px 30px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        border: 2px solid #e2e8f0;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 160px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .product-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        transform: scaleX(0);
+        transition: transform 0.3s ease;
+    }
+    
+    .product-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+        border-color: #cbd5e0;
+        text-decoration: none;
+        background: white;
+    }
+    
+    .product-card:hover::before {
+        transform: scaleX(1);
+    }
+    
+    .product-card-header {
+        text-align: center;
+        width: 100%;
+    }
+    
+    .product-info h3 {
+        margin: 0 0 12px 0;
+        color: #1e293b;
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: -0.3px;
+    }
+    
+    .product-code {
+        color: #64748b;
+        font-size: 0.9rem;
+        font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+        background: #f1f5f9;
+        padding: 6px 14px;
+        border-radius: 8px;
+        display: inline-block;
+        font-weight: 500;
+    }
+    
+    /* Breadcrumb */
+    .breadcrumb-custom {
+        background: transparent;
+        padding: 0;
+        margin-bottom: 20px;
+    }
+    
+    .breadcrumb-custom .breadcrumb-item {
+        color: #718096;
+    }
+    
+    .breadcrumb-custom .breadcrumb-item.active {
+        color: #2d3748;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mt-4">
+        <ol class="breadcrumb breadcrumb-custom">
+            <li class="breadcrumb-item"><a href="{% url 'index' %}">Dashboard</a></li>
+            <li class="breadcrumb-item active">Firmware Inventory</li>
+        </ol>
+    </nav>
+    
+    <!-- Main Container -->
+    <div class="firmware-container">
+        <!-- Header -->
+        <div class="firmware-header">
+            <div class="page-header">
+                <h1>Firmware Inventory</h1>
+            </div>
+        </div>
+        
+        <!-- Content -->
+        <div class="firmware-content">
+            <div class="products-grid">
+                {% for product in product_types %}
+                <a href="{% url 'firmware_inventory_eco_list' product.code %}" class="product-card">
+                    <div class="product-card-header">
+                        <div class="product-info">
+                            <h3>{{ product.name }}</h3>
+                            <span class="product-code">{{ product.code }}</span>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
