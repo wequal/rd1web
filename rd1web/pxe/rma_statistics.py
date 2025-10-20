@@ -230,14 +230,13 @@ def scan_rma_directory(dir_name):
         # Get GPU model
         gpu_model = parse_sys_info_file(sys_info_path)
         
-        # Get directory mtime for test_date
+        # Get test_results.log mtime for test_date (more accurate than directory mtime)
         try:
-            dir_stat = os.stat(dir_path)
-            test_date = datetime.fromtimestamp(dir_stat.st_mtime)
+            test_date = datetime.fromtimestamp(file_mtime)
             # Make it timezone aware
             test_date = timezone.make_aware(test_date)
         except Exception as e:
-            logger.warning(f"Cannot get directory mtime, using current time: {e}")
+            logger.warning(f"Cannot get file mtime, using current time: {e}")
             test_date = timezone.now()
         
         # Update or create database record

@@ -1,3 +1,69 @@
+# Fix RMA Statistics Weekly Data Issue
+
+## Problem Analysis
+The RMA statistics for "this week" shows no data because the `test_date` field uses directory modification time (`st_mtime`) instead of the `test_results.log` file modification time. When RMA directories are created/modified in previous weeks, they don't appear in current week statistics even if tests were run recently.
+
+## Solution Plan
+
+### ✅ 1. Update `test_date` to use `test_results.log` mtime
+- **File**: `/home/devin/rd1web-dev/rd1web/pxe/rma_statistics.py`
+- **Location**: Line 236 in `scan_rma_directory()` function
+- **Change**: Use `file_mtime` (test_results.log mtime) instead of `dir_stat.st_mtime`
+- **Impact**: Minimal - changes how test_date is calculated for more accuracy
+- **Result**: Successfully updated
+
+### ✅ 2. Re-populate RMA statistics database
+- **Command**: `source venv/bin/activate && python3 rd1web/manage.py populate_rma_statistics`
+- **Purpose**: Update all existing records with the correct test_date based on test_results.log timestamps
+- **Impact**: Updates all existing database records
+- **Result**: Successfully processed 35 records, skipped 98 (no changes), 12 errors (missing test_results.log)
+
+### ✅ 3. Verify the fix
+- **Action**: Check RMA statistics page to confirm this week's data appears
+- **Verification**: Ensure records show up in correct weekly periods
+- **Impact**: None - validation only
+- **Result**: ✅ **SUCCESS! This week now has 11 records** (Oct 20-26, 2025)
+  - Most recent: 2025-10-20 23:22 (H200 GPU)
+  - Total database records: 137
+
+## Technical Details
+
+**Current Code (Line 233-241):**
+```python
+# Get directory mtime for test_date
+try:
+    dir_stat = os.stat(dir_path)
+    test_date = datetime.fromtimestamp(dir_stat.st_mtime)  # ❌ Wrong: uses directory mtime
+    # Make it timezone aware
+    test_date = timezone.make_aware(test_date)
+except Exception as e:
+    logger.warning(f"Cannot get directory mtime, using current time: {e}")
+    test_date = timezone.now()
+```
+
+**Fixed Code:**
+```python
+# Get test_results.log mtime for test_date (more accurate)
+try:
+    test_date = datetime.fromtimestamp(file_mtime)  # ✅ Correct: uses test_results.log mtime
+    # Make it timezone aware
+    test_date = timezone.make_aware(test_date)
+except Exception as e:
+    logger.warning(f"Cannot get file mtime, using current time: {e}")
+    test_date = timezone.now()
+```
+
+**Why this is better:**
+- `file_mtime` is already calculated from `test_results.log` (line 209)
+- Test results file reflects when the test was actually run
+- Directory mtime can be outdated if directory was created weeks ago
+
+## Files to Modify
+
+1. `/home/devin/rd1web-dev/rd1web/pxe/rma_statistics.py` - Update test_date calculation logic
+
+---
+
 # User Admin Sessions and Activities with Pagination
 
 ## Implementation Plan
