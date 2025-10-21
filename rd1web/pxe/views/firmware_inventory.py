@@ -121,18 +121,25 @@ def firmware_inventory_eco_list(request, product_type):
     
     if os.path.exists(product_dir):
         try:
+            from django.db.models import Count
+            from datetime import datetime
+            
+            # Get all file counts in ONE query (fixes N+1 problem)
+            file_counts = dict(
+                FirmwareFile.objects.filter(product_type=product_type)
+                .values('eco_number')
+                .annotate(count=Count('id'))
+                .values_list('eco_number', 'count')
+            )
+            
             for item in os.listdir(product_dir):
                 item_path = os.path.join(product_dir, item)
                 if os.path.isdir(item_path):
-                    # Get file count for this ECO
-                    file_count = FirmwareFile.objects.filter(
-                        product_type=product_type,
-                        eco_number=item
-                    ).count()
+                    # Get file count from dictionary (no additional query)
+                    file_count = file_counts.get(item, 0)
                     
                     # Get last modified time
                     mtime = os.path.getmtime(item_path)
-                    from datetime import datetime
                     last_modified = datetime.fromtimestamp(mtime)
                     
                     eco_folders.append({
@@ -143,6 +150,8 @@ def firmware_inventory_eco_list(request, product_type):
             
             # Sort by ECO number
             eco_folders.sort(key=lambda x: x['eco_number'])
+            
+            logger.info(f"Listed {len(eco_folders)} ECO folders for {product_type} with {len(file_counts)} DB entries (1 query)")
             
         except Exception as e:
             logger.error(f"Error listing ECO folders for {product_type}: {e}")
@@ -271,6 +280,7 @@ def firmware_inventory_file_upload(request, product_type, eco_number):
     if form.is_valid():
         uploaded_count = 0
         errors = []
+        saved_files_info = []
         
         # Define file type mapping
         file_type_mapping = {
@@ -278,104 +288,117 @@ def firmware_inventory_file_upload(request, product_type, eco_number):
             'retimer_5_file': ['retimer_5'],
         }
         
-        with transaction.atomic():
-            # Handle regular files (GPU, retimer_5)
-            for field_name, file_types in file_type_mapping.items():
-                if field_name not in form.cleaned_data:
-                    continue
-                    
-                uploaded_file = form.cleaned_data.get(field_name)
-                if not uploaded_file:
-                    continue
+        # PHASE 1: Save files to disk (OUTSIDE transaction - can take time)
+        # Handle regular files (GPU, retimer_5)
+        for field_name, file_types in file_type_mapping.items():
+            if field_name not in form.cleaned_data:
+                continue
                 
-                file_type = file_types[0]
+            uploaded_file = form.cleaned_data.get(field_name)
+            if not uploaded_file:
+                continue
+            
+            file_type = file_types[0]
+            
+            try:
+                # Get file extension
+                original_filename = uploaded_file.name
+                _, file_extension = os.path.splitext(original_filename)
                 
+                # Generate new filename: {PRODUCT}_{ECO}_{TYPE}.ext
+                new_filename = f"{product_type}_{eco_number}_{file_type}{file_extension}"
+                file_path = os.path.join(eco_dir, new_filename)
+                
+                # Save file to disk (outside transaction)
+                with open(file_path, 'wb+') as destination:
+                    for chunk in uploaded_file.chunks():
+                        destination.write(chunk)
+                
+                # Get file size
+                file_size = os.path.getsize(file_path)
+                
+                # Store info for database update
+                saved_files_info.append({
+                    'file_type': file_type,
+                    'filename': new_filename,
+                    'original_filename': original_filename,
+                    'file_path': file_path,
+                    'file_size': file_size,
+                })
+                
+                logger.info(f"Saved file to disk: {new_filename}")
+                
+            except Exception as e:
+                error_msg = f"Error saving {file_type} to disk: {str(e)}"
+                errors.append(error_msg)
+                logger.error(error_msg)
+        
+        # Handle combined retimer_0_1_2_3_4_6_7_file
+        combined_file = form.cleaned_data.get('retimer_0_1_2_3_4_6_7_file')
+        if combined_file:
+            # Create 7 copies for retimer_0, 1, 2, 3, 4, 6, 7
+            for retimer_num in [0, 1, 2, 3, 4, 6, 7]:
+                file_type = f'retimer_{retimer_num}'
                 try:
                     # Get file extension
-                    original_filename = uploaded_file.name
+                    original_filename = combined_file.name
                     _, file_extension = os.path.splitext(original_filename)
                     
-                    # Generate new filename: {PRODUCT}_{ECO}_{TYPE}.ext
+                    # Generate new filename
                     new_filename = f"{product_type}_{eco_number}_{file_type}{file_extension}"
                     file_path = os.path.join(eco_dir, new_filename)
                     
-                    # Save file to disk
+                    # Save file to disk (copy the same file for each retimer)
+                    combined_file.seek(0)  # Reset file pointer
                     with open(file_path, 'wb+') as destination:
-                        for chunk in uploaded_file.chunks():
+                        for chunk in combined_file.chunks():
                             destination.write(chunk)
                     
                     # Get file size
                     file_size = os.path.getsize(file_path)
                     
-                    # Update or create database record
-                    firmware_file, created = FirmwareFile.objects.update_or_create(
-                        product_type=product_type,
-                        eco_number=eco_number,
-                        file_type=file_type,
-                        defaults={
-                            'filename': new_filename,
-                            'original_filename': original_filename,
-                            'file_path': file_path,
-                            'file_size': file_size,
-                            'uploaded_by': request.user,
-                        }
-                    )
+                    # Store info for database update
+                    saved_files_info.append({
+                        'file_type': file_type,
+                        'filename': new_filename,
+                        'original_filename': original_filename,
+                        'file_path': file_path,
+                        'file_size': file_size,
+                    })
                     
-                    uploaded_count += 1
-                    action = 'Updated' if not created else 'Uploaded'
-                    logger.info(f"{action} firmware file: {new_filename} by user {request.user.username}")
+                    logger.info(f"Saved file to disk: {new_filename}")
                     
                 except Exception as e:
-                    error_msg = f"Error uploading {file_type}: {str(e)}"
+                    error_msg = f"Error saving {file_type} to disk: {str(e)}"
                     errors.append(error_msg)
                     logger.error(error_msg)
-            
-            # Handle combined retimer_0_1_2_3_4_6_7_file
-            combined_file = form.cleaned_data.get('retimer_0_1_2_3_4_6_7_file')
-            if combined_file:
-                # Create 7 copies for retimer_0, 1, 2, 3, 4, 6, 7
-                for retimer_num in [0, 1, 2, 3, 4, 6, 7]:
-                    file_type = f'retimer_{retimer_num}'
-                    try:
-                        # Get file extension
-                        original_filename = combined_file.name
-                        _, file_extension = os.path.splitext(original_filename)
-                        
-                        # Generate new filename
-                        new_filename = f"{product_type}_{eco_number}_{file_type}{file_extension}"
-                        file_path = os.path.join(eco_dir, new_filename)
-                        
-                        # Save file to disk (copy the same file for each retimer)
-                        combined_file.seek(0)  # Reset file pointer
-                        with open(file_path, 'wb+') as destination:
-                            for chunk in combined_file.chunks():
-                                destination.write(chunk)
-                        
-                        # Get file size
-                        file_size = os.path.getsize(file_path)
-                        
-                        # Update or create database record
+        
+        # PHASE 2: Update database (INSIDE transaction - fast operations only)
+        if saved_files_info:
+            try:
+                with transaction.atomic():
+                    for file_info in saved_files_info:
                         firmware_file, created = FirmwareFile.objects.update_or_create(
                             product_type=product_type,
                             eco_number=eco_number,
-                            file_type=file_type,
+                            file_type=file_info['file_type'],
                             defaults={
-                                'filename': new_filename,
-                                'original_filename': original_filename,
-                                'file_path': file_path,
-                                'file_size': file_size,
+                                'filename': file_info['filename'],
+                                'original_filename': file_info['original_filename'],
+                                'file_path': file_info['file_path'],
+                                'file_size': file_info['file_size'],
                                 'uploaded_by': request.user,
                             }
                         )
                         
                         uploaded_count += 1
                         action = 'Updated' if not created else 'Uploaded'
-                        logger.info(f"{action} firmware file: {new_filename} by user {request.user.username}")
+                        logger.info(f"{action} firmware file in DB: {file_info['filename']} by user {request.user.username}")
                         
-                    except Exception as e:
-                        error_msg = f"Error uploading {file_type}: {str(e)}"
-                        errors.append(error_msg)
-                        logger.error(error_msg)
+            except Exception as e:
+                error_msg = f"Error updating database records: {str(e)}"
+                errors.append(error_msg)
+                logger.error(error_msg)
         
         if uploaded_count > 0:
             messages.success(request, f'Successfully uploaded {uploaded_count} firmware file(s)')

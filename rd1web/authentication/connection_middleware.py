@@ -1,5 +1,8 @@
 from django.db import connection
 from django.utils.deprecation import MiddlewareMixin
+import logging
+
+logger = logging.getLogger(__name__)
 
 class DBConnectionMiddleware(MiddlewareMixin):
     """
@@ -14,4 +17,18 @@ class DBConnectionMiddleware(MiddlewareMixin):
         Close the database connection after the response has been prepared.
         """
         connection.close()
-        return response 
+        return response
+    
+    def process_exception(self, request, exception):
+        """
+        Close the database connection even when exceptions occur.
+        This prevents connection leaks when views raise unhandled exceptions.
+        """
+        try:
+            connection.close()
+            logger.debug("Closed database connection after exception")
+        except Exception as e:
+            logger.error(f"Error closing database connection in exception handler: {e}")
+        
+        # Return None to let Django handle the exception normally
+        return None 
