@@ -428,3 +428,59 @@ def firmware_inventory_file_delete(request, file_id):
             'error': f'Failed to delete file: {str(e)}'
         }, status=500)
 
+
+@login_required
+@permission_required('pxe.can_access_firmware_inventory', raise_exception=True)
+@require_http_methods(["POST"])
+def firmware_inventory_eco_delete(request, product_type, eco_number):
+    """Delete an entire ECO folder and all its firmware files (AJAX endpoint)"""
+    
+    try:
+        import shutil
+        
+        # Validate product type
+        product_info = get_product_info(product_type)
+        if not product_info:
+            return JsonResponse({
+                'success': False,
+                'error': f'Invalid product type: {product_type}'
+            }, status=400)
+        
+        # Get the ECO directory path
+        eco_dir = os.path.join(FIRMWARE_BASE_DIR, product_type, eco_number)
+        
+        if not os.path.exists(eco_dir):
+            return JsonResponse({
+                'success': False,
+                'error': f'ECO folder "{eco_number}" does not exist'
+            }, status=404)
+        
+        # Delete all database records for this ECO
+        deleted_count = FirmwareFile.objects.filter(
+            product_type=product_type,
+            eco_number=eco_number
+        ).delete()[0]
+        
+        # Delete the ECO folder from filesystem
+        try:
+            shutil.rmtree(eco_dir)
+            logger.info(f"Deleted ECO folder: {eco_dir} ({deleted_count} DB records) by user {request.user.username}")
+        except Exception as e:
+            logger.error(f"Error deleting ECO folder {eco_dir}: {e}")
+            return JsonResponse({
+                'success': False,
+                'error': f'Failed to delete ECO folder from filesystem: {str(e)}'
+            }, status=500)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'ECO folder "{eco_number}" and {deleted_count} file record(s) deleted successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error deleting ECO folder {product_type}/{eco_number}: {e}")
+        return JsonResponse({
+            'success': False,
+            'error': f'Failed to delete ECO folder: {str(e)}'
+        }, status=500)
+

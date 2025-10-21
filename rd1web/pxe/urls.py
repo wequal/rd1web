@@ -19,7 +19,7 @@ from .views.remote_control import (
 )
 from .views.archive import archive_system
 from .views.mac_ip_view import mac_ip_results, mac_ip_api, manual_scan, scan_status_api
-from .views.rma_pxe import rma_pxe
+from .views.rma_pxe import rma_pxe, get_eco_numbers_api
 from .views.rma_logs import rma_log, rma_view_file, rma_download_folder, rma_download_folder_async, rma_download_folder_status, rma_collect_mi3xx_alllog, rma_collect_mi3xx_alllog_status
 from .views.rma_testing_db import (
     rma_testing_db_list, 
@@ -38,6 +38,7 @@ from .views.firmware_inventory import (
     firmware_inventory_eco_list,
     firmware_inventory_eco_create,
     firmware_inventory_eco_detail,
+    firmware_inventory_eco_delete,
     firmware_inventory_file_upload,
     firmware_inventory_file_delete,
 )
@@ -92,6 +93,9 @@ urlpatterns = [
     path('rma/golden/link/<int:entry_id>/', golden_link, name='golden_link'),
     path('rma/golden/unlink/<int:entry_id>/', golden_unlink, name='golden_unlink'),
     
+    # RMA API URLs
+    path('api/rma/eco-numbers/<str:image_type>/', get_eco_numbers_api, name='rma_eco_numbers_api'),
+    
     # RMA Testing DB URLs
     path('rma/testing-db/', rma_testing_db_list, name='rma_testing_db'),
     path('rma/testing-db/add/', rma_testing_db_add, name='rma_testing_db_add'),
@@ -114,6 +118,7 @@ urlpatterns = [
     path('rma/firmware-inventory/<str:product_type>/', firmware_inventory_eco_list, name='firmware_inventory_eco_list'),
     path('rma/firmware-inventory/<str:product_type>/create-eco/', firmware_inventory_eco_create, name='firmware_inventory_eco_create'),
     path('rma/firmware-inventory/<str:product_type>/<str:eco_number>/', firmware_inventory_eco_detail, name='firmware_inventory_eco_detail'),
+    path('rma/firmware-inventory/<str:product_type>/<str:eco_number>/delete/', firmware_inventory_eco_delete, name='firmware_inventory_eco_delete'),
     path('rma/firmware-inventory/<str:product_type>/<str:eco_number>/upload/', firmware_inventory_file_upload, name='firmware_inventory_file_upload'),
     path('rma/firmware-inventory/file/<int:file_id>/delete/', firmware_inventory_file_delete, name='firmware_inventory_file_delete'),
 ]

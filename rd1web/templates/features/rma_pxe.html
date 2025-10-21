@@ -143,8 +143,7 @@
                                         </label>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="col-md-3">
+                                <div class="col-md-3">
                                     <div class="form-check">
                                         <input type="checkbox" class="form-check-input" name="tests" value="gpudiag" id="id_tests_4">
                                         <label class="form-check-label" for="id_tests_4">
@@ -152,7 +151,7 @@
                                         </label>
                                     </div>
                                 </div>
-                            <div class="col-md-3">
+                                <div class="col-md-3">
                                     <div class="form-check">
                                         <input type="checkbox" class="form-check-input" name="tests" value="level3_test" id="id_tests_5">
                                         <label class="form-check-label" for="id_tests_5">
@@ -160,6 +159,15 @@
                                         </label>
                                     </div>
                                 </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" name="fw_update" id="id_fw_update">
+                                        <label class="form-check-label" for="id_fw_update">
+                                            Firmware Update
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                             {% if form.tests.errors %}
                                 <div class="text-danger mt-1">
                                     {% for error in form.tests.errors %}
@@ -169,9 +177,18 @@
                             {% endif %}
                             <div id="tests-validation-message" class="text-warning mt-2" style="display: none;">
                                 <small><i class="fas fa-exclamation-triangle me-1"></i>
-                                    You can select either 'Default' test OR any combination of 'Pre GPU Test', 'DCGM', 'GPU Field Diag', 'FD2', 'AGHFC Level 3', but 'Default' cannot be combined with other tests.
+                                    You can select either 'Default' test OR any combination of 'Pre GPU Test', 'DCGM', 'GPU Field Diag', 'FD2', 'AGHFC Level 3', 'Firmware Update', but 'Default' cannot be combined with other tests.
                                 </small>
                             </div>
+                        </div>
+
+                        <!-- ECO Number Section (shown when fw_update is checked) -->
+                        <div id="eco-number-section" class="mb-4" style="display: none;">
+                            <label for="{{ form.eco_number.id_for_label }}" class="form-label fw-bold">{{ form.eco_number.label }}</label>
+                            <small class="form-text text-muted d-block mb-2">
+                                Select ECO number from Firmware Inventory based on the image type.
+                            </small>
+                            {{ form.eco_number }}
                         </div>
 
                         <!-- Action Options -->
@@ -487,8 +504,9 @@
             const fd2Checkbox = document.getElementById('id_tests_3');
             const gpudiagCheckbox = document.getElementById('id_tests_4');
             const level3Checkbox = document.getElementById('id_tests_5');
+            const fwUpdateCheckboxTest = document.getElementById('id_fw_update');
             
-            const otherCheckboxes = [nvidiaCheckbox, dcgmCheckbox, fd2Checkbox, gpudiagCheckbox, level3Checkbox].filter(cb => cb !== null);
+            const otherCheckboxes = [nvidiaCheckbox, dcgmCheckbox, fd2Checkbox, gpudiagCheckbox, level3Checkbox, fwUpdateCheckboxTest].filter(cb => cb !== null);
             const testCheckboxes = [defaultCheckbox, ...otherCheckboxes].filter(cb => cb !== null);
             
             // Function to validate test selections
@@ -516,6 +534,10 @@
                         otherCheckboxes.forEach(function(cb) {
                             cb.checked = false;
                         });
+                        // Also update ECO section when firmware update gets unchecked
+                        if (typeof updateEcoSection === 'function') {
+                            updateEcoSection();
+                        }
                     } else {
                         // If any other test is selected, uncheck default
                         if (defaultCheckbox) {
@@ -564,7 +586,7 @@
             
             // Validate test selections
             if (defaultCheckbox && !validateTestSelections()) {
-                alert('Invalid test selection: You cannot combine Default test with other specific tests (Pre GPU Test, DCGM, FD2).');
+                alert('Invalid test selection: You cannot combine Default test with other specific tests (Pre GPU Test, DCGM, FD2, GPU Field Diag, AGHFC Level 3, Firmware Update).');
                 e.preventDefault();
                 return;
             }
@@ -656,6 +678,116 @@
             }
             return cookieValue;
         }
+        
+        // Firmware Update and ECO Number functionality
+        const fwUpdateCheckbox = document.getElementById('id_fw_update');
+        const ecoNumberSection = document.getElementById('eco-number-section');
+        const ecoNumberSelect = document.getElementById('{{ form.eco_number.id_for_label }}');
+        // Note: imageSelect is already declared above, reusing it
+        
+        console.log('Firmware Update Elements:', {
+            fwUpdateCheckbox,
+            ecoNumberSection,
+            ecoNumberSelect,
+            imageSelect,
+            fwUpdateId: 'id_fw_update',
+            ecoNumberId: '{{ form.eco_number.id_for_label }}'
+        });
+        
+        // Function to load ECO numbers from API based on image type
+        async function loadEcoNumbers(imageType) {
+            if (!ecoNumberSelect) return;
+            
+            console.log(`Loading ECO numbers for image type: ${imageType}`);
+            
+            try {
+                const response = await fetch(`/api/rma/eco-numbers/${imageType}/`);
+                const data = await response.json();
+                
+                console.log('ECO API response:', data);
+                
+                if (data.success && data.eco_numbers) {
+                    console.log(`Found ${data.eco_numbers.length} ECO numbers:`, data.eco_numbers);
+                    
+                    if (data.debug) {
+                        console.log('Debug info:', data.debug);
+                    }
+                    
+                    // Clear existing options
+                    ecoNumberSelect.innerHTML = '<option value="">-- Select ECO Number --</option>';
+                    
+                    // Add ECO numbers as options
+                    data.eco_numbers.forEach(eco => {
+                        const option = document.createElement('option');
+                        option.value = eco;
+                        option.textContent = eco;
+                        ecoNumberSelect.appendChild(option);
+                    });
+                    
+                    console.log(`Populated dropdown with ${data.eco_numbers.length} ECO numbers`);
+                } else {
+                    console.error('Failed to load ECO numbers:', data.error);
+                    ecoNumberSelect.innerHTML = '<option value="">-- No ECO numbers available --</option>';
+                }
+            } catch (error) {
+                console.error('Error fetching ECO numbers:', error);
+                ecoNumberSelect.innerHTML = '<option value="">-- Error loading ECO numbers --</option>';
+            }
+        }
+        
+        // Function to show/hide ECO section and load appropriate ECO numbers
+        function updateEcoSection() {
+            if (!fwUpdateCheckbox || !imageSelect) {
+                console.log('Missing elements:', { fwUpdateCheckbox, imageSelect });
+                return;
+            }
+            
+            const selectedImage = imageSelect.value;
+            const fwUpdateChecked = fwUpdateCheckbox.checked;
+            
+            console.log('updateEcoSection called:', { selectedImage, fwUpdateChecked });
+            
+            // Show ECO section only if fw_update is checked and image is H100/200 or B200
+            if (fwUpdateChecked && (selectedImage === 'ubuntu2204-x86-rma' || selectedImage === 'ubuntu2204-b200-rma')) {
+                console.log('Showing ECO section');
+                if (ecoNumberSection) {
+                    ecoNumberSection.style.display = 'block';
+                    // Load ECO numbers for the selected image type
+                    loadEcoNumbers(selectedImage);
+                } else {
+                    console.error('ecoNumberSection element not found!');
+                }
+            } else {
+                console.log('Hiding ECO section - fwUpdateChecked:', fwUpdateChecked);
+                if (ecoNumberSection) {
+                    ecoNumberSection.style.display = 'none';
+                }
+                // Clear the ECO number selection
+                if (ecoNumberSelect) {
+                    ecoNumberSelect.innerHTML = '<option value="">-- Select ECO Number --</option>';
+                    ecoNumberSelect.value = '';
+                }
+            }
+        }
+        
+        // Add event listeners
+        if (fwUpdateCheckbox) {
+            console.log('Adding change listener to fwUpdateCheckbox');
+            fwUpdateCheckbox.addEventListener('change', updateEcoSection);
+        } else {
+            console.error('fwUpdateCheckbox not found!');
+        }
+        
+        if (imageSelect) {
+            console.log('Adding change listener to imageSelect for ECO');
+            imageSelect.addEventListener('change', updateEcoSection);
+        } else {
+            console.error('imageSelect not found for ECO!');
+        }
+        
+        // Initialize on page load
+        console.log('Calling updateEcoSection on page load');
+        updateEcoSection();
     });
 </script>
 {% endblock %}

@@ -258,6 +258,8 @@ class RmaForm(forms.Form):
     image=forms.ChoiceField(choices=[('ubuntu2204-x86-rma','H100/200'),('ubuntu2204-b200-rma','B200'),('ubuntu2204-mi300x','MI300X'),('ubuntu2204-mi325x','MI325X'),('ubuntu2204-mi355x','MI355X')],label='Image')
     remove=forms.BooleanField(required=False,label="Remove",initial=False)
     check=forms.BooleanField(required=False,label="Check",initial=False)
+    fw_update=forms.BooleanField(required=False,label="Firmware Update",initial=False)
+    eco_number=forms.CharField(required=False,label='ECO Number',widget=forms.Select(attrs={'class':'form-control eco-select','style': 'width: 500px;'}))
     tests = forms.MultipleChoiceField(
     choices=[
         ('default', 'Default'),

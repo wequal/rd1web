@@ -141,6 +141,23 @@
         text-decoration: none;
     }
     
+    .btn-delete-eco {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        margin-left: 8px;
+    }
+    
+    .btn-delete-eco:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+        color: white;
+    }
+    
     .empty-state {
         text-align: center;
         padding: 60px 20px;
@@ -233,6 +250,9 @@
                             <a href="{% url 'firmware_inventory_eco_detail' product_type eco.eco_number %}" class="btn-view-eco">
                                 Manage Files
                             </a>
+                            <button type="button" class="btn-delete-eco" onclick="confirmDeleteEco('{{ eco.eco_number }}', {{ eco.file_count }})">
+                                Delete
+                            </button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -328,6 +348,42 @@ function handleCreateEco(btn) {
     });
     
     return false;
+}
+
+function confirmDeleteEco(ecoNumber, fileCount) {
+    const message = fileCount > 0 
+        ? `Are you sure you want to delete ECO folder "${ecoNumber}" and all ${fileCount} file(s) in it?\n\nThis will:\n- Delete the ECO folder from filesystem\n- Remove all ${fileCount} firmware file records from database\n\nThis action cannot be undone!`
+        : `Are you sure you want to delete ECO folder "${ecoNumber}"?`;
+    
+    if (confirm(message)) {
+        deleteEco(ecoNumber);
+    }
+}
+
+function deleteEco(ecoNumber) {
+    var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    fetch("{% url 'firmware_inventory_eco_delete' product_type 'ECO_NUMBER_PLACEHOLDER' %}".replace('ECO_NUMBER_PLACEHOLDER', ecoNumber), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        if (data.success) {
+            alert('ECO folder "' + ecoNumber + '" deleted successfully');
+            window.location.reload();
+        } else {
+            alert('Error deleting ECO folder: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(function(error) {
+        alert('Error: ' + error.message);
+    });
 }
 </script>
 
