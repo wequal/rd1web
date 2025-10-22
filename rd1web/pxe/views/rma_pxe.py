@@ -47,11 +47,26 @@ def run_rma_command_sync(command, timeout=30):
 def get_eco_numbers_api(request, image_type):
     """API endpoint to get available ECO numbers for a specific image type"""
     try:
+        # Get optional gpu_model and cooling from query parameters
+        gpu_model = request.GET.get('gpu_model', '').lower()
+        cooling = request.GET.get('cooling', '').upper()
+        
         # Map image type to product types
         product_types = []
         if image_type == 'ubuntu2204-x86-rma':
-            # H100/200 images
-            product_types = ['H100_AC', 'H100_LC', 'H200_AC', 'H200_LC']
+            # H100/200 images - filter by gpu_model and cooling if provided
+            if gpu_model and cooling:
+                # Specific filtering based on both gpu_model and cooling
+                product_types = [f'{gpu_model.upper()}_{cooling}']
+            elif gpu_model:
+                # Filter by gpu_model only
+                product_types = [f'{gpu_model.upper()}_AC', f'{gpu_model.upper()}_LC']
+            elif cooling:
+                # Filter by cooling only
+                product_types = [f'H100_{cooling}', f'H200_{cooling}']
+            else:
+                # No filter - show all H100/200
+                product_types = ['H100_AC', 'H100_LC', 'H200_AC', 'H200_LC']
         elif image_type == 'ubuntu2204-b200-rma':
             # B200 images
             product_types = ['B200_AC', 'B200_LC']
@@ -116,16 +131,25 @@ def rma_pxe(request):
             check=bound_form.cleaned_data.get('check', False)
             fw_update=bound_form.cleaned_data.get('fw_update', False)
             eco_number = bound_form.cleaned_data.get('eco_number', '')
+            gpu_model = bound_form.cleaned_data.get('gpu_model', '')
+            cooling = bound_form.cleaned_data.get('cooling', '')
             
             # Debug logging
-            logger.info(f"RMA PXE form submitted: base_sn={base_sn}, rma_number={rma_number}, bmc_ip={bmc_ip}, tests={tests}, fw_update={fw_update}, eco_number={eco_number}, remove={remove}, check={check}")
+            logger.info(f"RMA PXE form submitted: base_sn={base_sn}, rma_number={rma_number}, bmc_ip={bmc_ip}, tests={tests}, fw_update={fw_update}, eco_number={eco_number}, gpu_model={gpu_model}, cooling={cooling}, remove={remove}, check={check}")
             
-            # Build tests parameter including fw_update and eco_number
+            # Build tests parameter including fw_update, eco_number, gpu_model, and cooling
             tests_list = list(tests) if tests else []
             if fw_update:
                 tests_list.append('fw_update')
-                if eco_number:
+                if eco_number and eco_number.strip():
                     tests_list.append(f'eco_number={eco_number}')
+                    logger.info(f"Added eco_number to tests_list: {eco_number}")
+                else:
+                    logger.warning(f"eco_number is empty or None: '{eco_number}'")
+                if gpu_model and gpu_model.strip():
+                    tests_list.append(f'gpu_model={gpu_model}')
+                if cooling and cooling.strip():
+                    tests_list.append(f'cooling={cooling}')
             tests_param = " ".join(tests_list) if tests_list else " "
             
             logger.info(f"Built tests_param: {tests_param}")
@@ -167,15 +191,16 @@ def rma_pxe(request):
                 logger.info(f"Executing PXE generation for {len(macs)} MACs")
                 result['actions']=[]
                 for x in macs:
-                    # Build parameters dict
+                    # Build parameters dict - use tests_param which includes eco_number, gpu_model, cooling
                     params = {
                         'base_sn': base_sn, 
                         'rma_number': rma_number, 
-                        'tests': " ".join(tests) if tests else " ",
-                        'fw_update': fw_update
+                        'tests': tests_param,
+                        'fw_update': fw_update,
+                        'eco_number': eco_number,
+                        'gpu_model': gpu_model,
+                        'cooling': cooling
                     }
-                    if eco_number:
-                        params['eco_number'] = eco_number
                     
                     obj,created = PxeEntry.objects.update_or_create(
                         mac=x,

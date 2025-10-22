@@ -260,6 +260,8 @@ class RmaForm(forms.Form):
     check=forms.BooleanField(required=False,label="Check",initial=False)
     fw_update=forms.BooleanField(required=False,label="Firmware Update",initial=False)
     eco_number=forms.CharField(required=False,label='ECO Number',widget=forms.Select(attrs={'class':'form-control eco-select','style': 'width: 500px;'}))
+    gpu_model=forms.ChoiceField(choices=[('','-- Select GPU Model --'),('h100','H100'),('h200','H200')],required=False,label='GPU Model',widget=forms.Select(attrs={'class':'form-control','style': 'width: 500px;'}))
+    cooling=forms.ChoiceField(choices=[('','-- Select Cooling --'),('AC','AC'),('LC','LC')],required=False,label='Cooling',widget=forms.Select(attrs={'class':'form-control','style': 'width: 500px;'}))
     tests = forms.MultipleChoiceField(
     choices=[
         ('default', 'Default'),

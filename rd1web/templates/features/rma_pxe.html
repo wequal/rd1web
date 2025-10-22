@@ -184,11 +184,35 @@
 
                         <!-- ECO Number Section (shown when fw_update is checked) -->
                         <div id="eco-number-section" class="mb-4" style="display: none;">
-                            <label for="{{ form.eco_number.id_for_label }}" class="form-label fw-bold">{{ form.eco_number.label }}</label>
+                            <label for="{{ form.eco_number.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-microchip me-2 text-info"></i>{{ form.eco_number.label }}
+                            </label>
                             <small class="form-text text-muted d-block mb-2">
                                 Select ECO number from Firmware Inventory based on the image type.
                             </small>
                             {{ form.eco_number }}
+                        </div>
+
+                        <!-- GPU Model Section (shown when fw_update is checked for H100/200) -->
+                        <div id="gpu-model-section" class="mb-4" style="display: none;">
+                            <label for="{{ form.gpu_model.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-server me-2 text-primary"></i>{{ form.gpu_model.label }}
+                            </label>
+                            <small class="form-text text-muted d-block mb-2">
+                                Select GPU model for firmware update.
+                            </small>
+                            {{ form.gpu_model }}
+                        </div>
+
+                        <!-- Cooling Section (shown when fw_update is checked for H100/200) -->
+                        <div id="cooling-section" class="mb-4" style="display: none;">
+                            <label for="{{ form.cooling.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-wind me-2 text-info"></i>{{ form.cooling.label }}
+                            </label>
+                            <small class="form-text text-muted d-block mb-2">
+                                Select cooling type (AC = Air Cooling, LC = Liquid Cooling).
+                            </small>
+                            {{ form.cooling }}
                         </div>
 
                         <!-- Action Options -->
@@ -683,15 +707,25 @@
         const fwUpdateCheckbox = document.getElementById('id_fw_update');
         const ecoNumberSection = document.getElementById('eco-number-section');
         const ecoNumberSelect = document.getElementById('{{ form.eco_number.id_for_label }}');
+        const gpuModelSection = document.getElementById('gpu-model-section');
+        const gpuModelSelect = document.getElementById('{{ form.gpu_model.id_for_label }}');
+        const coolingSection = document.getElementById('cooling-section');
+        const coolingSelect = document.getElementById('{{ form.cooling.id_for_label }}');
         // Note: imageSelect is already declared above, reusing it
         
         console.log('Firmware Update Elements:', {
             fwUpdateCheckbox,
             ecoNumberSection,
             ecoNumberSelect,
+            gpuModelSection,
+            gpuModelSelect,
+            coolingSection,
+            coolingSelect,
             imageSelect,
             fwUpdateId: 'id_fw_update',
-            ecoNumberId: '{{ form.eco_number.id_for_label }}'
+            ecoNumberId: '{{ form.eco_number.id_for_label }}',
+            gpuModelId: '{{ form.gpu_model.id_for_label }}',
+            coolingId: '{{ form.cooling.id_for_label }}'
         });
         
         // Function to load ECO numbers from API based on image type
@@ -700,8 +734,28 @@
             
             console.log(`Loading ECO numbers for image type: ${imageType}`);
             
+            // Save currently selected ECO number
+            const currentlySelected = ecoNumberSelect.value;
+            console.log(`Currently selected ECO: ${currentlySelected}`);
+            
+            // Build query parameters for H100/200 images
+            let queryParams = '';
+            if (imageType === 'ubuntu2204-x86-rma') {
+                const gpuModel = gpuModelSelect ? gpuModelSelect.value : '';
+                const cooling = coolingSelect ? coolingSelect.value : '';
+                
+                const params = new URLSearchParams();
+                if (gpuModel) params.append('gpu_model', gpuModel);
+                if (cooling) params.append('cooling', cooling);
+                
+                if (params.toString()) {
+                    queryParams = '?' + params.toString();
+                }
+                console.log(`ECO API query params: ${queryParams}`);
+            }
+            
             try {
-                const response = await fetch(`/api/rma/eco-numbers/${imageType}/`);
+                const response = await fetch(`/api/rma/eco-numbers/${imageType}/${queryParams}`);
                 const data = await response.json();
                 
                 console.log('ECO API response:', data);
@@ -725,6 +779,14 @@
                     });
                     
                     console.log(`Populated dropdown with ${data.eco_numbers.length} ECO numbers`);
+                    
+                    // Restore previously selected ECO number if it still exists in the new list
+                    if (currentlySelected && data.eco_numbers.includes(currentlySelected)) {
+                        ecoNumberSelect.value = currentlySelected;
+                        console.log(`Restored selected ECO: ${currentlySelected}`);
+                    } else if (currentlySelected && !data.eco_numbers.includes(currentlySelected)) {
+                        console.log(`Previously selected ECO ${currentlySelected} not available in filtered list`);
+                    }
                 } else {
                     console.error('Failed to load ECO numbers:', data.error);
                     ecoNumberSelect.innerHTML = '<option value="">-- No ECO numbers available --</option>';
@@ -757,6 +819,32 @@
                 } else {
                     console.error('ecoNumberSection element not found!');
                 }
+                
+                // Show GPU Model and Cooling sections only for H100/200 (ubuntu2204-x86-rma)
+                if (selectedImage === 'ubuntu2204-x86-rma') {
+                    console.log('Showing GPU Model and Cooling sections for H100/200');
+                    if (gpuModelSection) {
+                        gpuModelSection.style.display = 'block';
+                    }
+                    if (coolingSection) {
+                        coolingSection.style.display = 'block';
+                    }
+                } else {
+                    // Hide GPU Model and Cooling for B200 and other images
+                    console.log('Hiding GPU Model and Cooling sections (not H100/200)');
+                    if (gpuModelSection) {
+                        gpuModelSection.style.display = 'none';
+                    }
+                    if (coolingSection) {
+                        coolingSection.style.display = 'none';
+                    }
+                    if (gpuModelSelect) {
+                        gpuModelSelect.value = '';
+                    }
+                    if (coolingSelect) {
+                        coolingSelect.value = '';
+                    }
+                }
             } else {
                 console.log('Hiding ECO section - fwUpdateChecked:', fwUpdateChecked);
                 if (ecoNumberSection) {
@@ -766,6 +854,20 @@
                 if (ecoNumberSelect) {
                     ecoNumberSelect.innerHTML = '<option value="">-- Select ECO Number --</option>';
                     ecoNumberSelect.value = '';
+                }
+                
+                // Also hide GPU Model and Cooling sections
+                if (gpuModelSection) {
+                    gpuModelSection.style.display = 'none';
+                }
+                if (coolingSection) {
+                    coolingSection.style.display = 'none';
+                }
+                if (gpuModelSelect) {
+                    gpuModelSelect.value = '';
+                }
+                if (coolingSelect) {
+                    coolingSelect.value = '';
                 }
             }
         }
@@ -783,6 +885,29 @@
             imageSelect.addEventListener('change', updateEcoSection);
         } else {
             console.error('imageSelect not found for ECO!');
+        }
+        
+        // Add event listeners for GPU Model and Cooling to reload ECO numbers
+        if (gpuModelSelect) {
+            console.log('Adding change listener to gpuModelSelect');
+            gpuModelSelect.addEventListener('change', function() {
+                const selectedImage = imageSelect.value;
+                if (fwUpdateCheckbox.checked && selectedImage === 'ubuntu2204-x86-rma') {
+                    console.log('GPU Model changed, reloading ECO numbers');
+                    loadEcoNumbers(selectedImage);
+                }
+            });
+        }
+        
+        if (coolingSelect) {
+            console.log('Adding change listener to coolingSelect');
+            coolingSelect.addEventListener('change', function() {
+                const selectedImage = imageSelect.value;
+                if (fwUpdateCheckbox.checked && selectedImage === 'ubuntu2204-x86-rma') {
+                    console.log('Cooling changed, reloading ECO numbers');
+                    loadEcoNumbers(selectedImage);
+                }
+            });
         }
         
         // Initialize on page load
