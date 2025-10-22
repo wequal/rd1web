@@ -210,12 +210,15 @@ def scan_rma_directory(dir_name):
         except Exception as e:
             return False, f"Cannot get mtime for test_results.log: {e}"
         
-        # Check if we need to rescan
-        existing_record = RmaTestStatistic.objects.filter(directory_name=dir_name).first()
+        # Check if this exact test version already exists
+        existing_record = RmaTestStatistic.objects.filter(
+            directory_name=dir_name,
+            file_mtime=file_mtime
+        ).first()
         
-        if existing_record and existing_record.file_mtime == file_mtime:
-            # File hasn't changed, skip
-            return True, f"Skipped (no changes): {dir_name}"
+        if existing_record:
+            # This exact test file version is already recorded, skip
+            return True, f"Skipped (already recorded): {dir_name}"
         
         # Read test_results.log
         try:
@@ -239,21 +242,18 @@ def scan_rma_directory(dir_name):
             logger.warning(f"Cannot get file mtime, using current time: {e}")
             test_date = timezone.now()
         
-        # Update or create database record
-        RmaTestStatistic.objects.update_or_create(
+        # Always CREATE a new record (never update)
+        RmaTestStatistic.objects.create(
             directory_name=dir_name,
-            defaults={
-                'base_sn': base_sn,
-                'rma_number': rma_number,
-                'gpu_model': gpu_model,
-                'test_date': test_date,
-                'test_results': test_results,
-                'file_mtime': file_mtime,
-            }
+            base_sn=base_sn,
+            rma_number=rma_number,
+            gpu_model=gpu_model,
+            test_date=test_date,
+            test_results=test_results,
+            file_mtime=file_mtime,
         )
         
-        action = "Updated" if existing_record else "Created"
-        return True, f"{action}: {dir_name} ({gpu_model})"
+        return True, f"Created: {dir_name} ({gpu_model})"
         
     except Exception as e:
         logger.error(f"Error scanning directory {dir_name}: {e}")

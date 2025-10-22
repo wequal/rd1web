@@ -169,7 +169,7 @@ class RmaTestStatistic(models.Model):
     """
     directory_name = models.CharField(
         max_length=255,
-        unique=True,
+        db_index=True,
         help_text='RMA directory name (e.g., 1660224656070_XD250311087)',
         verbose_name='Directory Name'
     )
@@ -215,6 +215,7 @@ class RmaTestStatistic(models.Model):
         ordering = ['-test_date']
         verbose_name = 'RMA Test Statistic'
         verbose_name_plural = 'RMA Test Statistics'
+        unique_together = [['directory_name', 'file_mtime']]
         indexes = [
             models.Index(fields=['test_date']),
             models.Index(fields=['gpu_model']),
