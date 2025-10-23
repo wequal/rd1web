@@ -204,21 +204,39 @@ def scan_rma_directory(dir_name):
         if not os.path.exists(test_results_path):
             return False, f"test_results.log not found in {dir_name}"
         
-        # Get file mtime
+        # Get directory mtime for test_date
+        try:
+            dir_mtime = os.path.getmtime(dir_path)
+        except Exception as e:
+            return False, f"Cannot get mtime for directory: {e}"
+        
+        # Get test_results.log mtime for change detection
         try:
             file_mtime = os.path.getmtime(test_results_path)
         except Exception as e:
             return False, f"Cannot get mtime for test_results.log: {e}"
         
-        # Check if this exact test version already exists
+        # Check if this directory already has a record with same file_mtime
         existing_record = RmaTestStatistic.objects.filter(
             directory_name=dir_name,
             file_mtime=file_mtime
         ).first()
         
         if existing_record:
-            # This exact test file version is already recorded, skip
-            return True, f"Skipped (already recorded): {dir_name}"
+            # Same test results file, just update the directory mtime if changed
+            try:
+                new_test_date = datetime.fromtimestamp(dir_mtime)
+                new_test_date = timezone.make_aware(new_test_date)
+                
+                if existing_record.test_date != new_test_date:
+                    existing_record.test_date = new_test_date
+                    existing_record.save(update_fields=['test_date'])
+                    return True, f"Updated test_date for: {dir_name}"
+                else:
+                    return True, f"Skipped (already recorded): {dir_name}"
+            except Exception as e:
+                logger.warning(f"Error updating test_date for {dir_name}: {e}")
+                return True, f"Skipped (already recorded): {dir_name}"
         
         # Read test_results.log
         try:
@@ -233,27 +251,29 @@ def scan_rma_directory(dir_name):
         # Get GPU model
         gpu_model = parse_sys_info_file(sys_info_path)
         
-        # Get test_results.log mtime for test_date (more accurate than directory mtime)
+        # Use directory mtime for test_date
         try:
-            test_date = datetime.fromtimestamp(file_mtime)
+            test_date = datetime.fromtimestamp(dir_mtime)
             # Make it timezone aware
             test_date = timezone.make_aware(test_date)
         except Exception as e:
-            logger.warning(f"Cannot get file mtime, using current time: {e}")
+            logger.warning(f"Cannot get directory mtime, using current time: {e}")
             test_date = timezone.now()
         
-        # Always CREATE a new record (never update)
-        RmaTestStatistic.objects.create(
+        # Create or update record - ensure only one record per directory
+        RmaTestStatistic.objects.update_or_create(
             directory_name=dir_name,
-            base_sn=base_sn,
-            rma_number=rma_number,
-            gpu_model=gpu_model,
-            test_date=test_date,
-            test_results=test_results,
-            file_mtime=file_mtime,
+            defaults={
+                'base_sn': base_sn,
+                'rma_number': rma_number,
+                'gpu_model': gpu_model,
+                'test_date': test_date,
+                'test_results': test_results,
+                'file_mtime': file_mtime,
+            }
         )
         
-        return True, f"Created: {dir_name} ({gpu_model})"
+        return True, f"Updated: {dir_name} ({gpu_model})"
         
     except Exception as e:
         logger.error(f"Error scanning directory {dir_name}: {e}")
@@ -263,7 +283,8 @@ def scan_rma_directory(dir_name):
 def scan_all_rma_directories():
     """
     Scan all RMA directories and update statistics database
-    Only processes directories where test_results.log has changed
+    Uses directory modification time for test_date
+    Only creates new records when test_results.log changes
     
     Returns:
         dict: Statistics about the scan (processed, skipped, errors)
@@ -372,20 +393,31 @@ def get_weekly_statistics(start_date, end_date):
     """
     Get statistics for a specific week
     
+    Counts unique RMA directories (one per directory name, uses most recent record)
+    
     Args:
         start_date (datetime): Week start date
         end_date (datetime): Week end date
         
     Returns:
-        dict: Statistics with total failures and GPU model breakdown
+        dict: Statistics with total unique RMAs and GPU model breakdown
     """
     # Get all records in the date range
-    records = RmaTestStatistic.objects.filter(
+    all_records = RmaTestStatistic.objects.filter(
         test_date__gte=start_date,
         test_date__lte=end_date
-    )
+    ).order_by('directory_name', '-test_date')
     
-    total_units = records.count()
+    # Get unique directories (most recent record for each directory)
+    seen_directories = set()
+    unique_records = []
+    
+    for record in all_records:
+        if record.directory_name not in seen_directories:
+            seen_directories.add(record.directory_name)
+            unique_records.append(record)
+    
+    total_units = len(unique_records)
     
     # Initialize counters
     total_failures = {
@@ -399,8 +431,8 @@ def get_weekly_statistics(start_date, end_date):
     # Breakdown by GPU model
     gpu_breakdown = {}
     
-    # Process each record
-    for record in records:
+    # Process each unique record
+    for record in unique_records:
         gpu_model = record.gpu_model
         
         # Initialize GPU model entry if not exists
