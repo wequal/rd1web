@@ -1,0 +1,316 @@
+{% extends 'base.html' %}
+{% block title %}RMA General TEST{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">RMA General TEST</h1>
+            <p class="mb-0 text-muted">Configure PXE boot settings for RMA general system testing</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#helpModal">
+                Help
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Form Card -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        RMA General TEST Configuration
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="rmaGeneralForm">
+                        {% csrf_token %}
+                        
+                        <!-- System Serial Number -->
+                        <div class="mb-4">
+                            <label for="{{ form.system_sn.id_for_label }}" class="form-label fw-bold">
+                                {{ form.system_sn.label }}
+                            </label>
+                            {{ form.system_sn }}
+                            {% if form.system_sn.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.system_sn.errors %}
+                                        <small>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Enter the system serial number for RMA tracking.
+                            </small>
+                        </div>
+
+                        <!-- RMA Number -->
+                        <div class="mb-4">
+                            <label for="{{ form.rma_number.id_for_label }}" class="form-label fw-bold">
+                                {{ form.rma_number.label }}
+                            </label>
+                            {{ form.rma_number }}
+                            {% if form.rma_number.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.rma_number.errors %}
+                                        <small>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Enter the RMA number for tracking and identification.
+                            </small>
+                        </div>
+
+                        <!-- NIC MAC -->
+                        <div class="mb-4">
+                            <label for="{{ form.nic_mac.id_for_label }}" class="form-label fw-bold">
+                                {{ form.nic_mac.label }}
+                            </label>
+                            {{ form.nic_mac }}
+                            {% if form.nic_mac.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.nic_mac.errors %}
+                                        <small>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                {{ form.nic_mac.help_text }}
+                            </small>
+                        </div>
+
+                        <!-- Image Selection -->
+                        <div class="mb-4">
+                            <label for="{{ form.image.id_for_label }}" class="form-label fw-bold">
+                                {{ form.image.label }}
+                            </label>
+                            {{ form.image }}
+                            {% if form.image.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.image.errors %}
+                                        <small>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Select the boot image for RMA testing.
+                            </small>
+                        </div>
+
+                        <!-- Tests Selection -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                Tests
+                            </label>
+                            <div id="tests-container" class="row">
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" name="tests" value="default" id="id_tests_0" checked>
+                                        <label class="form-check-label" for="id_tests_0">
+                                            Default
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Options -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                Actions
+                            </label>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        {{ form.check }}
+                                        <label class="form-check-label" for="{{ form.check.id_for_label }}">
+                                            {{ form.check.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        {{ form.remove }}
+                                        <label class="form-check-label" for="{{ form.remove.id_for_label }}">
+                                            {{ form.remove.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="reset" class="btn btn-outline-secondary me-md-2">
+                                Reset
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                Execute
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    {% if result %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        RMA General TEST Results
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% for k, v in result.items %}
+                        <div class="mb-3">
+                            <h6 class="text-primary text-capitalize">
+                                {{ k }}
+                            </h6>
+                            <div class="bg-light p-3 rounded">
+                                {% if v %}
+                                    {% for item in v %}
+                                        <div class="d-flex align-items-center mb-1">
+                                            <code class="small">{{ item }}</code>
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="text-muted">No results</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Help Modal -->
+<div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="helpModalLabel">
+                    RMA General TEST Help
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h6>RMA Information</h6>
+                <p><strong>System SN:</strong> The serial number of the system being processed for RMA.</p>
+                <p><strong>RMA Number:</strong> The unique identifier assigned to this RMA case for tracking purposes.</p>
+                <p><strong>NIC MAC:</strong> The MAC address of the network interface card. You can enter it in various formats:
+                    <ul>
+                        <li>With colons: <code>ac:1f:6b:35:6f:19</code></li>
+                        <li>With dashes: <code>ac-1f-6b-35-6f-19</code></li>
+                        <li>Without separators: <code>ac1f6b356f19</code></li>
+                    </ul>
+                    The system will automatically normalize the format.
+                </p>
+                <h6>Available Actions</h6>
+                <ul>
+                    <li><strong>Check:</strong> Verify if the specified NIC MAC already has PXE configurations</li>
+                    <li><strong>Remove:</strong> Delete existing PXE boot configurations for the specified NIC MAC</li>
+                    <li><strong>Add (Default):</strong> Create new PXE boot configurations with RMA parameters</li>
+                </ul>
+                <h6>Tests</h6>
+                <p>This page automatically uses the default test configuration. No manual test selection is required.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+    }
+    
+    .form-check-input:checked {
+        background-color: #3b82f6;
+        border-color: #3b82f6;
+    }
+    
+    .text-gray-800 {
+        color: #1e293b !important;
+    }
+    
+    .card-header {
+        background-color: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .shadow {
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Form validation and UX improvements
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('rmaGeneralForm');
+        const checkBox = document.getElementById('{{ form.check.id_for_label }}');
+        const removeBox = document.getElementById('{{ form.remove.id_for_label }}');
+        
+        // Ensure only one action is selected at a time
+        if (checkBox && removeBox) {
+            checkBox.addEventListener('change', function() {
+                if (this.checked) {
+                    removeBox.checked = false;
+                }
+            });
+            
+            removeBox.addEventListener('change', function() {
+                if (this.checked) {
+                    checkBox.checked = false;
+                }
+            });
+        }
+        
+        // Enhanced form validation
+        form.addEventListener('submit', function(e) {
+            const systemSn = document.getElementById('{{ form.system_sn.id_for_label }}').value.trim();
+            const rmaNumber = document.getElementById('{{ form.rma_number.id_for_label }}').value.trim();
+            const nicMac = document.getElementById('{{ form.nic_mac.id_for_label }}').value.trim();
+            const isCheck = checkBox && checkBox.checked;
+            const isRemove = removeBox && removeBox.checked;
+            
+            if (!nicMac) {
+                alert('NIC MAC address is required');
+                e.preventDefault();
+                return;
+            }
+            
+            // Only validate system_sn and rma_number if not checking or removing
+            if (!isCheck && !isRemove) {
+                if (!systemSn) {
+                    alert('System Serial Number is required');
+                    e.preventDefault();
+                    return;
+                }
+                
+                if (!rmaNumber) {
+                    alert('RMA Number is required');
+                    e.preventDefault();
+                    return;
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}
+

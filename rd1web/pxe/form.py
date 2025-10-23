@@ -304,6 +304,72 @@ class RmaForm(forms.Form):
         return tests
 
 
+class RmaGeneralForm(forms.Form):
+    """Form for RMA General TEST - simplified version without golden number dependencies"""
+    system_sn = forms.CharField(
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'style': 'width: 500px;',
+        }),
+        label='System SN',
+        required=False
+    )
+    rma_number = forms.CharField(
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'style': 'width: 500px;',
+        }),
+        label='RMA Number',
+        required=False
+    )
+    nic_mac = forms.CharField(
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'style': 'width: 500px;',
+            'placeholder': 'e.g., ac:1f:6b:35:6f:19 or ac-1f-6b-35-6f-19 or ac1f6b356f19'
+        }),
+        label='NIC MAC',
+        required=False,
+        help_text='Enter MAC address in any format (with colons, dashes, or without separators)'
+    )
+    image = forms.ChoiceField(
+        choices=[
+            ('ubuntu2204-x86-rma', 'H100/200'),
+            ('ubuntu2204-b200-rma', 'B200'),
+            ('ubuntu2204-mi300x', 'MI300X'),
+            ('ubuntu2204-mi325x', 'MI325X'),
+            ('ubuntu2204-mi355x', 'MI355X')
+        ],
+        label='Image'
+    )
+    remove = forms.BooleanField(required=False, label="Remove", initial=False)
+    check = forms.BooleanField(required=False, label="Check", initial=False)
+    
+    def clean_nic_mac(self):
+        """Normalize MAC address to lowercase without separators"""
+        mac_input = self.cleaned_data.get('nic_mac', '')
+        if not mac_input:
+            return ''
+        
+        # Remove common separators and convert to lowercase
+        normalized = mac_input.strip().replace(':', '').replace('-', '').lower()
+        
+        # Validate format (12 hex characters)
+        if len(normalized) != 12:
+            raise ValidationError(
+                f"Invalid MAC address length. Expected 12 characters, got {len(normalized)}. "
+                f"Example: ac1f6b356f19 or ac:1f:6b:35:6f:19"
+            )
+        
+        if not all(c in '0123456789abcdef' for c in normalized):
+            raise ValidationError(
+                "Invalid MAC address format. Must contain only hexadecimal characters (0-9, a-f). "
+                "Example: ac1f6b356f19 or ac:1f:6b:35:6f:19"
+            )
+        
+        return normalized
+
+
 class RmaTestingDbForm(forms.ModelForm):
     """Form for adding/editing RMA Testing DB entries"""
     

@@ -6,7 +6,6 @@
             <div class="sb-sidenav-menu-heading">Dashboard</div>
             
             <a class="nav-link" href="{% url 'index' %}">
-                <div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt"></i></div>
                 Overview
             </a>
             {% endif %}
@@ -16,12 +15,10 @@
             <div class="sb-sidenav-menu-heading">System Management</div>
             
             <a class="nav-link" href="{% url 'system_list' %}">
-                <div class="sb-nav-link-icon"><i class="fas fa-desktop"></i></div>
                 System Overview
             </a>
             
             <a class="nav-link" href="{% url 'pxe' %}">
-                <div class="sb-nav-link-icon"><i class="fas fa-server"></i></div>
                 PXE Boot Manager
             </a>
             {% endif %}
@@ -31,58 +28,62 @@
             <div class="sb-sidenav-menu-heading">Tools & Utilities</div>
             
             <a class="nav-link" href="{% url 'ipmitool' %}">
-                <div class="sb-nav-link-icon"><i class="fas fa-terminal"></i></div>
                 IPMI Tool
             </a>
             
             <a class="nav-link" href="{% url 'mac_ip_results' %}">
-                <div class="sb-nav-link-icon"><i class="fas fa-network-wired"></i></div>
                 MAC to IP
             </a>
             {% endif %}
 
             <!-- RMA Management -->
-            {% if perms.pxe.can_view_rma_logs or perms.pxe.can_access_rma_pxe or perms.pxe.can_access_rma_testing_db or perms.pxe.can_access_rma_dhcp_leases %}
+            {% if perms.pxe.can_view_rma_logs or perms.pxe.can_view_rma_general_logs or perms.pxe.can_access_rma_pxe or perms.pxe.can_access_rma_testing_db or perms.pxe.can_access_rma_dhcp_leases %}
             <div class="sb-sidenav-menu-heading">RMA Management</div>
             
             {% if perms.pxe.can_view_rma_logs %}
             <a class="nav-link" href="{% url 'rma_log' %}">
-                <div class="sb-nav-link-icon"><i class="fas fa-server"></i></div>
                 RMA Logs
+            </a>
+            {% endif %}
+
+            {% if perms.pxe.can_view_rma_general_logs %}
+            <a class="nav-link" href="{% url 'rma_general_log' %}">
+                RMA General Logs
             </a>
             {% endif %}
 
             {% if perms.pxe.can_access_rma_pxe %}
             <a class="nav-link" href="{% url 'rma_pxe' %}">
-                <div class="sb-nav-link-icon"><i class="fas fa-server"></i></div>
                 RMA GPU TEST
+            </a>
+            {% endif %}
+
+            {% if perms.pxe.can_access_rma_general_test %}
+            <a class="nav-link" href="{% url 'rma_general_test' %}">
+                RMA General TEST
             </a>
             {% endif %}
 
             {% if perms.pxe.can_access_rma_testing_db %}
             <a class="nav-link" href="{% url 'rma_testing_db' %}">
-                <div class="sb-nav-link-icon"><i class="fas fa-database"></i></div>
                 RMA Testing DB
             </a>
             {% endif %}
 
             {% if perms.pxe.can_access_rma_dhcp_leases %}
             <a class="nav-link" href="{% url 'rma_dhcp_leases' %}">
-                <div class="sb-nav-link-icon"><i class="fas fa-network-wired"></i></div>
                 RMA DHCP Leases
             </a>
             {% endif %}
 
             {% if perms.pxe.can_view_rma_statistics %}
             <a class="nav-link" href="{% url 'rma_statistics' %}">
-                <div class="sb-nav-link-icon"><i class="fas fa-chart-bar"></i></div>
                 RMA Statistic
             </a>
             {% endif %}
 
             {% if perms.pxe.can_access_firmware_inventory %}
             <a class="nav-link" href="{% url 'firmware_inventory' %}">
-                <div class="sb-nav-link-icon"><i class="fas fa-microchip"></i></div>
                 Firmware Inventory
             </a>
             {% endif %}

@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}RMA General Log Browser - {{ current_dir }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">RMA General Log Browser</h1>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'rma_general_log' %}" class="btn btn-outline-info">
+                RMA General Overview
+            </a>
+            {% if parent %}
+                <a href="{% url 'rma_general_log_browse' path=parent %}" class="btn btn-outline-primary">
+                    Back to Parent
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Breadcrumb Card -->
+    <div class="card mb-4">
+        <div class="card-body py-3">
+            <nav aria-label="breadcrumb" class="mb-0">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item">
+                        <a href="{% url 'rma_general_log' %}" class="text-decoration-none">
+                            RMA General Logs
+                        </a>
+                    </li>
+                    {% if not is_root %}
+                        {% for part in breadcrumb_parts %}
+                            <li class="breadcrumb-item">
+                                <a href="{% url 'rma_general_log_browse' path=part.path %}" class="text-decoration-none">{{ part.name }}</a>
+                            </li>
+                        {% endfor %}
+                    {% endif %}
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Directory Statistics Card -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-left-primary">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Files</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ file_count }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-left-success">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Directories</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ dir_count }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-left-info">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total Size</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_size }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Browser -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                Contents of {{ current_dir }}
+            </h6>
+        </div>
+        <div class="card-body">
+            {% if items %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th style="width: 40%;">Name</th>
+                                <th style="width: 15%;">Size</th>
+                                <th style="width: 20%;">Modified</th>
+                                <th style="width: 25%;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in items %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="file-info">
+                                                <div class="file-name fw-bold">{{ item.name }}</div>
+                                                {% if not item.is_dir %}
+                                                    <small class="text-muted">{{ item.file_type }}</small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="text-muted fw-bold">{{ item.size }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="text-muted" style="font-size: 0.85rem;">{{ item.mtime }}</span>
+                                    </td>
+                                    <td>
+                                        {% if item.is_dir %}
+                                            <div class="btn-group" role="group">
+                                                <a href="{% url 'rma_general_log_browse' path=item.path %}" class="btn btn-sm btn-outline-primary">
+                                                    Open
+                                                </a>
+                                            </div>
+                                        {% else %}
+                                            <div class="btn-group" role="group">
+                                                <a href="{% url 'rma_general_view_file' path=item.path %}" class="btn btn-sm btn-outline-success" target="_blank">
+                                                    View
+                                                </a>
+                                                {% if item.apache_download_url %}
+                                                <a href="{{ item.apache_download_url }}" class="btn btn-sm btn-primary" target="_blank">
+                                                    Download
+                                                </a>
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center text-muted py-5">
+                    <h5>Directory is empty</h5>
+                    <p>No files or folders found in this directory.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .border-left-primary {
+        border-left: 0.25rem solid #4e73df !important;
+    }
+    .border-left-success {
+        border-left: 0.25rem solid #1cc88a !important;
+    }
+    .border-left-info {
+        border-left: 0.25rem solid #36b9cc !important;
+    }
+    .text-gray-800 {
+        color: #5a5c69 !important;
+    }
+    .file-name {
+        word-break: break-all;
+    }
+    .shadow {
+        box-shadow: 0 .15rem 1.75rem 0 rgba(58, 59, 69, .15) !important;
+    }
+</style>
+{% endblock %}
+

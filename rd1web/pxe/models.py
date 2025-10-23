@@ -21,6 +21,8 @@ class PxeEntry(models.Model):
             ('can_view_rma_statistics', 'Can view RMA statistics'),
             # Admin-only permissions (require manual approval)
             ('can_access_rma_pxe', 'Can access RMA PXE management'),
+            ('can_access_rma_general_test', 'Can access RMA General TEST'),
+            ('can_view_rma_general_logs', 'Can view RMA General logs'),
             ('can_access_rma_dhcp_leases', 'Can access RMA DHCP Leases'),
             ('can_access_firmware_inventory', 'Can access Firmware Inventory'),
         ]
