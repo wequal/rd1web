@@ -7,6 +7,8 @@ from django.db.models import Count, Sum, Q, Case, When, Value, IntegerField
 from django.db import models
 from django.utils import timezone
 from datetime import timedelta
+import datetime
+import calendar
 import zoneinfo
 from django import forms
 from .models import UserSession, UserActivity, UserStats
@@ -91,9 +93,50 @@ class UserActivityAdmin(admin.ModelAdmin):
         now = timezone.now()
         la_tz = zoneinfo.ZoneInfo('America/Los_Angeles')
         today = now.astimezone(la_tz).date()
-        week_start = today - timedelta(days=today.weekday())
-        week_end = week_start + timedelta(days=6)  # Sunday
-        month_start = today.replace(day=1)
+        
+        # Check if user selected a specific date/month via date_hierarchy
+        year = request.GET.get('timestamp__year')
+        month = request.GET.get('timestamp__month')
+        day = request.GET.get('timestamp__day')
+        
+        # If user selected specific date filters, use those instead of current date
+        if year and month and day:
+            # Specific day selected
+            today = datetime.date(int(year), int(month), int(day))
+            week_start = today - timedelta(days=today.weekday())
+            week_end = week_start + timedelta(days=6)
+            month_start = today.replace(day=1)
+        elif year and month:
+            # Specific month selected - use that month
+            month_start = datetime.date(int(year), int(month), 1)
+            # Set today to last day of selected month or current date if same month
+            last_day = calendar.monthrange(int(year), int(month))[1]
+            current_date = now.astimezone(la_tz).date()
+            # If it's the current month, use current date; otherwise use last day of month
+            if int(year) == current_date.year and int(month) == current_date.month:
+                today = current_date
+            else:
+                today = datetime.date(int(year), int(month), last_day)
+            week_start = today - timedelta(days=today.weekday())
+            week_end = week_start + timedelta(days=6)
+        elif year:
+            # Specific year selected - use current month/day of that year or last day of year
+            current_date = now.astimezone(la_tz).date()
+            try:
+                # Try to use same month and day as current date
+                today = datetime.date(int(year), current_date.month, current_date.day)
+            except ValueError:
+                # If current day doesn't exist in that month (e.g., Feb 30), use last day of month
+                last_day = calendar.monthrange(int(year), current_date.month)[1]
+                today = datetime.date(int(year), current_date.month, last_day)
+            week_start = today - timedelta(days=today.weekday())
+            week_end = week_start + timedelta(days=6)
+            month_start = today.replace(day=1)
+        else:
+            # No filters - use current date
+            week_start = today - timedelta(days=today.weekday())
+            week_end = week_start + timedelta(days=6)  # Sunday
+            month_start = today.replace(day=1)
         
         # Calculate statistics (exclude 'devin' user from statistics)
         daily_stats = UserActivity.objects.filter(

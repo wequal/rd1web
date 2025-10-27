@@ -1,3 +1,44 @@
+# Admin Panel User Activities Date Filter Fix
+
+## Overview
+Fix the admin panel user activities page so that when selecting different dates or months via the date hierarchy, the breakdown statistics and charts update accordingly (not just the "Recent Activity Records" table).
+
+## Problem Analysis
+- ✅ Identified issue: `changelist_view` method uses hardcoded current dates
+- ✅ Date hierarchy filter parameters are ignored for statistics/charts
+- ✅ Only "Recent Activity Records" table works because it uses Django's default filtering
+
+## Implementation Plan
+
+### Task 1: Update imports in authentication/admin.py ✓
+- [x] Add `import datetime` to imports
+- [x] Add `import calendar` to imports
+
+### Task 2: Modify changelist_view method ✓
+- [x] Extract date hierarchy parameters from request.GET (`timestamp__year`, `timestamp__month`, `timestamp__day`)
+- [x] Add logic to use filtered dates instead of current dates when hierarchy filters are active
+- [x] Calculate appropriate `today`, `week_start`, `week_end`, and `month_start` based on selected filters
+- [x] Ensure statistics queries use the calculated dates
+
+### Task 3: Testing (Ready for User Testing)
+- [ ] Test with no date filter (should show current date data)
+- [ ] Test with year filter selected
+- [ ] Test with month filter selected  
+- [ ] Test with day filter selected
+- [ ] Verify all sections update: summary cards, activity breakdown, most active users, and charts
+
+## Expected Changes
+- **File**: `/home/devin/rd1web-dev/rd1web/authentication/admin.py`
+- **Impact**: Minimal - only modifying date calculation logic in one method
+- **Lines affected**: ~40 new lines in the `changelist_view` method
+
+## Benefits
+✅ User can filter activities by any date/month via date hierarchy
+✅ All dashboard sections (not just table) will respect the filter
+✅ Better data analysis and historical viewing capabilities
+
+---
+
 # Configuration Externalization Implementation Plan
 
 ## Overview
