@@ -19,14 +19,27 @@ from asgiref.sync import sync_to_async
 from ..remote_config import remote_dict
 
 logger = logging.getLogger(__name__)
-RMA_BASE_DIR = '/srv/rma-b31'
-TEMP_ZIPS_DIR = '/srv/rma-b31/.TempZips'
 
-# Cache timeout settings (shorter for faster new directory detection)
-RMA_CACHE_TIMEOUT = 30  # 30 seconds cache for basic directory listings
-RMA_DETAILS_CACHE_TIMEOUT = 60  # 1 minute cache for directory details (test_status, gpu_model, golden_number)
-RMA_STATS_CACHE_TIMEOUT = 300  # 5 minutes cache for file stats
-ZIP_TASK_TIMEOUT = 3600  # 1 hour timeout for zip creation tasks
+# Import configuration from local_config
+try:
+    from ..local_config import (
+        RMA_BASE_DIR,
+        TEMP_ZIPS_DIR,
+        RMA_CACHE_TIMEOUT,
+        RMA_DETAILS_CACHE_TIMEOUT,
+        RMA_STATS_CACHE_TIMEOUT,
+        ZIP_TASK_TIMEOUT,
+    )
+    logger.info("RMA logs using configuration from local_config.py")
+except ImportError:
+    # Fallback to defaults if local_config doesn't exist
+    logger.warning("local_config.py not found, using default RMA configuration")
+    RMA_BASE_DIR = '/srv/rma-b31'
+    TEMP_ZIPS_DIR = '/srv/rma-b31/.TempZips'
+    RMA_CACHE_TIMEOUT = 30  # 30 seconds cache for basic directory listings
+    RMA_DETAILS_CACHE_TIMEOUT = 60  # 1 minute cache for directory details
+    RMA_STATS_CACHE_TIMEOUT = 300  # 5 minutes cache for file stats
+    ZIP_TASK_TIMEOUT = 3600  # 1 hour timeout for zip creation tasks
 
 class TimeoutError(Exception):
     """Custom timeout exception"""

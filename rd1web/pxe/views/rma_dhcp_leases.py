@@ -7,9 +7,25 @@ import requests
 import json
 import logging
 from ..remote_config import remote_dict
-rma_host = remote_dict['rma'].host
 
 logger = logging.getLogger(__name__)
+
+# Import configuration from local_config
+try:
+    from ..local_config import RMA_DHCP_LEASES_API, REMOTE_SERVERS
+    # Extract RMA host from REMOTE_SERVERS (format: root@10.4.4.80)
+    rma_host = REMOTE_SERVERS['rma']['host'].split('@')[-1]
+    dhcp_api_port = RMA_DHCP_LEASES_API['port']
+    dhcp_api_endpoint = RMA_DHCP_LEASES_API['endpoint']
+    dhcp_api_timeout = RMA_DHCP_LEASES_API['timeout']
+    logger.info(f"RMA DHCP Leases using configuration: {rma_host}:{dhcp_api_port}{dhcp_api_endpoint}")
+except ImportError:
+    # Fallback to defaults if local_config doesn't exist
+    logger.warning("local_config.py not found, using default RMA DHCP API configuration")
+    rma_host = remote_dict['rma'].host.split('@')[-1] if '@' in remote_dict['rma'].host else remote_dict['rma'].host
+    dhcp_api_port = 8000
+    dhcp_api_endpoint = '/leases'
+    dhcp_api_timeout = 10
 
 
 @login_required
@@ -23,7 +39,7 @@ def rma_dhcp_leases(request):
     context = {
         'leases': leases_data.get('leases', []) if leases_data else [],
         'error_message': leases_data.get('error') if leases_data and 'error' in leases_data else None,
-        'api_endpoint': f'http://{rma_host}:8000/leases'
+        'api_endpoint': f'http://{rma_host}:{dhcp_api_port}{dhcp_api_endpoint}'
     }
     
     return render(request, 'features/rma_dhcp_leases.html', context)
@@ -60,8 +76,8 @@ def fetch_dhcp_leases():
     try:
         # Make API request with timeout
         response = requests.get(
-            f'http://{rma_host}:8000/leases',
-            timeout=10,  # 10 second timeout
+            f'http://{rma_host}:{dhcp_api_port}{dhcp_api_endpoint}',
+            timeout=dhcp_api_timeout,
             headers={'Content-Type': 'application/json'}
         )
         
@@ -107,12 +123,12 @@ def fetch_dhcp_leases():
         return {'leases': valid_leases}
         
     except requests.exceptions.Timeout:
-        error_msg = 'Request timeout - DHCP server did not respond within 10 seconds'
+        error_msg = f'Request timeout - DHCP server did not respond within {dhcp_api_timeout} seconds'
         logger.error(error_msg)
         return {'error': error_msg}
         
     except requests.exceptions.ConnectionError:
-        error_msg = f'Connection error - Unable to connect to DHCP server at {rma_host}:8000'
+        error_msg = f'Connection error - Unable to connect to DHCP server at {rma_host}:{dhcp_api_port}'
         logger.error(error_msg)
         return {'error': error_msg}
         

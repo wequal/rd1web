@@ -14,8 +14,18 @@ import time
 import argparse
 from django.core.management import execute_from_command_line
 from django.conf import settings
-from pxe.remote_config import remote_dict
-host_ip = remote_dict['us_b3'].host
+
+# Import configuration from local_config
+try:
+    from pxe.local_config import WEB_APP_PORT, DATABASE_CONFIG
+    host_ip = DATABASE_CONFIG['HOST']
+    print(f"✓ Using configuration from local_config.py (Port: {WEB_APP_PORT})")
+except ImportError:
+    # Fallback to defaults if local_config doesn't exist
+    from pxe.remote_config import remote_dict
+    host_ip = remote_dict['us_b3'].host.split('@')[-1] if '@' in remote_dict['us_b3'].host else remote_dict['us_b3'].host
+    WEB_APP_PORT = 5003
+    print("⚠ local_config.py not found, using default configuration")
 
 # Global list to track worker processes
 worker_processes = []
@@ -167,7 +177,7 @@ def main():
         try:
             print(f"🔄 Starting worker {worker_id + 1}/{workers} on {host}:{port}")
             worker_env = os.environ.copy()
-            if port == 5003:
+            if port == WEB_APP_PORT:
                 worker_env['DJANGO_DEBUG'] = '1'
             else:
                 worker_env['DJANGO_DEBUG'] = '0'

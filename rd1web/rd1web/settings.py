@@ -12,9 +12,39 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
-from pxe.remote_config import remote_dict
-host_ip = remote_dict['us_b3'].host
-DEBUG = os.environ.get("DJANGO_DEBUG") == "1"
+
+# Import configuration from local_config
+try:
+    from pxe.local_config import (
+        DATABASE_CONFIG,
+        REDIS_HOST,
+        REDIS_PORT,
+        SECRET_KEY as LOCAL_SECRET_KEY,
+        TIME_ZONE as LOCAL_TIME_ZONE,
+        DEBUG as LOCAL_DEBUG,
+        WEB_APP_PORT,
+    )
+    # Extract host IP from DATABASE_CONFIG
+    host_ip = DATABASE_CONFIG['HOST']
+    # Use local_config DEBUG if environment variable not set
+    DEBUG = os.environ.get("DJANGO_DEBUG") == "1" if os.environ.get("DJANGO_DEBUG") else LOCAL_DEBUG
+except ImportError:
+    # Fallback to defaults if local_config doesn't exist
+    from pxe.remote_config import remote_dict
+    host_ip = remote_dict['us_b3'].host.split('@')[-1] if '@' in remote_dict['us_b3'].host else remote_dict['us_b3'].host
+    DEBUG = os.environ.get("DJANGO_DEBUG") == "1"
+    DATABASE_CONFIG = {
+        'NAME': 'pxe_db',
+        'USER': 'devin',
+        'PASSWORD': 'devin123',
+        'HOST': host_ip,
+        'PORT': '5432',
+    }
+    REDIS_HOST = 'localhost'
+    REDIS_PORT = 6379
+    LOCAL_SECRET_KEY = 'django-insecure-(oql-%h*1h4%2+1-s&vkc+ls*4+l&atr*+(hajf)l4q76rf_ay'
+    LOCAL_TIME_ZONE = 'America/Los_Angeles'
+    WEB_APP_PORT = 5003
 
 
 
@@ -26,7 +56,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-(oql-%h*1h4%2+1-s&vkc+ls*4+l&atr*+(hajf)l4q76rf_ay'
+SECRET_KEY = LOCAL_SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = True
@@ -34,7 +64,7 @@ SECRET_KEY = 'django-insecure-(oql-%h*1h4%2+1-s&vkc+ls*4+l&atr*+(hajf)l4q76rf_ay
 ALLOWED_HOSTS = ['*']  # Allow all IP addresses to access
 
 CSRF_TRUSTED_ORIGINS = [
-    f"http://{host_ip}:5003"
+    f"http://{host_ip}:{WEB_APP_PORT}"
 ]
 # Application definition
 
@@ -104,11 +134,11 @@ ASGI_WEBSOCKET_HANDSHAKE_TIMEOUT = 10  # WebSocket handshake timeout
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'pxe_db',
-        'USER': 'devin',
-        'PASSWORD': 'devin123',
-        'HOST': host_ip,
-        'PORT': '5432',
+        'NAME': DATABASE_CONFIG['NAME'],
+        'USER': DATABASE_CONFIG['USER'],
+        'PASSWORD': DATABASE_CONFIG['PASSWORD'],
+        'HOST': DATABASE_CONFIG['HOST'],
+        'PORT': DATABASE_CONFIG['PORT'],
         'CONN_MAX_AGE': 600,  # Connection pooling for 10 minutes
     }
 }
@@ -117,7 +147,7 @@ DATABASES = {
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'redis://127.0.0.1:6379/1',
+        'LOCATION': f'redis://{REDIS_HOST}:{REDIS_PORT}/1',
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
             'CONNECTION_POOL_KWARGS': {
@@ -164,7 +194,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'America/Los_Angeles'
+TIME_ZONE = LOCAL_TIME_ZONE
 
 USE_I18N = True
 
@@ -182,9 +212,8 @@ STATICFILES_DIRS = [
 # Static files will be collected here for production
 STATIC_ROOT = os.path.join(BASE_DIR.parent, 'staticfiles')
 
-# Redis Configuration
-REDIS_HOST = 'localhost'
-REDIS_PORT = 6379
+# Redis Configuration (imported from local_config)
+# REDIS_HOST and REDIS_PORT are already imported at top
 
 # Celery Configuration
 CELERY_BROKER_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/0'

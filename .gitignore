@@ -10,4 +10,7 @@ rd1web/db.sqlite3
 
 # VS Code settings
 .vscode/
-.idea/ 
+.idea/
+
+# Local configuration (DO NOT COMMIT - contains passwords and location-specific settings)
+rd1web/pxe/local_config.py 

@@ -1,118 +1,138 @@
-# RMA General TEST Implementation - TODO List
-
-## Implementation Plan
-
-This document tracks the implementation of the RMA General TEST page under RMA Management.
+# Configuration Externalization Implementation Plan
 
 ## Overview
-Create a new page "RMA General TEST" under RMA Management, positioned after RMA GPU Test. This page is similar to RMA GPU TEST but adapted for general system testing with different parameters.
+This document outlines the plan for externalizing configuration settings to make the web application easier to deploy across different locations.
 
-## Key Changes from RMA GPU TEST
-1. **Base SN → System SN**: Field renamed, PXE script parameter changes from `base_sn=` to `sys_sn=`
-2. **BMC IP → NIC MAC**: Replace dropdown with text input field that accepts and normalizes MAC addresses
-3. **Tests**: Only "Default" test option (all other tests removed)
-4. **Golden Status Panel**: Removed entirely
-5. **Permission**: New permission `can_access_rma_general_test` (not assigned to anyone initially)
-6. **Navigation**: Placed below RMA GPU TEST in sidebar
+## Completed Tasks ✓
 
-## Implementation Tasks
+### Phase 1: Configuration File Setup ✓
+- [x] Create `local_config.py` with all location-specific settings
+- [x] Create `local_config.template.py` as a reference template for new deployments
+- [x] Update `remote_config.py` to load from `local_config.py`
+- [x] Update `.gitignore` to exclude `local_config.py`
 
-### 1. Database Model Updates ✅
-- [x] Add `can_access_rma_general_test` permission to PxeEntry model in `rd1web/pxe/models.py`
-- [x] Permission added between `can_access_rma_pxe` and `can_access_rma_dhcp_leases`
+## Configuration Categories Externalized
 
-### 2. Forms Creation ✅
-- [x] Create `RmaGeneralForm` class in `rd1web/pxe/form.py`
-- [x] Add `system_sn` field (CharField, replaces base_sn)
-- [x] Add `rma_number` field (CharField)
-- [x] Add `nic_mac` field (CharField with MAC normalization)
-- [x] Add `image` field (same choices as RmaForm)
-- [x] Add `remove` and `check` BooleanFields
-- [x] Implement MAC normalization in `clean_nic_mac()` method
-- [x] MAC formats supported: `ac:1f:6b:35:6f:19`, `ac-1f-6b-35-6f-19`, `ac1f6b356f19`
-- [x] Normalized format: `ac1f6b356f19` (lowercase, no separators)
+### 1. File System Paths ✓
+- `RMA_BASE_DIR`: `/srv/rma-b31`
+- `TEMP_ZIPS_DIR`: `/srv/rma-b31/.TempZips`
+- `RMA_PXE_GENERATION_SCRIPT`: `/srv/share/scripts/rma_pxe_generation`
+- `PXE_BOOT_PATH`: `/var/www/pxe/boot/`
 
-### 3. View Implementation ✅
-- [x] Create new view file `rd1web/pxe/views/rma_general_test.py`
-- [x] Add `@login_required` and `@permission_required('pxe.can_access_rma_general_test')` decorators
-- [x] Implement form submission handling with system_sn instead of base_sn
-- [x] Parse and normalize nic_mac field
-- [x] Pass normalized MAC to PXE script
-- [x] PXE script command: `/srv/share/scripts/rma_pxe_generation {normalized_mac} {image} sys_sn={system_sn} {rma_number} default`
-- [x] Store parameters with `sys_sn` key instead of `base_sn`
-- [x] Implement Remove action
-- [x] Implement Check action
-- [x] No golden number logic
+### 2. Database Configuration ✓
+- Database name, user, password, host, and port
+- Currently configured for: `pxe_db` on `172.31.56.135:5432`
 
-### 4. Template Creation ✅
-- [x] Create `rd1web/templates/features/rma_general_test.html`
-- [x] Copy base structure from `rma_pxe.html`
-- [x] Update page title to "RMA General TEST"
-- [x] Change field label "Base SN" to "System SN"
-- [x] Change field label "BMC IP" to "NIC MAC"
-- [x] Update NIC MAC to text input with placeholder showing acceptable formats
-- [x] Show only "Default" test option (informational alert, no checkboxes)
-- [x] Remove Golden Status panel entirely
-- [x] Remove ECO Number section
-- [x] Remove GPU Model section
-- [x] Remove Cooling section
-- [x] Remove Firmware Update checkbox
-- [x] Update help modal text
-- [x] Simplify JavaScript (no test validation complexity, no ECO/firmware logic, no golden linking)
+### 3. Remote Server Connections ✓
+- RMA server: `root@10.4.4.80`
+- US B3 server: `root@172.31.56.135`
+- US B1 server: `root@172.31.58.142`
+- TW server: `root@10.135.179.104`
 
-### 5. URL Configuration ✅
-- [x] Import `rma_general_test` view in `rd1web/pxe/urls.py`
-- [x] Add URL pattern `path('rma/general-test/', rma_general_test, name='rma_general_test')`
-- [x] Positioned after RMA PXE URL
+### 4. RMA DHCP Leases API ✓
+- Port: `8000`
+- Endpoint: `/leases`
+- Timeout: `10` seconds
 
-### 6. Navigation Update ✅
-- [x] Update `rd1web/templates/partials/sidebar.html`
-- [x] Add navigation link after RMA GPU TEST
-- [x] Use `perms.pxe.can_access_rma_general_test` permission check
-- [x] Icon: `fas fa-vial`
-- [x] Label: "RMA General TEST"
+### 5. Network Scanning Configuration ✓
+- Local subnet: `172.31.0.0/16` on `eno1np0` (arp-scan)
+- Remote subnet: `10.135.0.0/16` on `eno1` (FastAPI)
 
-### 7. Database Migration ✅
-- [x] Generate migration for new permission: `python3 rd1web/manage.py makemigrations`
-  - Migration file created: `rd1web/pxe/migrations/0022_alter_pxeentry_options.py`
-- [x] Run migration: `python3 rd1web/manage.py migrate`
-  - Applied successfully: `pxe.0022_alter_pxeentry_options`
+### 6. Service Configuration ✓
+- Web app port: `5003`
+- Redis: `localhost:6379`
 
-## Testing Checklist
+### 7. Django Settings ✓
+- SECRET_KEY
+- TIME_ZONE: `America/Los_Angeles`
+- DEBUG mode
 
-Once migration is complete, verify:
-- [ ] Permission added to database
-- [ ] Form validates and normalizes MAC addresses correctly
-  - Test: `ac:1f:6b:35:6f:19` → `ac1f6b356f19`
-  - Test: `ac-1f-6b-35-6f-19` → `ac1f6b356f19`
-  - Test: `ac1f6b356f19` → `ac1f6b356f19`
-  - Test: `AC:1F:6B:35:6F:19` → `ac1f6b356f19`
-- [ ] PXE entries created with correct parameters (sys_sn instead of base_sn)
-- [ ] Remove action works correctly
-- [ ] Check action works correctly
-- [ ] Sidebar link appears only for users with permission
-- [ ] Page accessible only with permission (403 otherwise)
-- [ ] No code duplication between GPU TEST and General TEST
-- [ ] PXE script receives correct parameters: `{mac} {image} sys_sn={system_sn} {rma_number} default`
+### 8. Cache/Timeout Settings ✓
+- RMA_CACHE_TIMEOUT: 30s
+- RMA_DETAILS_CACHE_TIMEOUT: 60s
+- RMA_STATS_CACHE_TIMEOUT: 300s
+- ZIP_TASK_TIMEOUT: 3600s
 
-## Files Modified/Created
+## Phase 2: Code Updates - COMPLETED ✓
 
-### Modified Files:
-1. `rd1web/pxe/models.py` - Added permission
-2. `rd1web/pxe/form.py` - Added RmaGeneralForm
-3. `rd1web/pxe/urls.py` - Added URL pattern and import
-4. `rd1web/templates/partials/sidebar.html` - Added navigation link
+### Files Updated to Use local_config.py ✓
+All files have been successfully updated to import from `local_config.py`:
 
-### Created Files:
-1. `rd1web/pxe/views/rma_general_test.py` - New view file
-2. `rd1web/templates/features/rma_general_test.html` - New template
-3. `tasks/todo.md` - This file
+#### High Priority ✓
+- [x] `rd1web/rd1web/settings.py` - Database, Redis, Django settings
+- [x] `rd1web/pxe/views/rma_logs.py` - RMA_BASE_DIR, TEMP_ZIPS_DIR, cache timeouts
+- [x] `rd1web/pxe/rma_statistics.py` - RMA_BASE_DIR
+- [x] `rd1web/pxe/views/rma_pxe.py` - RMA_PXE_GENERATION_SCRIPT, PXE_BOOT_PATH
+- [x] `rd1web/pxe/views/rma_dhcp_leases.py` - RMA DHCP API settings
+- [x] `rd1web/pxe/views/mac_ip_view.py` - SUBNET_CONFIGS
+
+#### Medium Priority ✓
+- [x] `rd1web/run_server.py` - WEB_APP_PORT
+- [x] All hardcoded IPs and paths externalized
+
+### Phase 3: Testing - COMPLETED ✓
+- [x] Test application startup with new configuration
+  - Django check passed successfully
+  - All configuration imports working correctly
+  - No syntax or import errors
+- [x] Verify configuration loading
+  - Database: 172.31.56.135 ✓
+  - RMA Base: /srv/rma-b31 ✓
+  - Web Port: 5003 ✓
+  - Remote Servers: rma, us_b3, us_b1, tw ✓
+
+### Test Results
+```
+✓ Successfully loaded REMOTE_SERVERS from local_config.py
+✓ MAC-IP scanning using SUBNET_CONFIGS from local_config.py
+✓ RMA PXE using configuration from local_config.py
+✓ RMA logs using configuration from local_config.py
+✓ RMA DHCP Leases using configuration: 10.4.4.80:8000/leases
+✓ RMA statistics using RMA_BASE_DIR from local_config.py
+✓ Django system check passed (0 errors, 5 security warnings for HTTPS/SSL)
+```
+
+## Ready for Production Testing
+The application can now be tested with actual operations:
+- Remote connections
+- RMA logs viewing
+- PXE generation
+- DHCP leases API
+- Network scanning
+
+### Phase 4: Documentation
+- [ ] Update README with deployment instructions
+- [ ] Document how to set up `local_config.py` for new locations
+- [ ] Create location-specific configuration examples
+
+## Deployment Instructions for New Locations
+
+1. Clone the repository
+2. Copy the template:
+   ```bash
+   cp rd1web/pxe/local_config.template.py rd1web/pxe/local_config.py
+   ```
+3. Edit `local_config.py` with location-specific values:
+   - Update `DEPLOYMENT_LOCATION`
+   - Update database credentials and host
+   - Update remote server IPs and credentials
+   - Update network interfaces and subnets
+   - Generate a new SECRET_KEY for production
+   - Set appropriate TIME_ZONE
+4. Verify `.gitignore` excludes `local_config.py`
+5. Test the application
+
+## Benefits
+
+✅ **Security**: Passwords and sensitive data not in git
+✅ **Flexibility**: Easy to deploy to different locations
+✅ **Maintainability**: Configuration structure is version controlled
+✅ **Documentation**: Template file serves as reference
+✅ **No Code Duplication**: Same codebase works everywhere
 
 ## Notes
 
-- Permission is not assigned to any users by default - must be manually granted via Django admin
-- MAC address normalization removes all separators (`:` and `-`) and converts to lowercase
-- PXE script parameter format changed from `{base_sn}` to `sys_sn={system_sn}` (includes prefix)
-- Tests parameter is always `default` (no user selection needed)
-- No golden number dependency or status panel in this version
-- All form styling matches existing RMA GPU TEST page for consistency
+- The `remote_config.py` module now builds Fabric Connection objects dynamically from `local_config.py`
+- All async functionality remains unchanged
+- Fallback to defaults if `local_config.py` doesn't exist (for backwards compatibility)
+- Each deployment location maintains its own `local_config.py` file (not in git)

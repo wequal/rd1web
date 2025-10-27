@@ -28,24 +28,30 @@ from ..models import ArpScanResult
 
 logger = logging.getLogger(__name__)
 
-# Subnet configurations for network scanning
-SUBNET_CONFIGS = {
-    'local': {
-        'interface': 'eno1np0',
-        'network': '172.31.0.0/16',
-        'description': 'US Network',
-        'scan_method': 'arp-scan',  # Use arp-scan directly
-        'ui_name': 'us'  # Name shown in UI
-    },
-    'remote': {
-        'interface': 'eno1', 
-        'network': '10.135.0.0/16',
-        'description': 'TW Network',
-        'scan_method': 'fastapi',  # Use FastAPI endpoint
-        'api_url': 'http://10.135.179.104:8000/scan',
-        'ui_name': 'tw'  # Name shown in UI
+# Import subnet configurations from local_config
+try:
+    from ..local_config import SUBNET_CONFIGS
+    logger.info("MAC-IP scanning using SUBNET_CONFIGS from local_config.py")
+except ImportError:
+    # Fallback to defaults if local_config doesn't exist
+    logger.warning("local_config.py not found, using default SUBNET_CONFIGS")
+    SUBNET_CONFIGS = {
+        'local': {
+            'interface': 'eno1np0',
+            'network': '172.31.0.0/16',
+            'description': 'US Network',
+            'scan_method': 'arp-scan',
+            'ui_name': 'us'
+        },
+        'remote': {
+            'interface': 'eno1', 
+            'network': '10.135.0.0/16',
+            'description': 'TW Network',
+            'scan_method': 'fastapi',
+            'api_url': 'http://10.135.179.104:8000/scan',
+            'ui_name': 'tw'
+        }
     }
-}
 
 # Mapping from UI names to internal subnet names
 UI_TO_SUBNET_MAP = {

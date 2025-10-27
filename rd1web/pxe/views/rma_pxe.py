@@ -11,6 +11,16 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Import configuration from local_config
+try:
+    from ..local_config import RMA_PXE_GENERATION_SCRIPT, PXE_BOOT_PATH
+    logger.info("RMA PXE using configuration from local_config.py")
+except ImportError:
+    # Fallback to defaults if local_config doesn't exist
+    logger.warning("local_config.py not found, using default RMA PXE paths")
+    RMA_PXE_GENERATION_SCRIPT = '/srv/share/scripts/rma_pxe_generation'
+    PXE_BOOT_PATH = '/var/www/pxe/boot/'
+
 def get_lan_macs(bmc_ip):
     try:
         entry = RmaTestingDb.objects.get(bmc_ip=bmc_ip)
@@ -170,7 +180,7 @@ def rma_pxe(request):
                         result['actions'].append(f"Deleted entry for MAC: {x}")
                         # Use sync RMA command with async wrapper
                         success, error = run_rma_command_sync(
-                            f"rm -f /var/www/pxe/boot/{formatted_mac}-boot.ipxe"
+                            f"rm -f {PXE_BOOT_PATH}{formatted_mac}-boot.ipxe"
                         )
                         if not success:
                             result['actions'].append(f"Warning: Failed to delete PXE boot file for {x}: {error}")
@@ -211,7 +221,7 @@ def rma_pxe(request):
                     
                     # Use sync RMA command with async wrapper for PXE generation
                     success, error = run_rma_command_sync(
-                        f"/srv/share/scripts/rma_pxe_generation {x} {image} {base_sn} {rma_number} {tests_param}",
+                        f"{RMA_PXE_GENERATION_SCRIPT} {x} {image} {base_sn} {rma_number} {tests_param}",
                         timeout=60  # Longer timeout for script execution
                     )
                     if not success:

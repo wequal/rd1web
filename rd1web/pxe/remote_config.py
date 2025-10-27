@@ -3,6 +3,8 @@ Remote connection configuration for PXE services.
 
 This module centralizes all remote server connection configurations
 used by both rma_pxe.py and pxe_input.py views.
+
+Configuration is loaded from local_config.py which contains location-specific settings.
 """
 
 from fabric import Connection
@@ -12,49 +14,50 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Centralized remote connection dictionary
-# Contains all remote server connections used across PXE services
-remote_dict = {
-    # RMA server connection with timeout settings
-    'rma': Connection(
-        host="root@10.4.4.80", 
-        connect_kwargs={
-            "password": "superrd1",
-            "banner_timeout": 30,  # Banner negotiation timeout
-            "auth_timeout": 30  # Authentication timeout
+# Import configuration from local_config
+try:
+    from .local_config import REMOTE_SERVERS
+    logger.info("Successfully loaded REMOTE_SERVERS from local_config.py")
+except ImportError:
+    # Fallback to default if local_config doesn't exist
+    logger.warning("local_config.py not found, using default configuration")
+    REMOTE_SERVERS = {
+        'rma': {
+            'host': 'root@10.4.4.80',
+            'password': 'superrd1',
+            'timeout': 30,
         },
-        connect_timeout=30  # Overall connection timeout
-    ),
-    
-    # PXE input location connections
-    'us_b3': Connection(
-        host="root@172.31.56.135", 
-        connect_kwargs={
-            "password": "superrd1",
-            "banner_timeout": 30,
-            "auth_timeout": 30
+        'us_b3': {
+            'host': 'root@172.31.56.135',
+            'password': 'superrd1',
+            'timeout': 30,
         },
-        connect_timeout=30
-    ),
-    'us_b1': Connection(
-        host="root@172.31.58.142", 
-        connect_kwargs={
-            "password": "superrd1",
-            "banner_timeout": 30,
-            "auth_timeout": 30
+        'us_b1': {
+            'host': 'root@172.31.58.142',
+            'password': 'superrd1',
+            'timeout': 30,
         },
-        connect_timeout=30
-    ),
-    'tw': Connection(
-        host="root@10.135.179.104", 
-        connect_kwargs={
-            "password": "superrd1",
-            "banner_timeout": 30,
-            "auth_timeout": 30
+        'tw': {
+            'host': 'root@10.135.179.104',
+            'password': 'superrd1',
+            'timeout': 30,
         },
-        connect_timeout=30
+    }
+
+# Build remote_dict from configuration
+# This creates Fabric Connection objects from the config
+remote_dict = {}
+for key, config in REMOTE_SERVERS.items():
+    remote_dict[key] = Connection(
+        host=config['host'],
+        connect_kwargs={
+            "password": config['password'],
+            "banner_timeout": config.get('timeout', 30),
+            "auth_timeout": config.get('timeout', 30)
+        },
+        connect_timeout=config.get('timeout', 30)
     )
-}
+    logger.debug(f"Created connection for '{key}': {config['host']}")
 
 class AsyncFabricWrapper:
     """
