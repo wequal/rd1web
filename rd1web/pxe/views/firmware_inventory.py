@@ -3,9 +3,10 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from django.db import transaction
+from django.db import transaction, connection
 import os
 import logging
+import time
 
 from ..models import FirmwareFile
 from ..form import EcoFolderForm, FirmwareInventoryUploadForm
@@ -156,6 +157,7 @@ def firmware_inventory_eco_list(request, product_type):
         except Exception as e:
             logger.error(f"Error listing ECO folders for {product_type}: {e}")
             messages.error(request, f'Error listing ECO folders: {str(e)}')
+            connection.close()  # Ensure connection is released on error
     
     context = {
         'product_type': product_type,
@@ -373,32 +375,84 @@ def firmware_inventory_file_upload(request, product_type, eco_number):
                     errors.append(error_msg)
                     logger.error(error_msg)
         
-        # PHASE 2: Update database (INSIDE transaction - fast operations only)
+        # PHASE 2: Update database (OPTIMIZED with bulk operations - minimal lock time)
         if saved_files_info:
+            db_start_time = time.time()
+            
             try:
                 with transaction.atomic():
-                    for file_info in saved_files_info:
-                        firmware_file, created = FirmwareFile.objects.update_or_create(
+                    user = request.user  # Cache user object
+                    
+                    # Single query to find existing files (with row locks)
+                    file_types = [f['file_type'] for f in saved_files_info]
+                    existing_files = {
+                        (f.product_type, f.eco_number, f.file_type): f
+                        for f in FirmwareFile.objects.filter(
                             product_type=product_type,
                             eco_number=eco_number,
-                            file_type=file_info['file_type'],
-                            defaults={
-                                'filename': file_info['filename'],
-                                'original_filename': file_info['original_filename'],
-                                'file_path': file_info['file_path'],
-                                'file_size': file_info['file_size'],
-                                'uploaded_by': request.user,
-                            }
+                            file_type__in=file_types
+                        ).select_for_update()
+                    }
+                    
+                    # Separate updates and creates
+                    to_update = []
+                    to_create = []
+                    
+                    for file_info in saved_files_info:
+                        key = (product_type, eco_number, file_info['file_type'])
+                        
+                        if key in existing_files:
+                            # Update existing record
+                            firmware_file = existing_files[key]
+                            firmware_file.filename = file_info['filename']
+                            firmware_file.original_filename = file_info['original_filename']
+                            firmware_file.file_path = file_info['file_path']
+                            firmware_file.file_size = file_info['file_size']
+                            firmware_file.uploaded_by = user
+                            to_update.append(firmware_file)
+                        else:
+                            # Create new record
+                            to_create.append(FirmwareFile(
+                                product_type=product_type,
+                                eco_number=eco_number,
+                                file_type=file_info['file_type'],
+                                filename=file_info['filename'],
+                                original_filename=file_info['original_filename'],
+                                file_path=file_info['file_path'],
+                                file_size=file_info['file_size'],
+                                uploaded_by=user,
+                            ))
+                    
+                    # Bulk operations (FAST - 2 queries max instead of 16!)
+                    if to_update:
+                        FirmwareFile.objects.bulk_update(
+                            to_update,
+                            ['filename', 'original_filename', 'file_path', 'file_size', 'uploaded_by', 'updated_at']
                         )
-                        
-                        uploaded_count += 1
-                        action = 'Updated' if not created else 'Uploaded'
-                        logger.info(f"{action} firmware file in DB: {file_info['filename']} by user {request.user.username}")
-                        
+                    
+                    if to_create:
+                        FirmwareFile.objects.bulk_create(to_create)
+                    
+                    uploaded_count = len(to_update) + len(to_create)
+                
+                # Log OUTSIDE transaction (no I/O blocking)
+                db_duration = time.time() - db_start_time
+                
+                if db_duration > 0.5:
+                    logger.warning(f"Slow firmware DB transaction: {db_duration*1000:.0f}ms for {uploaded_count} files - may cause lock contention")
+                else:
+                    logger.info(f"Firmware DB update: {db_duration*1000:.0f}ms for {uploaded_count} files by {user.username}")
+                
+                if to_update:
+                    logger.info(f"Updated {len(to_update)} existing firmware file(s)")
+                if to_create:
+                    logger.info(f"Created {len(to_create)} new firmware file(s)")
+                    
             except Exception as e:
                 error_msg = f"Error updating database records: {str(e)}"
                 errors.append(error_msg)
                 logger.error(error_msg)
+                connection.close()  # Ensure connection is released on error
         
         if uploaded_count > 0:
             messages.success(request, f'Successfully uploaded {uploaded_count} firmware file(s)')
@@ -446,6 +500,7 @@ def firmware_inventory_file_delete(request, file_id):
         
     except Exception as e:
         logger.error(f"Error deleting firmware file ID {file_id}: {e}")
+        connection.close()  # Ensure connection is released on error
         return JsonResponse({
             'success': False,
             'error': f'Failed to delete file: {str(e)}'
@@ -502,6 +557,7 @@ def firmware_inventory_eco_delete(request, product_type, eco_number):
         
     except Exception as e:
         logger.error(f"Error deleting ECO folder {product_type}/{eco_number}: {e}")
+        connection.close()  # Ensure connection is released on error
         return JsonResponse({
             'success': False,
             'error': f'Failed to delete ECO folder: {str(e)}'

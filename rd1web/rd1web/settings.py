@@ -140,6 +140,10 @@ DATABASES = {
         'HOST': DATABASE_CONFIG['HOST'],
         'PORT': DATABASE_CONFIG['PORT'],
         'CONN_MAX_AGE': 600,  # Connection pooling for 10 minutes
+        'OPTIONS': {
+            'connect_timeout': 10,
+            'options': '-c statement_timeout=30000 -c lock_timeout=10000'  # 30s statement, 10s lock
+        }
     }
 }
 
