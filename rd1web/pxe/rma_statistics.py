@@ -74,7 +74,7 @@ def parse_test_results_log(log_content):
     
     # ECC Error
     has_ecc_fail = bool(re.search(r'ECC error detected on GPU', log_content))
-    has_ecc_pass = bool(re.search(r'figlet "No ECC error"', log_content)) or bool(re.search(r'No ECC error', log_content))
+    has_ecc_pass = bool(re.search(r'No ECC error', log_content))
     
     if has_ecc_pass and has_ecc_fail:
         results['ecc_error'] = 'pass'  # Final result wins
