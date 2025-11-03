@@ -17,6 +17,8 @@ from ..rma_statistics import (
     get_yearly_statistics,
     get_current_week_range,
     get_week_by_offset,
+    get_month_by_offset,
+    get_year_by_offset,
     scan_all_rma_directories,
 )
 
@@ -33,12 +35,17 @@ def rma_statistics(request):
     # Get parameters
     period = request.GET.get('period', 'weekly')  # weekly, monthly, yearly
     week_offset = int(request.GET.get('week_offset', 0))  # For weekly navigation
+    month_offset = int(request.GET.get('month_offset', 0))  # For monthly navigation
+    year_offset = int(request.GET.get('year_offset', 0))  # For yearly navigation
     year = request.GET.get('year', None)
     month = request.GET.get('month', None)
     
     # Determine date range and get statistics
     if period == 'monthly':
-        if year and month:
+        # Use month_offset if no explicit year/month provided
+        if not year and not month:
+            year, month = get_month_by_offset(month_offset)
+        elif year and month:
             year = int(year)
             month = int(month)
         else:
@@ -51,11 +58,11 @@ def rma_statistics(request):
         period_display = f"{datetime(year, month, 1).strftime('%B %Y')}"
         
     elif period == 'yearly':
-        if year:
-            year = int(year)
+        # Use year_offset if no explicit year provided
+        if not year:
+            year = get_year_by_offset(year_offset)
         else:
-            # Default to current year
-            year = timezone.now().year
+            year = int(year)
         
         stats = get_yearly_statistics(year)
         period_display = str(year)
@@ -80,6 +87,8 @@ def rma_statistics(request):
         'period': period,
         'period_display': period_display,
         'week_offset': week_offset,
+        'month_offset': month_offset,
+        'year_offset': year_offset,
         'stats': stats,
         'year': year if period in ['monthly', 'yearly'] else None,
         'month': month if period == 'monthly' else None,

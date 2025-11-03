@@ -395,6 +395,50 @@ def get_week_by_offset(offset=0):
     return start_date, end_date
 
 
+def get_month_by_offset(offset=0):
+    """
+    Get month and year by offset from current month
+    
+    Args:
+        offset (int): Month offset (0 = current month, -1 = last month, 1 = next month)
+        
+    Returns:
+        tuple: (year, month) as integers
+    """
+    now = timezone.now()
+    current_year = now.year
+    current_month = now.month
+    
+    # Calculate target month and year
+    target_month = current_month + offset
+    target_year = current_year
+    
+    # Handle year boundaries
+    while target_month > 12:
+        target_month -= 12
+        target_year += 1
+    
+    while target_month < 1:
+        target_month += 12
+        target_year -= 1
+    
+    return target_year, target_month
+
+
+def get_year_by_offset(offset=0):
+    """
+    Get year by offset from current year
+    
+    Args:
+        offset (int): Year offset (0 = current year, -1 = last year, 1 = next year)
+        
+    Returns:
+        int: Target year
+    """
+    now = timezone.now()
+    return now.year + offset
+
+
 def get_weekly_statistics(start_date, end_date):
     """
     Get statistics for a specific week
