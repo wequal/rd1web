@@ -7,6 +7,7 @@ from ..models import PxeEntry, RmaTestingDb, FirmwareFile
 from ..remote_config import remote_dict, async_rma
 import asyncio
 import json
+import ast
 import logging
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,77 @@ def run_rma_command_sync(command, timeout=30):
     except Exception as e:
         logger.error(f"RMA command exception: {command}, Error: {e}")
         return False, str(e)
+
+@login_required
+@permission_required('pxe.can_access_rma_pxe', raise_exception=True)
+def get_rma_info_by_bmc(request, bmc_ip):
+    """API endpoint to get base_sn and rma_number by BMC IP"""
+    try:
+        # Step 1: Get MAC addresses from RmaTestingDb using the BMC IP
+        try:
+            rma_entry = RmaTestingDb.objects.get(bmc_ip=bmc_ip)
+            macs = [rma_entry.lan0_mac, rma_entry.lan1_mac]
+            # Normalize MACs (remove colons/dashes, lowercase)
+            macs = [mac.replace(':', '').replace('-', '').lower() for mac in macs if mac]
+        except RmaTestingDb.DoesNotExist:
+            return JsonResponse({
+                'success': True,
+                'base_sn': '',
+                'rma_number': ''
+            })
+        
+        if not macs:
+            return JsonResponse({
+                'success': True,
+                'base_sn': '',
+                'rma_number': ''
+            })
+        
+        # Step 2: Query PxeEntry for those MAC addresses (most recent first)
+        pxe_entry = PxeEntry.objects.filter(mac__in=macs).order_by('-id').first()
+        
+        if not pxe_entry:
+            return JsonResponse({
+                'success': True,
+                'base_sn': '',
+                'rma_number': ''
+            })
+        
+        # Step 3: Extract base_sn and rma_number from parameters field
+        # Parameters is stored as TextField (string), need to parse it
+        params = pxe_entry.parameters
+        
+        # Try to parse parameters (could be dict, string representation of dict, or JSON)
+        if isinstance(params, dict):
+            params_dict = params
+        elif isinstance(params, str):
+            try:
+                # Try ast.literal_eval first (safer for Python dict strings)
+                params_dict = ast.literal_eval(params)
+            except (ValueError, SyntaxError):
+                try:
+                    # Fall back to JSON parsing
+                    params_dict = json.loads(params)
+                except json.JSONDecodeError:
+                    params_dict = {}
+        else:
+            params_dict = {}
+        
+        base_sn = params_dict.get('base_sn', '') if isinstance(params_dict, dict) else ''
+        rma_number = params_dict.get('rma_number', '') if isinstance(params_dict, dict) else ''
+        
+        return JsonResponse({
+            'success': True,
+            'base_sn': base_sn,
+            'rma_number': rma_number
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting RMA info for BMC IP {bmc_ip}: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
 
 @login_required
 @permission_required('pxe.can_access_rma_pxe', raise_exception=True)

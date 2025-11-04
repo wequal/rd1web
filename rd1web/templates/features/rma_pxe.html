@@ -660,7 +660,6 @@
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
                 alert('An error occurred while linking the golden number');
             });
         }
@@ -683,7 +682,6 @@
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
                 alert('An error occurred while unlinking the golden number');
             });
         }
@@ -713,30 +711,12 @@
         const coolingSelect = document.getElementById('{{ form.cooling.id_for_label }}');
         // Note: imageSelect is already declared above, reusing it
         
-        console.log('Firmware Update Elements:', {
-            fwUpdateCheckbox,
-            ecoNumberSection,
-            ecoNumberSelect,
-            gpuModelSection,
-            gpuModelSelect,
-            coolingSection,
-            coolingSelect,
-            imageSelect,
-            fwUpdateId: 'id_fw_update',
-            ecoNumberId: '{{ form.eco_number.id_for_label }}',
-            gpuModelId: '{{ form.gpu_model.id_for_label }}',
-            coolingId: '{{ form.cooling.id_for_label }}'
-        });
-        
         // Function to load ECO numbers from API based on image type
         async function loadEcoNumbers(imageType) {
             if (!ecoNumberSelect) return;
             
-            console.log(`Loading ECO numbers for image type: ${imageType}`);
-            
             // Save currently selected ECO number
             const currentlySelected = ecoNumberSelect.value;
-            console.log(`Currently selected ECO: ${currentlySelected}`);
             
             // Build query parameters for H100/200 images
             let queryParams = '';
@@ -751,21 +731,13 @@
                 if (params.toString()) {
                     queryParams = '?' + params.toString();
                 }
-                console.log(`ECO API query params: ${queryParams}`);
             }
             
             try {
                 const response = await fetch(`/api/rma/eco-numbers/${imageType}/${queryParams}`);
                 const data = await response.json();
                 
-                console.log('ECO API response:', data);
-                
                 if (data.success && data.eco_numbers) {
-                    console.log(`Found ${data.eco_numbers.length} ECO numbers:`, data.eco_numbers);
-                    
-                    if (data.debug) {
-                        console.log('Debug info:', data.debug);
-                    }
                     
                     // Clear existing options
                     ecoNumberSelect.innerHTML = '<option value="">-- Select ECO Number --</option>';
@@ -778,51 +750,39 @@
                         ecoNumberSelect.appendChild(option);
                     });
                     
-                    console.log(`Populated dropdown with ${data.eco_numbers.length} ECO numbers`);
-                    
                     // Restore previously selected ECO number if it still exists in the new list
                     if (currentlySelected && data.eco_numbers.includes(currentlySelected)) {
                         ecoNumberSelect.value = currentlySelected;
-                        console.log(`Restored selected ECO: ${currentlySelected}`);
-                    } else if (currentlySelected && !data.eco_numbers.includes(currentlySelected)) {
-                        console.log(`Previously selected ECO ${currentlySelected} not available in filtered list`);
                     }
                 } else {
-                    console.error('Failed to load ECO numbers:', data.error);
                     ecoNumberSelect.innerHTML = '<option value="">-- No ECO numbers available --</option>';
                 }
             } catch (error) {
-                console.error('Error fetching ECO numbers:', error);
-                ecoNumberSelect.innerHTML = '<option value="">-- Error loading ECO numbers --</option>';
+                if (ecoNumberSelect) {
+                    ecoNumberSelect.innerHTML = '<option value="">-- Error loading ECO numbers --</option>';
+                }
             }
         }
         
         // Function to show/hide ECO section and load appropriate ECO numbers
         function updateEcoSection() {
             if (!fwUpdateCheckbox || !imageSelect) {
-                console.log('Missing elements:', { fwUpdateCheckbox, imageSelect });
                 return;
             }
             
             const selectedImage = imageSelect.value;
             const fwUpdateChecked = fwUpdateCheckbox.checked;
             
-            console.log('updateEcoSection called:', { selectedImage, fwUpdateChecked });
-            
             // Show ECO section only if fw_update is checked and image is H100/200 or B200
             if (fwUpdateChecked && (selectedImage === 'ubuntu2204-x86-rma' || selectedImage === 'ubuntu2204-b200-rma')) {
-                console.log('Showing ECO section');
                 if (ecoNumberSection) {
                     ecoNumberSection.style.display = 'block';
                     // Load ECO numbers for the selected image type
                     loadEcoNumbers(selectedImage);
-                } else {
-                    console.error('ecoNumberSection element not found!');
                 }
                 
                 // Show GPU Model and Cooling sections only for H100/200 (ubuntu2204-x86-rma)
                 if (selectedImage === 'ubuntu2204-x86-rma') {
-                    console.log('Showing GPU Model and Cooling sections for H100/200');
                     if (gpuModelSection) {
                         gpuModelSection.style.display = 'block';
                     }
@@ -831,7 +791,6 @@
                     }
                 } else {
                     // Hide GPU Model and Cooling for B200 and other images
-                    console.log('Hiding GPU Model and Cooling sections (not H100/200)');
                     if (gpuModelSection) {
                         gpuModelSection.style.display = 'none';
                     }
@@ -846,7 +805,6 @@
                     }
                 }
             } else {
-                console.log('Hiding ECO section - fwUpdateChecked:', fwUpdateChecked);
                 if (ecoNumberSection) {
                     ecoNumberSection.style.display = 'none';
                 }
@@ -874,45 +832,75 @@
         
         // Add event listeners
         if (fwUpdateCheckbox) {
-            console.log('Adding change listener to fwUpdateCheckbox');
             fwUpdateCheckbox.addEventListener('change', updateEcoSection);
-        } else {
-            console.error('fwUpdateCheckbox not found!');
         }
         
         if (imageSelect) {
-            console.log('Adding change listener to imageSelect for ECO');
             imageSelect.addEventListener('change', updateEcoSection);
-        } else {
-            console.error('imageSelect not found for ECO!');
         }
         
         // Add event listeners for GPU Model and Cooling to reload ECO numbers
         if (gpuModelSelect) {
-            console.log('Adding change listener to gpuModelSelect');
             gpuModelSelect.addEventListener('change', function() {
                 const selectedImage = imageSelect.value;
                 if (fwUpdateCheckbox.checked && selectedImage === 'ubuntu2204-x86-rma') {
-                    console.log('GPU Model changed, reloading ECO numbers');
                     loadEcoNumbers(selectedImage);
                 }
             });
         }
         
         if (coolingSelect) {
-            console.log('Adding change listener to coolingSelect');
             coolingSelect.addEventListener('change', function() {
                 const selectedImage = imageSelect.value;
                 if (fwUpdateCheckbox.checked && selectedImage === 'ubuntu2204-x86-rma') {
-                    console.log('Cooling changed, reloading ECO numbers');
                     loadEcoNumbers(selectedImage);
                 }
             });
         }
         
         // Initialize on page load
-        console.log('Calling updateEcoSection on page load');
         updateEcoSection();
+        
+        // Auto-fill base_sn and rma_number when BMC IP is selected
+        const bmcIpSelect = document.getElementById('id_bmc_ip');
+        const baseSnInput = document.getElementById('id_base_sn');
+        const rmaNumberInput = document.getElementById('id_rma_number');
+        
+        if (bmcIpSelect && baseSnInput && rmaNumberInput) {
+            // Function to fetch and fill RMA info
+            async function fetchAndFillRmaInfo(bmcIp) {
+                if (!bmcIp) {
+                    baseSnInput.value = '';
+                    rmaNumberInput.value = '';
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`/api/rma/get-rma-info/${bmcIp}/`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        baseSnInput.value = data.base_sn || '';
+                        rmaNumberInput.value = data.rma_number || '';
+                    }
+                } catch (error) {
+                    // Silently handle errors
+                    baseSnInput.value = '';
+                    rmaNumberInput.value = '';
+                }
+            }
+            
+            // Add change event listener
+            bmcIpSelect.addEventListener('change', function() {
+                fetchAndFillRmaInfo(this.value);
+            });
+            
+            // Auto-fill on page load if only one BMC IP or if one is already selected
+            const selectedBmcIp = bmcIpSelect.value;
+            if (selectedBmcIp) {
+                fetchAndFillRmaInfo(selectedBmcIp);
+            }
+        }
     });
 </script>
 {% endblock %}

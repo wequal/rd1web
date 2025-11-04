@@ -19,7 +19,7 @@ from .views.remote_control import (
 )
 from .views.archive import archive_system
 from .views.mac_ip_view import mac_ip_results, mac_ip_api, manual_scan, scan_status_api
-from .views.rma_pxe import rma_pxe, get_eco_numbers_api
+from .views.rma_pxe import rma_pxe, get_eco_numbers_api, get_rma_info_by_bmc
 from .views.rma_general_test import rma_general_test
 from .views.rma_logs import rma_log, rma_view_file, rma_download_folder, rma_download_folder_async, rma_download_folder_status, rma_collect_mi3xx_alllog, rma_collect_mi3xx_alllog_status
 from .views.rma_general_logs import rma_general_log, rma_general_view_file
@@ -101,6 +101,7 @@ urlpatterns = [
     
     # RMA API URLs
     path('api/rma/eco-numbers/<str:image_type>/', get_eco_numbers_api, name='rma_eco_numbers_api'),
+    path('api/rma/get-rma-info/<str:bmc_ip>/', get_rma_info_by_bmc, name='get_rma_info_by_bmc'),
     
     # RMA Testing DB URLs
     path('rma/testing-db/', rma_testing_db_list, name='rma_testing_db'),
