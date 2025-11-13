@@ -66,6 +66,9 @@ ALLOWED_HOSTS = ['*']  # Allow all IP addresses to access
 CSRF_TRUSTED_ORIGINS = [
     f"http://{host_ip}:{WEB_APP_PORT}"
 ]
+# Toggle to serve static files via Django's ASGI handler. Defaults to True so admin assets load
+# even when DEBUG=0; set SERVE_STATIC_VIA_DJANGO=0 to rely solely on collected static files.
+SERVE_STATIC_VIA_DJANGO = os.environ.get("SERVE_STATIC_VIA_DJANGO", "1") == "1"
 # Application definition
 
 INSTALLED_APPS = [

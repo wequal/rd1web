@@ -22,8 +22,8 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'rd1web.settings')
 # is populated before importing code that may import ORM models.
 django_asgi_app = get_asgi_application()
 
-# In development, serve static files (including admin CSS) directly via ASGI
-if settings.DEBUG:
+# Optionally serve static files (including admin assets) directly via ASGI
+if settings.SERVE_STATIC_VIA_DJANGO:
     django_asgi_app = ASGIStaticFilesHandler(django_asgi_app)
 
 websocket_urlpatterns = [
