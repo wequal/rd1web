@@ -58,9 +58,28 @@ def run_rma_command_sync(command, timeout=30):
 def get_rma_info_by_bmc(request, bmc_ip):
     """API endpoint to get base_sn and rma_number by BMC IP"""
     try:
-        # Step 1: Get MAC addresses from RmaTestingDb using the BMC IP
+        # Step 1: Get RMA entry and check if it's actively linked
         try:
             rma_entry = RmaTestingDb.objects.get(bmc_ip=bmc_ip)
+            
+            # Check if golden is currently linked
+            if not rma_entry.linked_user:
+                # Not linked to any user - skip auto-fill
+                return JsonResponse({
+                    'success': True,
+                    'base_sn': '',
+                    'rma_number': ''
+                })
+            
+            # Check if linked_at timestamp exists
+            if not rma_entry.linked_at:
+                # No link timestamp - legacy record or unlinked/relinked - skip auto-fill
+                return JsonResponse({
+                    'success': True,
+                    'base_sn': '',
+                    'rma_number': ''
+                })
+            
             macs = [rma_entry.lan0_mac, rma_entry.lan1_mac]
             # Normalize MACs (remove colons/dashes, lowercase)
             macs = [mac.replace(':', '').replace('-', '').lower() for mac in macs if mac]
@@ -78,10 +97,15 @@ def get_rma_info_by_bmc(request, bmc_ip):
                 'rma_number': ''
             })
         
-        # Step 2: Query PxeEntry for those MAC addresses (most recent first)
-        pxe_entry = PxeEntry.objects.filter(mac__in=macs).order_by('-id').first()
+        # Step 2: Query PxeEntry for those MAC addresses created AFTER linked_at
+        # This ensures we only auto-fill from PXE entries created while currently linked
+        pxe_entry = PxeEntry.objects.filter(
+            mac__in=macs,
+            updated_at__gte=rma_entry.linked_at
+        ).order_by('-updated_at').first()
         
         if not pxe_entry:
+            # No PXE entries created after linking - skip auto-fill
             return JsonResponse({
                 'success': True,
                 'base_sn': '',

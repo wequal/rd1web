@@ -7,6 +7,7 @@ from django.db.models import Q
 from django.core.paginator import Paginator
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
+from django.utils import timezone
 import json
 import logging
 
@@ -254,8 +255,9 @@ def golden_link(request, entry_id):
                 'error': f'Golden number "{entry.golden_number}" is already linked to {entry.linked_user.username}'
             })
         
-        # Link to current user
+        # Link to current user and set linked_at timestamp
         entry.linked_user = request.user
+        entry.linked_at = timezone.now()
         entry.save()
         
         return JsonResponse({
@@ -303,8 +305,9 @@ def golden_unlink(request, entry_id):
         if entry.linked_user:
             entry.last_tester = entry.linked_user.username
         
-        # Unlink the golden number
+        # Unlink the golden number and clear linked_at timestamp
         entry.linked_user = None
+        entry.linked_at = None
         entry.save()
         
         return JsonResponse({

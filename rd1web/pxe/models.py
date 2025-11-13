@@ -10,6 +10,7 @@ class PxeEntry(models.Model):
     parameters = models.TextField()
     image= models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         permissions = [
@@ -109,6 +110,12 @@ class RmaTestingDb(models.Model):
         related_name='linked_golden_numbers',
         help_text='User currently linked to this golden number',
         verbose_name='Linked User'
+    )
+    linked_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='Timestamp when the golden number was linked to current user',
+        verbose_name='Linked At'
     )
     created_at = models.DateTimeField(auto_now_add=True)
     last_tester = models.CharField(
