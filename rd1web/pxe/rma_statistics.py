@@ -487,7 +487,7 @@ def get_weekly_statistics(start_date, end_date):
     all_records = RmaTestStatistic.objects.filter(
         test_date__gte=start_date,
         test_date__lte=end_date
-    ).order_by('directory_name', '-test_date')
+    ).order_by('directory_name', '-file_mtime', '-test_date', '-updated_at')
     
     # Get unique directories (most recent record for each directory)
     seen_directories = set()
