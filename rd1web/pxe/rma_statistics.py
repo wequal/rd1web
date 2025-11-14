@@ -83,16 +83,20 @@ def parse_test_results_log(log_content):
     elif has_ecc_fail:
         results['ecc_error'] = 'fail'
     
-    # DCGM Test
-    has_dcgm_fail = bool(re.search(r'DCGM (LC|AC) test Failed', log_content))
-    has_dcgm_pass = bool(re.search(r'DCGM (LC|AC) test Finished', log_content))
+    # DCGM Test - use last occurrence to determine final result
+    dcgm_fail_matches = list(re.finditer(r'DCGM (LC|AC) test Failed', log_content))
+    dcgm_pass_matches = list(re.finditer(r'DCGM (LC|AC) test Finished', log_content))
     
-    if has_dcgm_pass and has_dcgm_fail:
-        results['dcgm_test'] = 'pass'  # Final result wins
-    elif has_dcgm_pass:
-        results['dcgm_test'] = 'pass'
-    elif has_dcgm_fail:
-        results['dcgm_test'] = 'fail'
+    if dcgm_fail_matches or dcgm_pass_matches:
+        # Get position of last fail and last pass
+        last_fail_pos = dcgm_fail_matches[-1].start() if dcgm_fail_matches else -1
+        last_pass_pos = dcgm_pass_matches[-1].start() if dcgm_pass_matches else -1
+        
+        # Whichever comes last in the log is the final result
+        if last_fail_pos > last_pass_pos:
+            results['dcgm_test'] = 'fail'
+        elif last_pass_pos > last_fail_pos:
+            results['dcgm_test'] = 'pass'
     
     # Field Diagnostic Level 2 Test
     has_fd2_fail = bool(re.search(r'Field Diagnostic level 2 test Failed', log_content))
