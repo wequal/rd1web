@@ -222,40 +222,14 @@ def scan_rma_directory(dir_name):
         except Exception as e:
             return False, f"Cannot get mtime for test_results.log: {e}"
         
-        # Check if this directory already has a record with same file_mtime
-        existing_record = RmaTestStatistic.objects.filter(
-            directory_name=dir_name,
-            file_mtime=file_mtime
-        ).first()
-        
-        if existing_record:
-            # Same test results file, just update the directory mtime if changed
-            try:
-                new_test_date = datetime.fromtimestamp(dir_mtime)
-                new_test_date = timezone.make_aware(new_test_date)
-                
-                if existing_record.test_date != new_test_date:
-                    existing_record.test_date = new_test_date
-                    existing_record.save(update_fields=['test_date'])
-                    return True, f"Updated test_date for: {dir_name}"
-                else:
-                    return True, f"Skipped (already recorded): {dir_name}"
-            except Exception as e:
-                logger.warning(f"Error updating test_date for {dir_name}: {e}")
-                return True, f"Skipped (already recorded): {dir_name}"
-        
-        # Read test_results.log
-        try:
-            with open(test_results_path, 'r', encoding='utf-8', errors='ignore') as f:
-                log_content = f.read()
-        except Exception as e:
-            return False, f"Cannot read test_results.log: {e}"
-        
-        # Parse test results
-        test_results = parse_test_results_log(log_content)
-        
-        # Get GPU model
-        gpu_model = parse_sys_info_file(sys_info_path)
+        log_content_cache = None
+
+        def get_log_content():
+            nonlocal log_content_cache
+            if log_content_cache is None:
+                with open(test_results_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    log_content_cache = f.read()
+            return log_content_cache
         
         # Use directory mtime for test_date
         try:
@@ -265,6 +239,63 @@ def scan_rma_directory(dir_name):
         except Exception as e:
             logger.warning(f"Cannot get directory mtime, using current time: {e}")
             test_date = timezone.now()
+        
+        # Get GPU model
+        gpu_model = parse_sys_info_file(sys_info_path)
+        
+        # Check if this directory already has a record with same file_mtime
+        existing_record = RmaTestStatistic.objects.filter(
+            directory_name=dir_name,
+            file_mtime=file_mtime
+        ).first()
+        
+        if existing_record:
+            updates_needed = []
+            
+            # Always evaluate the latest log content so semantic changes (same mtime) are detected
+            try:
+                log_content = get_log_content()
+            except Exception as e:
+                return False, f"Cannot read test_results.log: {e}"
+            
+            new_test_results = parse_test_results_log(log_content)
+            
+            if new_test_results != existing_record.test_results:
+                existing_record.test_results = new_test_results
+                updates_needed.append('test_results')
+            
+            if existing_record.test_date != test_date:
+                existing_record.test_date = test_date
+                updates_needed.append('test_date')
+            
+            if existing_record.gpu_model != gpu_model:
+                existing_record.gpu_model = gpu_model
+                updates_needed.append('gpu_model')
+            
+            if existing_record.base_sn != base_sn:
+                existing_record.base_sn = base_sn
+                updates_needed.append('base_sn')
+            
+            if existing_record.rma_number != rma_number:
+                existing_record.rma_number = rma_number
+                updates_needed.append('rma_number')
+            
+            if updates_needed:
+                # file_mtime might remain unchanged but keep it in sync regardless
+                existing_record.file_mtime = file_mtime
+                existing_record.save(update_fields=list(set(updates_needed + ['file_mtime', 'updated_at'])))
+                return True, f"Updated existing record for: {dir_name}"
+            else:
+                return True, f"Skipped (already recorded): {dir_name}"
+        
+        # Read test_results.log
+        try:
+            log_content = get_log_content()
+        except Exception as e:
+            return False, f"Cannot read test_results.log: {e}"
+        
+        # Parse test results
+        test_results = parse_test_results_log(log_content)
         
         # Create or update record - ensure only one record per directory
         RmaTestStatistic.objects.update_or_create(

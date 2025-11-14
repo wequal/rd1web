@@ -4,3 +4,24 @@
 - [ ] Update `rd1web/rd1web/asgi.py` to use the new flag when deciding to wrap the app with `ASGIStaticFilesHandler`.
 - [ ] Verify settings to ensure the new flag keeps static assets working on all worker ports.
 
+## RMA Test Log Cleanup Plan
+
+- [x] Inspect `/srv/rma-b31/*/test_results.log` layout to understand target files without altering mtimes.
+- [x] Decide on safe editing approach that removes trailing `DCGM LC/AC test Finished` lines only when preceded by matching failures.
+- [x] Execute the cleanup across all matching logs while preserving original mtimes.
+- [x] Re-verify a sample of edited logs to confirm formatting and timestamps remain unchanged.
+
+## Investigate DCGM Failure Count
+
+- [ ] Reproduce the RMA statistics view/API output to confirm `dcgm_test` failure count is zero.
+- [ ] Trace how `test_results` data is parsed and stored to ensure DCGM failures register correctly.
+- [ ] Identify mismatches between log patterns, database records, and UI aggregation causing zero counts.
+- [ ] Propose and validate a fix (code or data) so DCGM failures appear in statistics.
+
+## RMA Scanner Refresh Logic
+
+- [x] Review `scan_rma_directory` skip logic to understand current mtime-only behavior.
+- [x] Design an updated change-detection strategy (e.g., file size/hash) that lets us re-parse logs when contents change but mtime stays the same.
+- [x] Implement the new detection mechanism with minimal disruption and add logging/tests if needed.
+- [x] Verify by re-running the scanner on sample directories to ensure updated stats.
+
