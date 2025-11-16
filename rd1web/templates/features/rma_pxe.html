@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block title %}RMA GPU TEST{% endblock %}
 
 {% block content %}
@@ -161,6 +162,14 @@
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" name="tests" value="all_log" id="id_tests_6">
+                                        <label class="form-check-label" for="id_tests_6">
+                                            <i class="fas me-1 text-danger"></i>All Log
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
                                         <input type="checkbox" class="form-check-input" name="fw_update" id="id_fw_update">
                                         <label class="form-check-label" for="id_fw_update">
                                             Firmware Update
@@ -177,7 +186,7 @@
                             {% endif %}
                             <div id="tests-validation-message" class="text-warning mt-2" style="display: none;">
                                 <small><i class="fas fa-exclamation-triangle me-1"></i>
-                                    You can select either 'Default' test OR any combination of 'Pre GPU Test', 'DCGM', 'GPU Field Diag', 'FD2', 'AGHFC Level 3', 'Firmware Update', but 'Default' cannot be combined with other tests.
+                                    You can select either 'Default' test OR any combination of 'Pre GPU Test', 'DCGM', 'GPU Field Diag', 'FD2', 'AGHFC Level 3', 'Firmware Update'. The 'Default' and 'All Log' options cannot be combined with any other tests or Firmware Update.
                                 </small>
                             </div>
                         </div>
@@ -432,6 +441,8 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{% static 'js/mi3xx_alllog.js' %}"></script>
+{% include "partials/mi3xx_alllog_modal.html" %}
 <script>
     // Form validation and UX improvements
     document.addEventListener('DOMContentLoaded', function() {
@@ -461,19 +472,25 @@
         const fd2Checkbox = document.getElementById('id_tests_3');
         const gpudiagCheckbox = document.getElementById('id_tests_4');
         const level3Checkbox = document.getElementById('id_tests_5');
+        const allLogCheckbox = document.getElementById('id_tests_6');
         
         function handleImageSelection() {
             const selectedImage = imageSelect.value;
-            const isMI300XorMI325X = (selectedImage === 'ubuntu2204-mi300x' || selectedImage === 'ubuntu2204-mi325x' || selectedImage === 'ubuntu2204-mi355x');
-            
+            const isMi3xxImage = (
+                selectedImage === 'ubuntu2204-mi300x' ||
+                selectedImage === 'ubuntu2204-mi325x' ||
+                selectedImage === 'ubuntu2204-mi355x'
+            );
+
             // Get the parent divs that contain the checkboxes
             const dcgmContainer = dcgmCheckbox ? dcgmCheckbox.closest('.col-md-3') : null;
             const fd2Container = fd2Checkbox ? fd2Checkbox.closest('.col-md-3') : null;
             const gpudiagContainer = gpudiagCheckbox ? gpudiagCheckbox.closest('.col-md-3') : null;
             const level3Container = level3Checkbox ? level3Checkbox.closest('.col-md-3') : null;
-            
-            if (isMI300XorMI325X) {
-                // Hide DCGM, FD2, and GPU Field Diag for MI300X and MI325X
+            const allLogContainer = allLogCheckbox ? allLogCheckbox.closest('.col-md-3') : null;
+
+            if (isMi3xxImage) {
+                // Hide DCGM, FD2, and GPU Field Diag for MI3XX images
                 if (dcgmContainer) {
                     dcgmContainer.style.display = 'none';
                     dcgmCheckbox.checked = false;
@@ -486,13 +503,16 @@
                     gpudiagContainer.style.display = 'none';
                     gpudiagCheckbox.checked = false;
                 }
-                
-                // Show AGHFC Level 3 for MI300X and MI325X
+
+                // Show AGHFC Level 3 and All Log for MI3XX images
                 if (level3Container) {
                     level3Container.style.display = '';
                 }
-                
-                // Auto-check Default test for MI300X and MI325X
+                if (allLogContainer) {
+                    allLogContainer.style.display = '';
+                }
+
+                // Auto-check Default test for MI3XX images
                 if (defaultCheckbox) {
                     defaultCheckbox.checked = true;
                 }
@@ -501,11 +521,15 @@
                 if (dcgmContainer) dcgmContainer.style.display = '';
                 if (fd2Container) fd2Container.style.display = '';
                 if (gpudiagContainer) gpudiagContainer.style.display = '';
-                
-                // Hide AGHFC Level 3 for other images
+
+                // Hide AGHFC Level 3 and All Log for non-MI3XX images
                 if (level3Container) {
                     level3Container.style.display = 'none';
                     level3Checkbox.checked = false;
+                }
+                if (allLogContainer) {
+                    allLogContainer.style.display = 'none';
+                    allLogCheckbox.checked = false;
                 }
             }
         }
@@ -528,33 +552,44 @@
             const fd2Checkbox = document.getElementById('id_tests_3');
             const gpudiagCheckbox = document.getElementById('id_tests_4');
             const level3Checkbox = document.getElementById('id_tests_5');
+            const allLogCheckboxTest = document.getElementById('id_tests_6');
             const fwUpdateCheckboxTest = document.getElementById('id_fw_update');
-            
-            const otherCheckboxes = [nvidiaCheckbox, dcgmCheckbox, fd2Checkbox, gpudiagCheckbox, level3Checkbox, fwUpdateCheckboxTest].filter(cb => cb !== null);
+
+            const specificCheckboxes = [nvidiaCheckbox, dcgmCheckbox, fd2Checkbox, gpudiagCheckbox, level3Checkbox].filter(cb => cb !== null);
+            const otherCheckboxes = [...specificCheckboxes, fwUpdateCheckboxTest, allLogCheckboxTest].filter(cb => cb !== null);
             const testCheckboxes = [defaultCheckbox, ...otherCheckboxes].filter(cb => cb !== null);
             
             // Function to validate test selections
             function validateTestSelections() {
                 const defaultSelected = defaultCheckbox && defaultCheckbox.checked;
-                const otherSelected = otherCheckboxes.some(cb => cb.checked);
-                
-                // If both default and others are selected, show warning and prevent submission
-                if (defaultSelected && otherSelected) {
+                const allLogSelected = allLogCheckboxTest && allLogCheckboxTest.checked;
+                const anySpecificSelected = specificCheckboxes.some(cb => cb.checked);
+                const fwUpdateSelected = fwUpdateCheckboxTest && fwUpdateCheckboxTest.checked;
+
+                // Default cannot be combined with any other tests or fw_update
+                if (defaultSelected && (anySpecificSelected || fwUpdateSelected || allLogSelected)) {
                     testsValidationMessage.style.display = 'block';
                     return false;
-                } else {
-                    testsValidationMessage.style.display = 'none';
-                    return true;
                 }
+
+                // All Log must be selected alone
+                if (allLogSelected && (defaultSelected || anySpecificSelected || fwUpdateSelected)) {
+                    testsValidationMessage.style.display = 'block';
+                    return false;
+                }
+
+                testsValidationMessage.style.display = 'none';
+                return true;
             }
             
             // Function to handle checkbox changes
             function handleTestSelection(changedCheckbox) {
                 const isDefault = changedCheckbox === defaultCheckbox;
-                
+                const isAllLog = changedCheckbox === allLogCheckboxTest;
+
                 if (changedCheckbox.checked) {
                     if (isDefault) {
-                        // If default is selected, uncheck all others
+                        // If Default is selected, uncheck all others (including All Log and fw_update)
                         otherCheckboxes.forEach(function(cb) {
                             cb.checked = false;
                         });
@@ -562,14 +597,31 @@
                         if (typeof updateEcoSection === 'function') {
                             updateEcoSection();
                         }
-                    } else {
-                        // If any other test is selected, uncheck default
+                    } else if (isAllLog) {
+                        // If All Log is selected, uncheck all other tests and fw_update
                         if (defaultCheckbox) {
                             defaultCheckbox.checked = false;
                         }
+                        specificCheckboxes.forEach(function(cb) {
+                            cb.checked = false;
+                        });
+                        if (fwUpdateCheckboxTest) {
+                            fwUpdateCheckboxTest.checked = false;
+                            if (typeof updateEcoSection === 'function') {
+                                updateEcoSection();
+                            }
+                        }
+                    } else {
+                        // Any other test or fw_update unchecks Default and All Log
+                        if (defaultCheckbox) {
+                            defaultCheckbox.checked = false;
+                        }
+                        if (allLogCheckboxTest) {
+                            allLogCheckboxTest.checked = false;
+                        }
                     }
                 }
-                
+
                 validateTestSelections();
             }
             
@@ -586,31 +638,96 @@
         
         // Enhanced form validation
         form.addEventListener('submit', function(e) {
-            const baseSn = document.getElementById('{{ form.base_sn.id_for_label }}').value.trim();
-            const rmaNumber = document.getElementById('{{ form.rma_number.id_for_label }}').value.trim();
-            const macAddresses = document.getElementById('{{ form.mac.id_for_label }}').value.trim();
-            
+            const baseSnInput = document.getElementById('{{ form.base_sn.id_for_label }}');
+            const rmaNumberInput = document.getElementById('{{ form.rma_number.id_for_label }}');
+            const bmcIpInput = document.getElementById('{{ form.bmc_ip.id_for_label }}');
+
+            const baseSn = baseSnInput ? baseSnInput.value.trim() : '';
+            const rmaNumber = rmaNumberInput ? rmaNumberInput.value.trim() : '';
+            const bmcIp = bmcIpInput ? bmcIpInput.value : '';
+
+            const allLogSelected = allLogCheckbox && allLogCheckbox.checked;
+
+            // When All Log is selected, run MI3XX ALL LOG collection instead of normal PXE flow
+            if (allLogSelected) {
+                e.preventDefault();
+
+                if (!baseSn) {
+                    alert('Base Serial Number is required for All Log.');
+                    return;
+                }
+
+                if (!rmaNumber) {
+                    alert('RMA Number is required for All Log.');
+                    return;
+                }
+
+                if (!bmcIp) {
+                    alert('BMC IP is required for All Log.');
+                    return;
+                }
+
+                if (!window.Mi3xxAllLog || typeof window.Mi3xxAllLog.startTask !== 'function') {
+                    alert('All Log helper script is not loaded. Please refresh the page and try again.');
+                    return;
+                }
+
+                const payload = {
+                    base_sn: baseSn,
+                    rma_number: rmaNumber,
+                    bmc_ip: bmcIp
+                };
+
+                fetch('/rma/collect-mi3xx-alllog-from-form/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': (window.Mi3xxAllLog.getCsrfToken && window.Mi3xxAllLog.getCsrfToken()) || ''
+                    },
+                    body: JSON.stringify(payload)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success && data.task_id) {
+                        const dirName = `${baseSn}_${rmaNumber}`;
+                        const encodedDir = encodeURIComponent(dirName);
+                        const redirectUrl = `/rma/logs/${encodedDir}/`;
+                        window.Mi3xxAllLog.startTask(data.task_id, {
+                            redirectUrl: redirectUrl
+                        });
+                    } else {
+                        alert(data.error || 'Failed to start All Log collection.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error starting All Log collection from form:', error);
+                    alert('Error starting All Log collection. Please try again.');
+                });
+
+                return;
+            }
+
+            // Standard validation path for non-All-Log flows
             if (!baseSn) {
                 alert('Base Serial Number is required');
                 e.preventDefault();
                 return;
             }
-            
+
             if (!rmaNumber) {
                 alert('RMA Number is required');
                 e.preventDefault();
                 return;
             }
-            
-            if (!macAddresses) {
-                alert('At least one MAC address is required');
-                e.preventDefault();
-                return;
-            }
-            
+
             // Validate test selections
             if (defaultCheckbox && !validateTestSelections()) {
-                alert('Invalid test selection: You cannot combine Default test with other specific tests (Pre GPU Test, DCGM, FD2, GPU Field Diag, AGHFC Level 3, Firmware Update).');
+                alert('Invalid test selection: Default and All Log cannot be combined with other tests or Firmware Update.');
                 e.preventDefault();
                 return;
             }

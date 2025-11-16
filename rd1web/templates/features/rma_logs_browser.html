@@ -218,42 +218,9 @@
             </div>
         </div>
     </div>
-</div>
+{% include "partials/mi3xx_alllog_modal.html" %}
 
-<!-- MI3XX ALL LOG Collection Modal -->
-<div class="modal fade" id="mi3xxAllLogModal" tabindex="-1" aria-labelledby="mi3xxAllLogModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-body text-center py-5">
-                <div id="mi3xxSpinner" class="spinner-border text-warning mb-3" role="status" style="width: 3rem; height: 3rem;">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <div id="mi3xxSuccess" class="d-none mb-3">
-                    <i class="fas fa-check-circle text-success" style="font-size: 3rem;"></i>
-                </div>
-                <div id="mi3xxError" class="d-none mb-3">
-                    <i class="fas fa-exclamation-circle text-danger" style="font-size: 3rem;"></i>
-                </div>
-                <h5 class="mb-2" id="mi3xxModalTitle">Collecting MI3XX ALL LOG</h5>
-                <p class="text-muted mb-3" id="mi3xxModalMessage">Initiating log collection from BMC...</p>
-                
-                <!-- Progress Bar -->
-                <div id="mi3xxProgressContainer" class="mb-3">
-                    <div class="progress" style="height: 25px;">
-                        <div id="mi3xxProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
-                            <span id="mi3xxProgressText">0%</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <small class="text-muted d-block mt-2" id="mi3xxModalInfo">0%</small>
-            </div>
-            <div class="modal-footer d-none" id="mi3xxModalFooter">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
+<script src="{% static 'js/mi3xx_alllog.js' %}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -383,229 +350,48 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Handle MI3XX ALL LOG button click with async polling
+    // Handle MI3XX ALL LOG button click with async polling (uses shared helper)
     const mi3xxButton = document.getElementById('mi3xxAllLogBtn');
-    if (mi3xxButton) {
-        const mi3xxModalElement = document.getElementById('mi3xxAllLogModal');
-        
-        // Check if Bootstrap is available
-        if (typeof bootstrap === 'undefined') {
-            console.error('Bootstrap is not loaded!');
-            alert('Bootstrap library is not loaded. Please refresh the page.');
-            return;
-        }
-        
-        const mi3xxModal = new bootstrap.Modal(mi3xxModalElement, {
-            backdrop: 'static',
-            keyboard: false
-        });
-        const mi3xxSpinner = document.getElementById('mi3xxSpinner');
-        const mi3xxSuccess = document.getElementById('mi3xxSuccess');
-        const mi3xxError = document.getElementById('mi3xxError');
-        const mi3xxTitle = document.getElementById('mi3xxModalTitle');
-        const mi3xxMessage = document.getElementById('mi3xxModalMessage');
-        const mi3xxInfo = document.getElementById('mi3xxModalInfo');
-        const mi3xxFooter = document.getElementById('mi3xxModalFooter');
-        const progressContainer = document.getElementById('mi3xxProgressContainer');
-        
-        let mi3xxPollInterval = null;
-        
-        mi3xxButton.addEventListener('click', function(e) {
-            e.preventDefault(); // Prevent any default action
-            e.stopPropagation(); // Stop event bubbling
-            
-            console.log('MI3XX ALL LOG button clicked');
-            
+    if (mi3xxButton && window.Mi3xxAllLog) {
+        mi3xxButton.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
             const path = this.getAttribute('data-path');
             const collectUrl = `/rma/collect-mi3xx-alllog${path}/`;
-            
-            console.log('Collection URL:', collectUrl);
-            
-            // Reset modal state
-            mi3xxSpinner.classList.remove('d-none');
-            mi3xxSuccess.classList.add('d-none');
-            mi3xxError.classList.add('d-none');
-            mi3xxFooter.classList.add('d-none');
-            progressContainer.classList.remove('d-none');
-            mi3xxTitle.textContent = 'Collecting MI3XX ALL LOG';
-            mi3xxMessage.textContent = 'Initiating log collection from BMC...';
-            mi3xxInfo.textContent = '0%';
-            
-            // Reset progress bar
-            const progressBar = document.getElementById('mi3xxProgressBar');
-            const progressText = document.getElementById('mi3xxProgressText');
-            progressBar.style.width = '0%';
-            progressBar.setAttribute('aria-valuenow', 0);
-            progressText.textContent = '0%';
-            
-            // Show modal
-            console.log('Showing modal...');
-            mi3xxModal.show();
-            
-            // Start log collection (async - returns immediately with task ID)
-            console.log('Starting fetch to:', collectUrl);
-            
+
             try {
                 fetch(collectUrl, {
                     method: 'POST',
                     headers: {
-                        'X-CSRFToken': getCsrfToken(),
+                        'X-CSRFToken': window.Mi3xxAllLog.getCsrfToken(),
                         'Content-Type': 'application/json'
                     }
                 })
-                .then(response => {
-                    console.log('Response received:', response.status);
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Data received:', data);
-                    if (data.success && data.task_id) {
-                        // Start polling for status
-                        const taskId = data.task_id;
-                        console.log('Task ID:', taskId);
-                        mi3xxMessage.textContent = 'Starting log collection...';
-                        
-                        mi3xxPollInterval = setInterval(() => {
-                            checkMi3xxStatus(taskId);
-                        }, 3000); // Poll every 3 seconds
-                        
-                        // Check immediately
-                        checkMi3xxStatus(taskId);
-                    } else {
-                        // Show error
-                        console.error('Error in response:', data.error);
-                        mi3xxSpinner.classList.add('d-none');
-                        mi3xxError.classList.remove('d-none');
-                        progressContainer.classList.add('d-none');
-                        mi3xxTitle.textContent = 'Error';
-                        mi3xxMessage.textContent = data.error || 'Failed to start log collection';
-                        mi3xxInfo.textContent = 'Please try again';
-                        mi3xxFooter.classList.remove('d-none');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error starting MI3XX ALL LOG collection:', error);
-                    mi3xxSpinner.classList.add('d-none');
-                    mi3xxError.classList.remove('d-none');
-                    progressContainer.classList.add('d-none');
-                    mi3xxTitle.textContent = 'Error';
-                    mi3xxMessage.textContent = 'Failed to start log collection';
-                    mi3xxInfo.textContent = error.message || 'An unexpected error occurred';
-                    mi3xxFooter.classList.remove('d-none');
-                });
-            } catch (err) {
-                console.error('Caught error:', err);
-                mi3xxSpinner.classList.add('d-none');
-                mi3xxError.classList.remove('d-none');
-                progressContainer.classList.add('d-none');
-                mi3xxTitle.textContent = 'Error';
-                mi3xxMessage.textContent = 'JavaScript error occurred';
-                mi3xxInfo.textContent = err.message;
-                mi3xxFooter.classList.remove('d-none');
-            }
-        });
-        
-        function checkMi3xxStatus(taskId) {
-            const statusUrl = `/rma/collect-mi3xx-alllog-status/${taskId}/`;
-            const progressBar = document.getElementById('mi3xxProgressBar');
-            const progressText = document.getElementById('mi3xxProgressText');
-            
-            fetch(statusUrl)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const status = data.status;
-                        const progress = data.progress;
-                        const message = data.message;
-                        
-                        // Update progress message and bar
-                        mi3xxMessage.textContent = message;
-                        mi3xxInfo.textContent = `${progress}%`;
-                        
-                        // Update progress bar
-                        progressBar.style.width = `${progress}%`;
-                        progressBar.setAttribute('aria-valuenow', progress);
-                        progressText.textContent = `${progress}%`;
-                        
-                        if (status === 'completed') {
-                            // Task completed successfully
-                            clearInterval(mi3xxPollInterval);
-                            mi3xxPollInterval = null;
-                            
-                            mi3xxSpinner.classList.add('d-none');
-                            mi3xxSuccess.classList.remove('d-none');
-                            mi3xxTitle.textContent = 'Success!';
-                            mi3xxMessage.textContent = message;
-                            mi3xxInfo.textContent = 'The log file has been saved on the remote RMA server';
-                            mi3xxFooter.classList.remove('d-none');
-                            
-                            // Auto refresh page after 3 seconds
-                            setTimeout(() => {
-                                location.reload();
-                            }, 3000);
-                            
-                        } else if (status === 'failed') {
-                            // Task failed
-                            clearInterval(mi3xxPollInterval);
-                            mi3xxPollInterval = null;
-                            
-                            mi3xxSpinner.classList.add('d-none');
-                            mi3xxError.classList.remove('d-none');
-                            mi3xxTitle.textContent = 'Error';
-                            mi3xxMessage.textContent = data.error || message;
-                            mi3xxInfo.textContent = 'Log collection failed';
-                            mi3xxFooter.classList.remove('d-none');
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
                         }
-                        // Otherwise keep polling (status is 'initializing' or 'processing')
-                    } else {
-                        // Error checking status
-                        clearInterval(mi3xxPollInterval);
-                        mi3xxPollInterval = null;
-                        
-                        mi3xxSpinner.classList.add('d-none');
-                        mi3xxError.classList.remove('d-none');
-                        mi3xxTitle.textContent = 'Error';
-                        mi3xxMessage.textContent = data.error || 'Failed to check status';
-                        mi3xxInfo.textContent = 'Please try again';
-                        mi3xxFooter.classList.remove('d-none');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error checking MI3XX status:', error);
-                    clearInterval(mi3xxPollInterval);
-                    mi3xxPollInterval = null;
-                    
-                    mi3xxSpinner.classList.add('d-none');
-                    mi3xxError.classList.remove('d-none');
-                    mi3xxTitle.textContent = 'Error';
-                    mi3xxMessage.textContent = 'Failed to check status';
-                    mi3xxInfo.textContent = error.message || 'Connection error';
-                    mi3xxFooter.classList.remove('d-none');
-                });
-        }
-        
-        // Clean up interval when modal is hidden
-        document.getElementById('mi3xxAllLogModal').addEventListener('hidden.bs.modal', function () {
-            if (mi3xxPollInterval) {
-                clearInterval(mi3xxPollInterval);
-                mi3xxPollInterval = null;
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success && data.task_id) {
+                            window.Mi3xxAllLog.startTask(data.task_id, {
+                                reloadOnSuccess: true
+                            });
+                        } else {
+                            alert(data.error || 'Failed to start MI3XX ALL LOG collection.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error starting MI3XX ALL LOG collection:', error);
+                        alert('Error starting MI3XX ALL LOG collection. Please try again.');
+                    });
+            } catch (err) {
+                console.error('Caught error while starting MI3XX ALL LOG collection:', err);
+                alert('Unexpected error starting MI3XX ALL LOG collection.');
             }
         });
-    }
-    
-    // Helper function to get CSRF token
-    function getCsrfToken() {
-        const cookies = document.cookie.split(';');
-        for (let cookie of cookies) {
-            const [name, value] = cookie.trim().split('=');
-            if (name === 'csrftoken') {
-                return value;
-            }
-        }
-        return '';
     }
 });
 </script>

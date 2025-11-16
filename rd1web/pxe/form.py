@@ -263,17 +263,18 @@ class RmaForm(forms.Form):
     gpu_model=forms.ChoiceField(choices=[('','-- Select GPU Model --'),('h100','H100'),('h200','H200')],required=False,label='GPU Model',widget=forms.Select(attrs={'class':'form-control','style': 'width: 500px;'}))
     cooling=forms.ChoiceField(choices=[('','-- Select Cooling --'),('AC','AC'),('LC','LC')],required=False,label='Cooling',widget=forms.Select(attrs={'class':'form-control','style': 'width: 500px;'}))
     tests = forms.MultipleChoiceField(
-    choices=[
-        ('default', 'Default'),
-        ('pre_gpu_test', 'Pre GPU Test'),
-        ('dcgm', 'DCGM'),
-        ('fd2', 'FD2'),
-        ('gpudiag', 'GPU Field Diag'),
-        ('level3_test', 'AGHFC Level 3'),
-    ],
-    widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
-    label='Tests',
-    required=False
+        choices=[
+            ('default', 'Default'),
+            ('pre_gpu_test', 'Pre GPU Test'),
+            ('dcgm', 'DCGM'),
+            ('fd2', 'FD2'),
+            ('gpudiag', 'GPU Field Diag'),
+            ('level3_test', 'AGHFC Level 3'),
+            ('all_log', 'All Log'),
+        ],
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
+        label='Tests',
+        required=False
     )
     
     def __init__(self, *args, **kwargs):
@@ -289,18 +290,24 @@ class RmaForm(forms.Form):
             self.fields['bmc_ip'].choices = []
     
     def clean_tests(self):
-        """Validate that default test is not combined with specific tests"""
+        """Validate that Default and All Log are not combined with other tests or firmware update."""
         tests = self.cleaned_data.get('tests', [])
-        
+
+        # Default test cannot be combined with any specific tests or All Log
         if 'default' in tests:
-            # Check if any specific tests are also selected
-            specific_tests = [test for test in tests if test != 'default']
+            specific_tests = [test for test in tests if test not in ('default',)]
             if specific_tests:
                 raise ValidationError(
-                    "Default test cannot be combined with specific tests (Pre GPU Test, DCGM, FD2, GPU Field Diag). "
-                    "Please select either Default OR any combination of the specific tests."
+                    "Default test cannot be combined with specific tests (Pre GPU Test, DCGM, FD2, GPU Field Diag, AGHFC Level 3, All Log). "
+                    "Please select either Default OR any combination of the specific tests (excluding All Log)."
                 )
-        
+
+        # All Log must be selected alone (no other tests)
+        if 'all_log' in tests and len(tests) > 1:
+            raise ValidationError(
+                "All Log cannot be combined with other tests or Firmware Update. Please select only the All Log option."
+            )
+
         return tests
 
 

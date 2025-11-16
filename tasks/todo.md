@@ -25,3 +25,18 @@
 - [x] Implement the new detection mechanism with minimal disruption and add logging/tests if needed.
 - [x] Verify by re-running the scanner on sample directories to ensure updated stats.
 
+## DCGM Finished Line Sweep
+
+- [ ] Enumerate all `/srv/rma-b31/*/test_results.log` files whose most recent DCGM entry is `Failed`.
+- [ ] Detect any lingering `DCGM LC/AC test Finished` lines in those logs, regardless of position.
+- [ ] Remove the `Finished` lines while preserving mtimes and re-check affected logs.
+- [ ] Reconfirm a few sample directories and rerun statistics to ensure counts reflect new failures.
+
+## RMA GPU All Log Test Item
+
+- [x] Mirror this RMA GPU All Log plan into `tasks/todo.md` with a checkbox TODO list to track implementation steps.
+- [ ] Add an `All Log` test choice to `RmaForm.tests` and the `rma_pxe.html` Tests UI, with JS to show it only for MI300X/MI325X/MI355X images and to make it mutually exclusive with other tests/fw_update.
+- [ ] Add a new `rma_collect_mi3xx_alllog_from_form` endpoint in `rma_logs.py` plus URL in `pxe/urls.py` that uses `collect_mi3xx_alllog_task` with base SN, RMA number, and BMC IP from the form, creating `{base_sn}_{rma_number}` under `RMA_BASE_DIR` if needed.
+- [ ] Refactor MI3XX ALL LOG modal/JS into shared code and wire the RMA GPU page to call the new endpoint, display progress, and redirect to the `{base_sn}_{rma_number}` RMA logs directory on success.
+- [ ] Manually test the All Log flow for MI300X/MI325X/MI355X images, verifying logs are stored correctly, redirect works, and no PXE DB entries are written when All Log is selected.
+

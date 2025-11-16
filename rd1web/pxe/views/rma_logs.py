@@ -2384,6 +2384,94 @@ def rma_collect_mi3xx_alllog(request, path):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @login_required
+def rma_collect_mi3xx_alllog_from_form(request):
+    """
+    Start async MI3XX ALL LOG collection using Base SN, RMA Number, and BMC IP
+    provided directly from the RMA GPU TEST form instead of an existing RMA
+    logs directory.
+    """
+    import uuid
+    import json
+
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+    try:
+        if request.content_type == 'application/json':
+            try:
+                payload = json.loads(request.body.decode('utf-8'))
+            except json.JSONDecodeError:
+                return JsonResponse({'success': False, 'error': 'Invalid JSON payload'}, status=400)
+        else:
+            payload = request.POST
+
+        base_sn = (payload.get('base_sn') or '').strip()
+        rma_number = (payload.get('rma_number') or '').strip()
+        bmc_ip = (payload.get('bmc_ip') or '').strip()
+
+        if not base_sn or not rma_number or not bmc_ip:
+            return JsonResponse(
+                {
+                    'success': False,
+                    'error': 'Base SN, RMA Number, and BMC IP are required for All Log collection.'
+                },
+                status=400,
+            )
+
+        dir_name = f"{base_sn}_{rma_number}"
+        local_dir_path = os.path.join(RMA_BASE_DIR, dir_name)
+
+        # Ensure the target directory exists under RMA_BASE_DIR
+        try:
+            os.makedirs(local_dir_path, exist_ok=True)
+        except Exception as e:
+            logger.error(f"Failed to create RMA directory {local_dir_path}: {e}")
+            return JsonResponse(
+                {'success': False, 'error': f'Failed to prepare RMA directory: {e}'},
+                status=500,
+            )
+
+        logger.info(
+            f"Starting async MI3XX ALL LOG collection from form for {dir_name} at BMC IP: {bmc_ip}"
+        )
+
+        # Generate unique task ID
+        task_id = str(uuid.uuid4())
+
+        # Initialize task in cache
+        cache.set(
+            f'mi3xx_task_{task_id}',
+            {
+                'status': 'initializing',
+                'progress': 0,
+                'message': 'Preparing to collect logs...',
+                'filename': None,
+                'error': None,
+            },
+            1800,
+        )
+
+        # Start background thread using the existing collection task
+        thread = threading.Thread(
+            target=collect_mi3xx_alllog_task,
+            args=(task_id, dir_name, base_sn, rma_number, bmc_ip),
+            daemon=True,
+        )
+        thread.start()
+
+        return JsonResponse(
+            {
+                'success': True,
+                'task_id': task_id,
+                'message': 'Log collection started',
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error starting MI3XX ALL LOG collection from form: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@login_required
 def rma_collect_mi3xx_alllog_status(request, task_id):
     """
     Check status of MI3XX ALL LOG collection task

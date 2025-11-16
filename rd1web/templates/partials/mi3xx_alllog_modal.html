@@ -1,0 +1,36 @@
+<!-- MI3XX ALL LOG Collection Modal (shared between RMA Logs Browser and RMA GPU Test) -->
+<div class="modal fade" id="mi3xxAllLogModal" tabindex="-1" aria-labelledby="mi3xxAllLogModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-5">
+                <div id="mi3xxSpinner" class="spinner-border text-warning mb-3" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <div id="mi3xxSuccess" class="d-none mb-3">
+                    <i class="fas fa-check-circle text-success" style="font-size: 3rem;"></i>
+                </div>
+                <div id="mi3xxError" class="d-none mb-3">
+                    <i class="fas fa-exclamation-circle text-danger" style="font-size: 3rem;"></i>
+                </div>
+                <h5 class="mb-2" id="mi3xxModalTitle">Collecting MI3XX ALL LOG</h5>
+                <p class="text-muted mb-3" id="mi3xxModalMessage">Initiating log collection from BMC...</p>
+                
+                <!-- Progress Bar -->
+                <div id="mi3xxProgressContainer" class="mb-3">
+                    <div class="progress" style="height: 25px;">
+                        <div id="mi3xxProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                            <span id="mi3xxProgressText">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <small class="text-muted d-block mt-2" id="mi3xxModalInfo">0%</small>
+            </div>
+            <div class="modal-footer d-none" id="mi3xxModalFooter">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
