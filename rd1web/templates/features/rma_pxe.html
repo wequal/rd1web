@@ -162,6 +162,14 @@
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" name="tests" value="remote_fw_update" id="id_tests_remote_fw">
+                                        <label class="form-check-label" for="id_tests_remote_fw">
+                                            <i class="fas me-1 text-info"></i>Remote FW Update
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
                                         <input type="checkbox" class="form-check-input" name="tests" value="all_log" id="id_tests_6">
                                         <label class="form-check-label" for="id_tests_6">
                                             <i class="fas me-1 text-danger"></i>All Log
@@ -186,7 +194,7 @@
                             {% endif %}
                             <div id="tests-validation-message" class="text-warning mt-2" style="display: none;">
                                 <small><i class="fas fa-exclamation-triangle me-1"></i>
-                                    You can select either 'Default' test OR any combination of 'Pre GPU Test', 'DCGM', 'GPU Field Diag', 'FD2', 'AGHFC Level 3', 'Firmware Update'. The 'Default' and 'All Log' options cannot be combined with any other tests or Firmware Update.
+                                    You can select either 'Default' test OR any combination of 'Pre GPU Test', 'DCGM', 'GPU Field Diag', 'FD2', 'AGHFC Level 3', 'Firmware Update'. The 'Default', 'All Log', and 'Remote FW Update' options cannot be combined with any other tests or Firmware Update.
                                 </small>
                             </div>
                         </div>
@@ -400,6 +408,36 @@
     </div>
 </div>
 
+<!-- Remote FW Update Status Modal -->
+<div class="modal fade" id="remoteFwStatusModal" tabindex="-1" aria-labelledby="remoteFwStatusModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="remoteFwStatusModalLabel">
+                    <i class="fas fa-sync fa-spin me-2"></i>Remote Firmware Update Status
+                </h5>
+                <!-- Close button hidden during process -->
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="display: none;" id="remoteFwCloseBtn"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-4">
+                    <h4 id="remoteFwStatusText">Initializing...</h4>
+                    <p id="remoteFwMessage" class="text-muted">Please wait while the firmware update task starts.</p>
+                </div>
+                <div class="progress mb-3" style="height: 25px;">
+                    <div id="remoteFwProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                </div>
+                <div class="alert alert-info small" role="alert">
+                    <i class="fas fa-info-circle me-1"></i> Do not close this window or refresh the page until the update is complete.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" disabled id="remoteFwCloseFooterBtn">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
     .form-control:focus {
         border-color: #3b82f6;
@@ -488,6 +526,9 @@
             const gpudiagContainer = gpudiagCheckbox ? gpudiagCheckbox.closest('.col-md-3') : null;
             const level3Container = level3Checkbox ? level3Checkbox.closest('.col-md-3') : null;
             const allLogContainer = allLogCheckbox ? allLogCheckbox.closest('.col-md-3') : null;
+            
+            const remoteFwCheckbox = document.getElementById('id_tests_remote_fw');
+            const remoteFwContainer = remoteFwCheckbox ? remoteFwCheckbox.closest('.col-md-3') : null;
 
             if (isMi3xxImage) {
                 // Hide DCGM, FD2, and GPU Field Diag for MI3XX images
@@ -511,6 +552,9 @@
                 if (allLogContainer) {
                     allLogContainer.style.display = '';
                 }
+                if (remoteFwContainer) {
+                    remoteFwContainer.style.display = '';
+                }
 
                 // Auto-check Default test for MI3XX images
                 if (defaultCheckbox) {
@@ -530,6 +574,10 @@
                 if (allLogContainer) {
                     allLogContainer.style.display = 'none';
                     allLogCheckbox.checked = false;
+                }
+                if (remoteFwContainer) {
+                    remoteFwContainer.style.display = 'none';
+                    remoteFwCheckbox.checked = false;
                 }
             }
         }
@@ -552,28 +600,36 @@
             const fd2Checkbox = document.getElementById('id_tests_3');
             const gpudiagCheckbox = document.getElementById('id_tests_4');
             const level3Checkbox = document.getElementById('id_tests_5');
+            const remoteFwCheckboxTest = document.getElementById('id_tests_remote_fw');
             const allLogCheckboxTest = document.getElementById('id_tests_6');
             const fwUpdateCheckboxTest = document.getElementById('id_fw_update');
 
             const specificCheckboxes = [nvidiaCheckbox, dcgmCheckbox, fd2Checkbox, gpudiagCheckbox, level3Checkbox].filter(cb => cb !== null);
-            const otherCheckboxes = [...specificCheckboxes, fwUpdateCheckboxTest, allLogCheckboxTest].filter(cb => cb !== null);
+            const otherCheckboxes = [...specificCheckboxes, fwUpdateCheckboxTest, allLogCheckboxTest, remoteFwCheckboxTest].filter(cb => cb !== null);
             const testCheckboxes = [defaultCheckbox, ...otherCheckboxes].filter(cb => cb !== null);
             
             // Function to validate test selections
             function validateTestSelections() {
                 const defaultSelected = defaultCheckbox && defaultCheckbox.checked;
                 const allLogSelected = allLogCheckboxTest && allLogCheckboxTest.checked;
+                const remoteFwSelected = remoteFwCheckboxTest && remoteFwCheckboxTest.checked;
                 const anySpecificSelected = specificCheckboxes.some(cb => cb.checked);
                 const fwUpdateSelected = fwUpdateCheckboxTest && fwUpdateCheckboxTest.checked;
 
                 // Default cannot be combined with any other tests or fw_update
-                if (defaultSelected && (anySpecificSelected || fwUpdateSelected || allLogSelected)) {
+                if (defaultSelected && (anySpecificSelected || fwUpdateSelected || allLogSelected || remoteFwSelected)) {
                     testsValidationMessage.style.display = 'block';
                     return false;
                 }
 
                 // All Log must be selected alone
-                if (allLogSelected && (defaultSelected || anySpecificSelected || fwUpdateSelected)) {
+                if (allLogSelected && (defaultSelected || anySpecificSelected || fwUpdateSelected || remoteFwSelected)) {
+                    testsValidationMessage.style.display = 'block';
+                    return false;
+                }
+
+                // Remote FW Update must be selected alone
+                if (remoteFwSelected && (defaultSelected || anySpecificSelected || fwUpdateSelected || allLogSelected)) {
                     testsValidationMessage.style.display = 'block';
                     return false;
                 }
@@ -586,10 +642,11 @@
             function handleTestSelection(changedCheckbox) {
                 const isDefault = changedCheckbox === defaultCheckbox;
                 const isAllLog = changedCheckbox === allLogCheckboxTest;
+                const isRemoteFw = changedCheckbox === remoteFwCheckboxTest;
 
                 if (changedCheckbox.checked) {
                     if (isDefault) {
-                        // If Default is selected, uncheck all others (including All Log and fw_update)
+                        // If Default is selected, uncheck all others (including All Log, Remote FW Update and fw_update)
                         otherCheckboxes.forEach(function(cb) {
                             cb.checked = false;
                         });
@@ -611,13 +668,36 @@
                                 updateEcoSection();
                             }
                         }
+                        if (remoteFwCheckboxTest) {
+                            remoteFwCheckboxTest.checked = false;
+                        }
+                    } else if (isRemoteFw) {
+                        // If Remote FW Update is selected, uncheck all other tests and fw_update
+                        if (defaultCheckbox) {
+                            defaultCheckbox.checked = false;
+                        }
+                        specificCheckboxes.forEach(function(cb) {
+                            cb.checked = false;
+                        });
+                        if (fwUpdateCheckboxTest) {
+                            fwUpdateCheckboxTest.checked = false;
+                            if (typeof updateEcoSection === 'function') {
+                                updateEcoSection();
+                            }
+                        }
+                        if (allLogCheckboxTest) {
+                            allLogCheckboxTest.checked = false;
+                        }
                     } else {
-                        // Any other test or fw_update unchecks Default and All Log
+                        // Any other test or fw_update unchecks Default, All Log, and Remote FW Update
                         if (defaultCheckbox) {
                             defaultCheckbox.checked = false;
                         }
                         if (allLogCheckboxTest) {
                             allLogCheckboxTest.checked = false;
+                        }
+                        if (remoteFwCheckboxTest) {
+                            remoteFwCheckboxTest.checked = false;
                         }
                     }
                 }
@@ -727,7 +807,7 @@
 
             // Validate test selections
             if (defaultCheckbox && !validateTestSelections()) {
-                alert('Invalid test selection: Default and All Log cannot be combined with other tests or Firmware Update.');
+                alert('Invalid test selection: Default, All Log, and Remote FW Update cannot be combined with other tests or Firmware Update.');
                 e.preventDefault();
                 return;
             }
@@ -1018,6 +1098,61 @@
                 fetchAndFillRmaInfo(selectedBmcIp);
             }
         }
+
+        // Remote FW Update Polling Logic
+        {% if result.remote_fw_update_started %}
+        const remoteFwTaskId = "{{ result.remote_fw_task_id }}";
+        if (remoteFwTaskId) {
+            const statusModal = new bootstrap.Modal(document.getElementById('remoteFwStatusModal'));
+            statusModal.show();
+            
+            const statusText = document.getElementById('remoteFwStatusText');
+            const messageText = document.getElementById('remoteFwMessage');
+            const progressBar = document.getElementById('remoteFwProgressBar');
+            const closeHeaderBtn = document.getElementById('remoteFwCloseBtn');
+            const closeFooterBtn = document.getElementById('remoteFwCloseFooterBtn');
+            
+            function pollRemoteFwStatus() {
+                fetch(`/rma/remote-fw-status/${remoteFwTaskId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const percent = data.percent || 0;
+                        const status = data.status || 'Unknown';
+                        const message = data.message || '';
+                        
+                        progressBar.style.width = `${percent}%`;
+                        progressBar.textContent = `${percent}%`;
+                        progressBar.setAttribute('aria-valuenow', percent);
+                        
+                        statusText.textContent = status;
+                        messageText.textContent = message;
+                        
+                        if (status === 'Completed' || status === 'Failed') {
+                            progressBar.classList.remove('progress-bar-animated');
+                            if (status === 'Completed') {
+                                progressBar.classList.add('bg-success');
+                                statusText.className = 'text-success';
+                            } else {
+                                progressBar.classList.add('bg-danger');
+                                statusText.className = 'text-danger';
+                            }
+                            
+                            closeHeaderBtn.style.display = 'block';
+                            closeFooterBtn.disabled = false;
+                        } else {
+                            setTimeout(pollRemoteFwStatus, 3000);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error polling status:', error);
+                        messageText.textContent = 'Error polling status. Retrying...';
+                        setTimeout(pollRemoteFwStatus, 5000);
+                    });
+            }
+            
+            pollRemoteFwStatus();
+        }
+        {% endif %}
     });
 </script>
 {% endblock %}

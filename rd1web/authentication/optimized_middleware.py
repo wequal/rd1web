@@ -13,7 +13,8 @@ from django.contrib.auth import get_user
 class OptimizedAuthenticationMiddleware(MiddlewareMixin):
     # Add paths to be excluded from this middleware
     EXCLUDE_PATHS = [
-        '/ipmitool/firmware/sequence_status/'
+        '/ipmitool/firmware/sequence_status/',
+        '/rma/remote-fw-status/'
     ]
 
     def __call__(self, request):
@@ -80,6 +81,7 @@ class OptimizedUserActivityMiddleware:
             '/rma/collect-mi3xx-alllog-status/',
             '/rma/download-folder-status/',
             '/ipmitool/firmware/sequence_status/',
+            '/rma/remote-fw-status/',
         ]
         if any(status_path in request.path for status_path in status_polling_paths):
             return

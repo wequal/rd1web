@@ -53,6 +53,7 @@ from .views.firmware_inventory import (
     firmware_inventory_file_upload,
     firmware_inventory_file_delete,
 )
+from .views.remote_fw_update import remote_fw_status
 from .api.system_api import systems_summary, systems_category
 
 
@@ -104,6 +105,7 @@ urlpatterns = [
     path('rma/collect-mi3xx-alllog/<path:path>/', rma_collect_mi3xx_alllog, name='rma_collect_mi3xx_alllog'),
     path('rma/collect-mi3xx-alllog-status/<str:task_id>/', rma_collect_mi3xx_alllog_status, name='rma_collect_mi3xx_alllog_status'),
     path('rma/collect-mi3xx-alllog-from-form/', rma_collect_mi3xx_alllog_from_form, name='rma_collect_mi3xx_alllog_from_form'),
+    path('rma/remote-fw-status/<str:task_id>/', remote_fw_status, name='remote_fw_status'),
     
     # Golden Number Link/Unlink URLs
     path('rma/golden/link/<int:entry_id>/', golden_link, name='golden_link'),

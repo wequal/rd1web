@@ -9,6 +9,9 @@ import asyncio
 import json
 import ast
 import logging
+import uuid
+import threading
+from .remote_fw_update import run_remote_fw_update_task
 
 logger = logging.getLogger(__name__)
 
@@ -265,7 +268,28 @@ def rma_pxe(request):
             
             logger.info(f"Retrieved MACs: {macs}")
 
-            
+            # Handle Remote FW Update Test (skip PXE entry creation, similar to All Log)
+            if 'remote_fw_update' in tests:
+                task_id = str(uuid.uuid4())
+                thread = threading.Thread(
+                    target=run_remote_fw_update_task,
+                    args=(task_id, bmc_ip, image)
+                )
+                thread.daemon = True
+                thread.start()
+                result['remote_fw_update_started'] = True
+                result['remote_fw_task_id'] = task_id
+                logger.info(f"Started remote FW update task {task_id}")
+                # Skip PXE entry creation for Remote FW Update (same as All Log)
+                form=RmaForm(user=request.user)
+                golden_entries = RmaTestingDb.objects.all().order_by('golden_number')
+                can_force_unlink = request.user.has_perm('pxe.can_force_unlink_golden')
+                return render(request,'features/rma_pxe.html',{
+                    'form':form,
+                    'result':result,
+                    'golden_entries': golden_entries,
+                    'can_force_unlink': can_force_unlink
+                })
         
             if remove:
                 result['actions']=[]

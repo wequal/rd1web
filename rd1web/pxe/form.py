@@ -270,6 +270,7 @@ class RmaForm(forms.Form):
             ('fd2', 'FD2'),
             ('gpudiag', 'GPU Field Diag'),
             ('level3_test', 'AGHFC Level 3'),
+            ('remote_fw_update', 'Remote FW Update'),
             ('all_log', 'All Log'),
         ],
         widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
@@ -293,19 +294,25 @@ class RmaForm(forms.Form):
         """Validate that Default and All Log are not combined with other tests or firmware update."""
         tests = self.cleaned_data.get('tests', [])
 
-        # Default test cannot be combined with any specific tests or All Log
+        # Default test cannot be combined with any specific tests, All Log, or Remote FW Update
         if 'default' in tests:
             specific_tests = [test for test in tests if test not in ('default',)]
             if specific_tests:
                 raise ValidationError(
-                    "Default test cannot be combined with specific tests (Pre GPU Test, DCGM, FD2, GPU Field Diag, AGHFC Level 3, All Log). "
-                    "Please select either Default OR any combination of the specific tests (excluding All Log)."
+                    "Default test cannot be combined with specific tests (Pre GPU Test, DCGM, FD2, GPU Field Diag, AGHFC Level 3, All Log, Remote FW Update). "
+                    "Please select either Default OR any combination of the specific tests (excluding All Log and Remote FW Update)."
                 )
 
         # All Log must be selected alone (no other tests)
         if 'all_log' in tests and len(tests) > 1:
             raise ValidationError(
-                "All Log cannot be combined with other tests or Firmware Update. Please select only the All Log option."
+                "All Log cannot be combined with other tests, Firmware Update, or Remote FW Update. Please select only the All Log option."
+            )
+
+        # Remote FW Update must be selected alone (no other tests)
+        if 'remote_fw_update' in tests and len(tests) > 1:
+            raise ValidationError(
+                "Remote FW Update cannot be combined with other tests or Firmware Update. Please select only the Remote FW Update option."
             )
 
         return tests
