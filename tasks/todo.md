@@ -36,4 +36,12 @@
 
 - [ ] Locate the MI300 log-table or button component in the frontend and note the handler entrypoint.
 - [ ] Trace the backend/API endpoint (or Redux/query hook) that feeds the button and summarize its logic.
-- [ ] Verify any related Django/REST handlers or services that compute the “all log” data and describe how they work.
+- [ ] Verify any related Django/REST handlers or services that compute the "all log" data and describe how they work.
+
+## Generate Requirements.txt
+
+- [x] Review current requirements.txt and identify missing dependencies
+- [x] Check installed packages in venv to find what's actually used
+- [x] Add missing critical packages (daphne, fabric) to requirements.txt
+- [x] Organize requirements.txt with comments for better maintainability
+- [x] Verify all dependencies are included
