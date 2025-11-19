@@ -25,7 +25,7 @@ try:
         WEB_APP_PORT,
     )
     # Extract host IP from DATABASE_CONFIG
-    host_ip = DATABASE_CONFIG['HOST']
+    host_ip = HOST_IP
     # Use local_config DEBUG if environment variable not set
     DEBUG = os.environ.get("DJANGO_DEBUG") == "1" if os.environ.get("DJANGO_DEBUG") else LOCAL_DEBUG
 except ImportError:
