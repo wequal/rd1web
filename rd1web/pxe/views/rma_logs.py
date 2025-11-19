@@ -117,6 +117,19 @@ def get_rma_host_ip():
         return rma_host.split('@')[1]
     return rma_host
 
+def get_apache_url(path):
+    """
+    Construct Apache URL with port 8888
+    If URL contains :80, replace with :8888, otherwise add :8888
+    """
+    base_url = f"http://{get_rma_host_ip()}"
+    # Replace :80 with :8888 if present, otherwise add :8888
+    if ':80' in base_url:
+        base_url = base_url.replace(':80', ':8888')
+    elif ':' not in base_url.split('//')[1]:  # No port specified (defaults to 80)
+        base_url = f"{base_url}:8888"
+    return f"{base_url}/{path}"
+
 def cleanup_old_temp_zips():
     """
     Remove temporary zip files older than 1 hour from the temp directory
@@ -338,7 +351,7 @@ def rma_download_folder_status(request, task_id):
         if status == 'completed':
             # Zip is ready, return download URL
             zip_filename = task['zip_filename']
-            apache_url = f"http://{get_rma_host_ip()}/.TempZips/{zip_filename}"
+            apache_url = get_apache_url(f".TempZips/{zip_filename}")
             response_data['download_url'] = apache_url
             # Cache will auto-expire after ZIP_TASK_TIMEOUT
             
@@ -1590,7 +1603,7 @@ def rma_log_browser(request, path=""):
                 "mtime": mtime,
                 "path": item_path,
                 "file_type": "Directory" if is_dir else get_file_extension(name),
-                "apache_download_url": f"http://{get_rma_host_ip()}/{item_path}" if not is_dir else None,
+                "apache_download_url": get_apache_url(item_path) if not is_dir else None,
             }
             
             if is_dir:
@@ -1876,7 +1889,7 @@ def rma_view_file(request, path):
             import requests
             from django.http import StreamingHttpResponse
             
-            apache_url = f"http://{get_rma_host_ip()}/{path}"
+            apache_url = get_apache_url(path)
             
             try:
                 # Head request to get file size first
@@ -1970,7 +1983,7 @@ def rma_view_file(request, path):
 
         # For binary files, redirect to Apache2 for direct serving/viewing
         else:
-            apache_url = f"http://{get_rma_host_ip()}/{path}"
+            apache_url = get_apache_url(path)
             from django.shortcuts import redirect
             return redirect(apache_url)
             
@@ -2529,7 +2542,7 @@ def rma_download_folder(request, path):
             raise Http404("Failed to create zip file")
         
         # Generate Apache URL for direct download
-        apache_url = f"http://{get_rma_host_ip()}/.TempZips/{zip_filename}"
+        apache_url = get_apache_url(f".TempZips/{zip_filename}")
         
         logger.info(f"Redirecting to Apache for folder download: {apache_url}")
         

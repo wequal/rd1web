@@ -45,3 +45,10 @@
 - [x] Add missing critical packages (daphne, fabric) to requirements.txt
 - [x] Organize requirements.txt with comments for better maintainability
 - [x] Verify all dependencies are included
+
+## RMA General Logs Configuration Update
+
+- [x] Modify `rma_general_logs.py` to import `RMA_GENERAL_BASE_DIR` from `local_config.py` with fallback
+- [x] Follow the same pattern as `rma_logs.py` (try/except ImportError with fallback to default)
+- [x] Ensure the fallback value remains `/srv/rma-b31-general/` if not found in local_config
+- [x] Test that the code works with and without the variable in local_config.py

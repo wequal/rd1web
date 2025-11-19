@@ -15,7 +15,19 @@ import io
 import asyncio
 
 logger = logging.getLogger(__name__)
-RMA_GENERAL_BASE_DIR = '/srv/rma-b31-general/'
+
+# Import configuration from local_config
+try:
+    from ..local_config import RMA_GENERAL_BASE_DIR
+    logger.info("RMA General logs using RMA_GENERAL_BASE_DIR from local_config.py")
+except ImportError:
+    # Fallback to default if local_config doesn't exist or variable not defined
+    logger.warning("RMA_GENERAL_BASE_DIR not found in local_config.py, using default value")
+    RMA_GENERAL_BASE_DIR = '/srv/rma-b31-general/'
+except AttributeError:
+    # Fallback if local_config exists but RMA_GENERAL_BASE_DIR is not defined
+    logger.warning("RMA_GENERAL_BASE_DIR not defined in local_config.py, using default value")
+    RMA_GENERAL_BASE_DIR = '/srv/rma-b31-general/'
 
 # Cache timeout settings
 RMA_GENERAL_CACHE_TIMEOUT = 30  # 30 seconds cache for basic directory listings
@@ -29,6 +41,19 @@ def get_rma_host_ip():
     if '@' in rma_host:
         return rma_host.split('@')[1]
     return rma_host
+
+def get_apache_url(path):
+    """
+    Construct Apache URL with port 8888
+    If URL contains :80, replace with :8888, otherwise add :8888
+    """
+    base_url = f"http://{get_rma_host_ip()}"
+    # Replace :80 with :8888 if present, otherwise add :8888
+    if ':80' in base_url:
+        base_url = base_url.replace(':80', ':8888')
+    elif ':' not in base_url.split('//')[1]:  # No port specified (defaults to 80)
+        base_url = f"{base_url}:8888"
+    return f"{base_url}/{path}"
 
 @login_required
 @permission_required('pxe.can_view_rma_general_logs', raise_exception=True)
@@ -658,7 +683,7 @@ def rma_general_log_browser(request, path=""):
                 "mtime": mtime,
                 "path": item_path,
                 "file_type": "Directory" if is_dir else get_file_extension(name),
-                "apache_download_url": f"http://{get_rma_host_ip()}/general/{item_path}" if not is_dir else None,
+                "apache_download_url": get_apache_url(f"general/{item_path}") if not is_dir else None,
             }
             
             if is_dir:
@@ -917,7 +942,7 @@ def rma_general_view_file(request, path):
             import requests
             from django.http import StreamingHttpResponse
             
-            apache_url = f"http://{get_rma_host_ip()}/general/{path}"
+            apache_url = get_apache_url(f"general/{path}")
             
             try:
                 # Head request to get file size first
@@ -1011,7 +1036,7 @@ def rma_general_view_file(request, path):
 
         # For binary files, redirect to Apache2 for direct serving/viewing
         else:
-            apache_url = f"http://{get_rma_host_ip()}/general/{path}"
+            apache_url = get_apache_url(f"general/{path}")
             from django.shortcuts import redirect
             return redirect(apache_url)
             

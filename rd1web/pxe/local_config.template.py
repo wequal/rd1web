@@ -18,6 +18,9 @@ DEPLOYMENT_LOCATION = 'CHANGE_ME'  # Options: 'us_b3', 'us_b1', 'tw', or your cu
 # Base directory where RMA test results are stored
 RMA_BASE_DIR = '/srv/rma-b31'
 
+# Base directory where RMA General logs are stored
+RMA_GENERAL_BASE_DIR = '/srv/rma-b31-general/'
+
 # Temporary directory for zip file creation
 TEMP_ZIPS_DIR = '/srv/rma-b31/.TempZips'
 
