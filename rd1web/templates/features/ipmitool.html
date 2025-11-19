@@ -49,7 +49,7 @@
 
     <!-- Main Form Cards -->
     <div class="row">
-        <div class="col-lg-8">
+        <div class="{% if is_rma %}col-lg-8{% else %}col-12{% endif %}">
             <!-- IPMI Command Form -->
             <div class="card shadow mb-4" id="ipmiFormCard">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
@@ -69,11 +69,14 @@
                                     <label for="{{ form.bmc_ip.id_for_label }}" class="form-label fw-bold">
                                         <i class="fas fa-network-wired me-2 text-primary"></i>BMC IP Addresses
                                     </label>
-                                    <textarea class="form-control" id="{{ form.bmc_ip.id_for_label }}" name="{{ form.bmc_ip.name }}" 
-                                              rows="4" placeholder="Enter BMC IP addresses (one per line)&#10;Example:&#10;192.168.1.100&#10;192.168.1.101">{{ form.bmc_ip.value|default_if_none:"" }}</textarea>
+                                    {{ form.bmc_ip }}
                                     <small class="form-text text-muted">
                                         <i class="fas fa-info-circle me-1"></i>
-                                        Enter one IP address per line for each BMC interface.
+                                        {% if is_rma %}
+                                            Select the BMC IP (linked to Golden Number).
+                                        {% else %}
+                                            Enter one IP address per line for each BMC interface.
+                                        {% endif %}
                                     </small>
                                 </div>
                             </div>
@@ -84,11 +87,14 @@
                                     <label for="{{ form.pwd.id_for_label }}" class="form-label fw-bold">
                                         <i class="fas fa-key me-2 text-warning"></i>Passwords
                                     </label>
-                                    <textarea class="form-control" id="{{ form.pwd.id_for_label }}" name="{{ form.pwd.name }}" 
-                                              rows="4" placeholder="Enter passwords (one per line)&#10;Must match order of IP addresses">{{ form.pwd.value|default_if_none:"" }}</textarea>
+                                    {{ form.pwd }}
                                     <small class="form-text text-muted">
                                         <i class="fas fa-info-circle me-1"></i>
-                                        Enter passwords in the same order as IP addresses.
+                                        {% if is_rma %}
+                                            Enter the unique password.
+                                        {% else %}
+                                            Enter passwords in the same order as IP addresses.
+                                        {% endif %}
                                     </small>
                                 </div>
                             </div>
@@ -350,32 +356,75 @@
                 </div>
             </div>
         </div>
-
-        <!-- Info Panel -->
+        
+        {% if is_rma %}
+        <!-- Golden Status Panel -->
         <div class="col-lg-4">
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-info">
-                        <i class="fas fa-info-circle me-2"></i>Usage Guide
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas me-2"></i>Golden Status
                     </h6>
                 </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <h6 class="text-primary"><i class="fas fa-network-wired me-1"></i>BMC Setup</h6>
-                        <p class="small text-muted mb-2">Ensure BMC interfaces are configured and accessible over the network.</p>
-                    </div>
-                    <div class="mb-3">
-                        <h6 class="text-success"><i class="fas fa-shield-alt me-1"></i>Authentication</h6>
-                        <p class="small text-muted mb-2">Use valid BMC credentials. Default usernames are often 'ADMIN' or 'root'.</p>
-                    </div>
-                    <div class="mb-3">
-                        <h6 class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i>Safety</h6>
-                        <p class="small text-muted mb-2">Be careful with power commands as they affect system availability.</p>
-                    </div>
+                <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                    {% if golden_entries %}
+                        <div class="list-group">
+                            {% for entry in golden_entries %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center mb-2 border rounded">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center">
+                                            {% if entry.linked_user %}
+                                                <i class="fas fa-circle text-danger me-2" title="In Use"></i>
+                                                <div>
+                                                    <strong>{{ entry.golden_number|default:"N/A" }}</strong>
+                                                    <br>
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-user me-1"></i>{{ entry.linked_user.username }}
+                                                    </small>
+                                                    <br>
+                                                    <small class="text-muted">{{ entry.bmc_ip }}</small>
+                                                </div>
+                                            {% else %}
+                                                <i class="fas fa-circle text-success me-2" title="Available"></i>
+                                                <div>
+                                                    <strong>{{ entry.golden_number|default:"N/A" }}</strong>
+                                                    <br>
+                                                    <small class="text-success">Available</small>
+                                                    <br>
+                                                    <small class="text-muted">{{ entry.bmc_ip }}</small>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        {% if entry.linked_user %}
+                                            {% if entry.linked_user == request.user or can_force_unlink %}
+                                                <button class="btn btn-sm btn-outline-danger unlink-golden-btn" 
+                                                        data-entry-id="{{ entry.id }}"
+                                                        data-golden="{{ entry.golden_number }}"
+                                                        title="Unlink">
+                                                    <i class="fas fa-unlink"></i>
+                                                </button>
+                                            {% endif %}
+                                        {% else %}
+                                            <button class="btn btn-sm btn-outline-success link-golden-btn" 
+                                                    data-entry-id="{{ entry.id }}"
+                                                    data-golden="{{ entry.golden_number }}"
+                                                    title="Link to me">
+                                                <i class="fas fa-link"></i>
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center">No golden numbers available</p>
+                    {% endif %}
                 </div>
             </div>
-
         </div>
+        {% endif %}
     </div>
 
     <!-- Firmware Information Section -->
@@ -1278,6 +1327,76 @@
                 }
             }
         });
+
+        // Golden Number Link/Unlink functionality
+        const linkButtons = document.querySelectorAll('.link-golden-btn');
+        const unlinkButtons = document.querySelectorAll('.unlink-golden-btn');
+        
+        linkButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const entryId = this.dataset.entryId;
+                const goldenNumber = this.dataset.golden;
+                
+                if (confirm(`Link golden number "${goldenNumber}" to your account?`)) {
+                    linkGolden(entryId, goldenNumber);
+                }
+            });
+        });
+        
+        unlinkButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const entryId = this.dataset.entryId;
+                const goldenNumber = this.dataset.golden;
+                
+                if (confirm(`Unlink golden number "${goldenNumber}"?`)) {
+                    unlinkGolden(entryId, goldenNumber);
+                }
+            });
+        });
+        
+        function linkGolden(entryId, goldenNumber) {
+            fetch(`/rma/golden/link/${entryId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Successfully linked golden number "${goldenNumber}"`);
+                    location.reload();
+                } else {
+                    alert(`Error: ${data.error || 'Failed to link golden number'}`);
+                }
+            })
+            .catch(error => {
+                alert('An error occurred while linking the golden number');
+            });
+        }
+        
+        function unlinkGolden(entryId, goldenNumber) {
+            fetch(`/rma/golden/unlink/${entryId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Successfully unlinked golden number "${goldenNumber}"`);
+                    location.reload();
+                } else {
+                    alert(`Error: ${data.error || 'Failed to unlink golden number'}`);
+                }
+            })
+            .catch(error => {
+                alert('An error occurred while unlinking the golden number');
+            });
+        }
 
     });
 </script>

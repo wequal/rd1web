@@ -14,6 +14,10 @@ import uuid
 import threading
 import redis
 import time
+try:
+    from .. import local_config
+except ImportError:
+    local_config = None
 
 logger = logging.getLogger(__name__)
 redis_client = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0)
@@ -78,27 +82,33 @@ def ipmitool(request):
     result = {}
     task_id = None
     
+    # Check for RMA configuration
+    try:
+        is_rma = getattr(local_config, 'RMA', False)
+    except NameError:
+        is_rma = False
+        
     # Initialize forms based on operation type
     if request.method == "POST":
         operation_type = request.POST.get('operation_type')
         
         if operation_type == 'unique_password':
-            ipmi_form = IpmiForm()
-            firmware_form = FirmwareUploadForm()
+            ipmi_form = IpmiForm(rma=is_rma, user=request.user)
+            firmware_form = FirmwareUploadForm(rma=is_rma, user=request.user)
             unique_password_form = UniquePasswordForm(request.POST)
         elif operation_type == 'firmware':
-            ipmi_form = IpmiForm()
-            firmware_form = FirmwareUploadForm(request.POST, request.FILES)
+            ipmi_form = IpmiForm(rma=is_rma, user=request.user)
+            firmware_form = FirmwareUploadForm(request.POST, request.FILES, rma=is_rma, user=request.user)
             unique_password_form = UniquePasswordForm()
         else:
             # Default to IPMI form (operation_type is None or 'ipmi')
-            ipmi_form = IpmiForm(request.POST)
-            firmware_form = FirmwareUploadForm()
+            ipmi_form = IpmiForm(request.POST, rma=is_rma, user=request.user)
+            firmware_form = FirmwareUploadForm(rma=is_rma, user=request.user)
             unique_password_form = UniquePasswordForm()
     else:
         # GET request - initialize empty forms
-        ipmi_form = IpmiForm()
-        firmware_form = FirmwareUploadForm()
+        ipmi_form = IpmiForm(rma=is_rma, user=request.user)
+        firmware_form = FirmwareUploadForm(rma=is_rma, user=request.user)
         unique_password_form = UniquePasswordForm()
     
     if request.method == "POST":
@@ -180,10 +190,22 @@ def ipmitool(request):
         else:
             # Handle regular IPMI commands (default case, operation_type == 'ipmi', or None)
             if ipmi_form.is_valid():
-                bmc_ip = [x.strip() for x in ipmi_form.cleaned_data['bmc_ip'].split('\n') if x.strip()]
+                bmc_ip_raw = ipmi_form.cleaned_data['bmc_ip']
+                # Check if bmc_ip is a list (from MultipleChoiceField/textarea split) or single string
+                if isinstance(bmc_ip_raw, list):
+                    bmc_ip = [x.strip() for x in bmc_ip_raw if x.strip()]
+                else:
+                     # Handle both textarea (newline separated) and Select (single value)
+                    bmc_ip = [x.strip() for x in bmc_ip_raw.split('\n') if x.strip()]
+                
                 command = ipmi_form.cleaned_data['command']
                 user = ipmi_form.cleaned_data.get('user', 'ADMIN')
-                pwd = [x.strip() for x in ipmi_form.cleaned_data.get('pwd', '').split('\n')] if ipmi_form.cleaned_data.get('pwd') else [''] * len(bmc_ip)
+                
+                pwd_raw = ipmi_form.cleaned_data.get('pwd', '')
+                if isinstance(pwd_raw, list):
+                    pwd = [x.strip() for x in pwd_raw if x.strip()]
+                else:
+                    pwd = [x.strip() for x in pwd_raw.split('\n')] if pwd_raw else [''] * len(bmc_ip)
 
                 if len(pwd) == 1 and len(bmc_ip) > 1:
                     pwd = pwd * len(bmc_ip)
@@ -195,13 +217,20 @@ def ipmitool(request):
                     logger.error(f"Error running IPMI command: {str(e)}")
                     result['error'] = str(e)
 
+    # Prepare context
     context = {
         'form': ipmi_form,
         'firmware_form': firmware_form,
         'unique_password_form': unique_password_form,
         'result': result,
         'task_id': task_id,
+        'is_rma': is_rma,
     }
+    
+    if is_rma:
+        from ..models import RmaTestingDb
+        context['golden_entries'] = RmaTestingDb.objects.all().order_by('golden_number')
+        context['can_force_unlink'] = request.user.has_perm('pxe.can_force_unlink_golden')
     
     return render(request, 'features/ipmitool.html', context)
 

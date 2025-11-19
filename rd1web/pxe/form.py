@@ -199,6 +199,41 @@ class IpmiForm(forms.Form):
     user=forms.ChoiceField(label='User',widget=forms.Select,choices=[('ADMIN','ADMIN'),('root','root')],required=False)
     pwd=forms.CharField(widget=forms.Textarea(attrs={'class':'form-control','style': 'width: 500px;',}),label='Unique Password',required=False)
 
+    def __init__(self, *args, **kwargs):
+        rma = kwargs.pop('rma', False)
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        if rma:
+            # In RMA mode, BMC IP is a select dropdown with golden numbers
+            self.fields['bmc_ip'] = forms.ChoiceField(
+                choices=[],
+                widget=forms.Select(attrs={'class': 'form-control', 'style': 'width: 500px;'}),
+                label='BMC IP'
+            )
+            if user:
+                from .models import RmaTestingDb
+                linked_entries = RmaTestingDb.objects.filter(linked_user=user).order_by('bmc_ip')
+                self.fields['bmc_ip'].choices = [(entry.bmc_ip, f"{entry.bmc_ip} - {entry.golden_number}") for entry in linked_entries]
+            
+            # In RMA mode, Password is a single text input, prefilled
+            self.fields['pwd'] = forms.CharField(
+                initial='Golden@1234',
+                widget=forms.TextInput(attrs={'class': 'form-control', 'style': 'width: 500px;'}),
+                label='Unique Password',
+                required=False
+            )
+        else:
+            # Standard mode - ensure widget attributes match template needs (if using {{ form.field }})
+            self.fields['bmc_ip'].widget.attrs.update({
+                'rows': '4',
+                'placeholder': 'Enter BMC IP addresses (one per line)\nExample:\n192.168.1.100\n192.168.1.101'
+            })
+            self.fields['pwd'].widget.attrs.update({
+                'rows': '4',
+                'placeholder': 'Enter passwords (one per line)\nMust match order of IP addresses'
+            })
+
 class MultipleFileInput(forms.FileInput):
     allow_multiple_selected = True
 
@@ -231,6 +266,27 @@ class FirmwareUploadForm(forms.Form):
         help_text='Upload multiple firmware files. File names should contain firmware type (BMC/BIOS/CPLD/FPGA)',
         required=False
     )
+
+    def __init__(self, *args, **kwargs):
+        rma = kwargs.pop('rma', False)
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        if rma:
+            # In RMA mode, BMC IP is a select dropdown with golden numbers
+            self.fields['bmc_ip'] = forms.ChoiceField(
+                choices=[],
+                widget=forms.Select(attrs={'class': 'form-control', 'style': 'width: 500px;'}),
+                label='BMC IP'
+            )
+            if user:
+                from .models import RmaTestingDb
+                linked_entries = RmaTestingDb.objects.filter(linked_user=user).order_by('bmc_ip')
+                self.fields['bmc_ip'].choices = [(entry.bmc_ip, f"{entry.bmc_ip} - {entry.golden_number}") for entry in linked_entries]
+            
+            # In RMA mode, Password is a single text input, prefilled
+            self.fields['pwd'].initial = 'Golden@1234'
+        # Standard mode default widget is already TextInput for FirmwareUploadForm, so no else block needed for pwd widget type change
 
 class UniquePasswordForm(forms.Form):
     bmc_mac = forms.CharField(
