@@ -11,7 +11,7 @@
             {% endif %}
 
             <!-- System Management -->
-            {% if perms.pxe.can_use_system_management %}
+            {% if perms.pxe.can_use_system_management and not hide_system_management %}
             <div class="sb-sidenav-menu-heading">System Management</div>
             
             <a class="nav-link" href="{% url 'system_list' %}">
@@ -31,9 +31,11 @@
                 IPMI Tool
             </a>
             
+            {% if not hide_mac_to_ip %}
             <a class="nav-link" href="{% url 'mac_ip_results' %}">
                 MAC to IP
             </a>
+            {% endif %}
             {% endif %}
 
             <!-- RMA Management -->

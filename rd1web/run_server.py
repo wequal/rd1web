@@ -12,6 +12,8 @@ import django
 import signal
 import time
 import argparse
+import json
+from pathlib import Path
 from django.core.management import execute_from_command_line
 from django.conf import settings
 
@@ -53,12 +55,20 @@ def main():
     """Run administrative tasks."""
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'rd1web.settings')
     
+    # Calculate base directory (same as settings.py BASE_DIR)
+    # run_server.py is in rd1web/, so parent is the project root
+    BASE_DIR = Path(__file__).resolve().parent
+    
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='RD1 Web Server with multi-worker support')
     parser.add_argument('--workers', '-w', type=int, default=1, 
                        help='Number of Daphne workers to start (default: 1, recommended: 4)')
     parser.add_argument('--start-port', type=int, default=8000,
                        help='Starting port for workers (default: 8000)')
+    parser.add_argument('--rd1pxe', type=str, default=None,
+                       help='First parameter for hiding sidebar sections (when equal to mac2ip)')
+    parser.add_argument('--mac2ip', type=str, default=None,
+                       help='Second parameter for hiding sidebar sections (when equal to rd1pxe)')
     parser.add_argument('command', nargs='?', default=None,
                        help='Django management command (runserver, migrate, etc.)')
     
@@ -124,6 +134,15 @@ def main():
         
         execute_from_command_line(django_args)
         return
+    
+    # Write sidebar hide parameters to config file
+    config_file = BASE_DIR / 'sidebar_hide_config.json'
+    sidebar_config = {
+        'rd1pxe': args.rd1pxe,
+        'mac2ip': args.mac2ip
+    }
+    with open(config_file, 'w') as f:
+        json.dump(sidebar_config, f)
     
     # Server configuration for Nginx proxy setup
     host = '127.0.0.1'  # Local only - Nginx will handle external requests

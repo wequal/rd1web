@@ -69,6 +69,21 @@ CSRF_TRUSTED_ORIGINS = [
 # Toggle to serve static files via Django's ASGI handler. Defaults to True so admin assets load
 # even when DEBUG=0; set SERVE_STATIC_VIA_DJANGO=0 to rely solely on collected static files.
 SERVE_STATIC_VIA_DJANGO = os.environ.get("SERVE_STATIC_VIA_DJANGO", "1") == "1"
+
+# Sidebar hide parameters - read from config file written by run_server.py
+import json
+config_file = BASE_DIR / 'sidebar_hide_config.json'
+RD1PXE = None
+MAC2IP = None
+if config_file.exists():
+    try:
+        with open(config_file, 'r') as f:
+            config_data = json.load(f)
+            RD1PXE = config_data.get('rd1pxe')
+            MAC2IP = config_data.get('mac2ip')
+    except (json.JSONDecodeError, IOError):
+        pass
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -110,6 +125,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'pxe.context_processors.sidebar_hide',
             ],
         },
     },
