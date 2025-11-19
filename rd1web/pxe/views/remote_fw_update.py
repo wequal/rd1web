@@ -25,7 +25,7 @@ ECO_BKC_FILE = {
 }
 
 # Credentials
-BMC_USER = "root"
+BMC_USER = "ADMIN"
 BMC_PASSWORD = "Golden@1234"
 
 def update_task_status(task_id, status, percent=0, message=""):
