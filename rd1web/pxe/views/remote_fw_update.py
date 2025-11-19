@@ -15,11 +15,13 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 logger = logging.getLogger(__name__)
 redis_client = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0)
 
-# BKC File Mapping
+# BKC File Mapping - matches RmaForm image choices from form.py
 ECO_BKC_FILE = {
-    "ubuntu2204-mi355x": '/share/mi3xx/AMD_MI350_355H_01.25.11.02.76.pldm',
+    "ubuntu2204-x86-rma": None,  # H100/200 - uses firmware inventory system, not BKC files
+    "ubuntu2204-b200-rma": None,  # B200 - uses firmware inventory system, not BKC files
     "ubuntu2204-mi300x": '/share/mi3xx/AMD_MI300X_01.25.03.12.76.pldm',
-    "ubuntu2204-mi325x": '/share/mi3xx/AMD_MI325X_01.25.03.03.76.pldm'
+    "ubuntu2204-mi325x": '/share/mi3xx/AMD_MI325X_01.25.03.03.76.pldm',
+    "ubuntu2204-mi355x": '/share/mi3xx/AMD_MI350_355H_01.25.11.02.76.pldm'
 }
 
 # Credentials
@@ -44,6 +46,10 @@ def run_remote_fw_update_task(task_id, bmc_ip, image_key):
         
         # Determine BKC file path
         bkc_file_path = ECO_BKC_FILE.get(image_key)
+        if bkc_file_path is None:
+            # H100/200 and B200 use firmware inventory system, not BKC files
+            raise ValueError(f"Remote FW update via BKC file is not supported for image: {image_key}. "
+                           f"Please use firmware inventory system for H100/200 and B200 products.")
         if not bkc_file_path:
             raise ValueError(f"No BKC file configured for image: {image_key}")
             

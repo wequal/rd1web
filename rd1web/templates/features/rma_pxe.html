@@ -357,16 +357,20 @@
                             </h6>
                             <div class="bg-light p-3 rounded">
                                 {% if v %}
-                                    {% for item in v %}
-                                        <div class="d-flex align-items-center mb-1">
-                                            {% if 'Error' in item or 'Failed' in item %}
-                                                <i class="fas fa-times text-danger me-2"></i>
-                                            {% else %}
-                                                <i class="fas fa-check text-success me-2"></i>
-                                            {% endif %}
-                                            <code class="small">{{ item }}</code>
-                                        </div>
-                                    {% endfor %}
+                                    {% if v|length > 0 %}
+                                        {% for item in v %}
+                                            <div class="d-flex align-items-center mb-1">
+                                                {% if 'Error' in item or 'Failed' in item %}
+                                                    <i class="fas fa-times text-danger me-2"></i>
+                                                {% else %}
+                                                    <i class="fas fa-check text-success me-2"></i>
+                                                {% endif %}
+                                                <code class="small">{{ item }}</code>
+                                            </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <span class="text-muted">No items</span>
+                                    {% endif %}
                                 {% else %}
                                     <span class="text-muted">No results</span>
                                 {% endif %}

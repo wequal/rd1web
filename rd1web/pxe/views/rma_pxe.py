@@ -277,8 +277,8 @@ def rma_pxe(request):
                 )
                 thread.daemon = True
                 thread.start()
-                result['remote_fw_update_started'] = True
-                result['remote_fw_task_id'] = task_id
+                result['remote_fw_update_started'] = ['Remote FW update task started']
+                result['remote_fw_task_id'] = [f'Task ID: {task_id}']
                 logger.info(f"Started remote FW update task {task_id}")
                 # Skip PXE entry creation for Remote FW Update (same as All Log)
                 form=RmaForm(user=request.user)
