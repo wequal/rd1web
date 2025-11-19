@@ -88,18 +88,17 @@ def run_remote_fw_update_task(task_id, bmc_ip, image_key):
         update_task_status(task_id, "Running", 10, "Uploading firmware file (this may take a while)...")
         url = f"https://{bmc_ip}/redfish/v1/UpdateService/upload"
         
-        # Prepare files - match the format from firmware_update.py
+        # Prepare files - using the working format from manual testing
         try:
-            # Prepare update parameters as JSON
-            update_params = {
-                "Targets": ["/redfish/v1/UpdateService/FirmwareInventory/bundle_active"],
-                "@Redfish.OperationApplyTime": "Immediate"
-            }
-            
             with open(bkc_file_path, "rb") as f:
                 files = {
-                    'UpdateParameters': (None, json.dumps(update_params)),
-                    'UpdateFile': (os.path.basename(bkc_file_path), f)
+                    "UpdateFile": f,
+                    "UpdateParameters": (
+                        None,
+                        '{"Targets": ["/redfish/v1/UpdateService/FirmwareInventory/bundle_active"], '
+                        '"@Redfish.OperationApplyTime": "Immediate"}',
+                        "application/json",
+                    ),
                 }
                 
                 try:
