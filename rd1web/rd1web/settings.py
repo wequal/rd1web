@@ -23,6 +23,7 @@ try:
         TIME_ZONE as LOCAL_TIME_ZONE,
         DEBUG as LOCAL_DEBUG,
         WEB_APP_PORT,
+        HOST_IP,
     )
     # Extract host IP from DATABASE_CONFIG
     host_ip = HOST_IP
