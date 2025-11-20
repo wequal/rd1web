@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 # Import configuration from local_config
 try:
-    from ..local_config import RMA_DHCP_LEASES_API, REMOTE_SERVERS
+    from ..local_config import RMA_DHCP_LEASES_API, REMOTE_SERVERS, DEPLOYMENT_LOCATION
     # Extract RMA host from REMOTE_SERVERS (format: root@10.4.4.80)
-    rma_host = REMOTE_SERVERS['rma']['host'].split('@')[-1]
+    rma_host = REMOTE_SERVERS[DEPLOYMENT_LOCATION]['host'].split('@')[-1]
     dhcp_api_port = RMA_DHCP_LEASES_API['port']
     dhcp_api_endpoint = RMA_DHCP_LEASES_API['endpoint']
     dhcp_api_timeout = RMA_DHCP_LEASES_API['timeout']
