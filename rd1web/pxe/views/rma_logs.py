@@ -110,12 +110,32 @@ def run_with_timeout(func, timeout_seconds=60):
         return result[0], True, None
 
 def get_rma_host_ip():
-    """Extract RMA host IP from remote_config"""
-    rma_host = remote_dict['rma'].host
-    # Extract IP from format like "root@10.4.4.140"
-    if '@' in rma_host:
-        return rma_host.split('@')[1]
-    return rma_host
+    """Extract RMA host IP from local_config REMOTE_SERVERS"""
+    try:
+        # Try to read from local_config REMOTE_SERVERS first
+        from ..local_config import REMOTE_SERVERS
+        if 'rma' in REMOTE_SERVERS:
+            rma_host = REMOTE_SERVERS['rma']['host']
+            # Extract IP from format like "root@10.4.4.140"
+            if '@' in rma_host:
+                return rma_host.split('@')[1]
+            return rma_host
+    except (ImportError, KeyError, AttributeError):
+        pass
+    
+    # Fallback: try remote_dict if available (for backward compatibility)
+    try:
+        if 'rma' in remote_dict and hasattr(remote_dict['rma'], 'host'):
+            rma_host = remote_dict['rma'].host
+            if '@' in rma_host:
+                return rma_host.split('@')[1]
+            return rma_host
+    except (KeyError, AttributeError):
+        pass
+    
+    # Final fallback - use default IP
+    logger.warning("Could not get RMA host IP from config, using default")
+    return '10.4.4.80'  # Default RMA host IP
 
 def get_apache_url(path):
     """
