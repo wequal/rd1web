@@ -49,7 +49,7 @@
 
     <!-- Main Form Cards -->
     <div class="row">
-        <div class="{% if is_rma %}col-lg-8{% else %}col-12{% endif %}">
+        <div class="col-12">
             <!-- IPMI Command Form -->
             <div class="card shadow mb-4" id="ipmiFormCard">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
@@ -70,18 +70,10 @@
                                         <i class="fas fa-network-wired me-2 text-primary"></i>BMC IP Addresses
                                     </label>
                                     {{ form.bmc_ip }}
-                                    {% if is_rma and form.bmc_ip_custom %}
-                                    <div id="custom_ip_container" style="display: none; margin-top: 10px;">
-                                        <label for="{{ form.bmc_ip_custom.id_for_label }}" class="form-label fw-bold">
-                                            <i class="fas fa-edit me-2 text-info"></i>Custom BMC IP
-                                        </label>
-                                        {{ form.bmc_ip_custom }}
-                                    </div>
-                                    {% endif %}
                                     <small class="form-text text-muted">
                                         <i class="fas fa-info-circle me-1"></i>
                                         {% if is_rma %}
-                                            Select the BMC IP from golden numbers or choose "Custom IP..." to enter manually.
+                                            Enter the BMC IP address manually.
                                         {% else %}
                                             Enter one IP address per line for each BMC interface.
                                         {% endif %}
@@ -263,17 +255,9 @@
                                 <i class="fas fa-network-wired me-2 text-primary"></i>BMC IP Address
                             </label>
                             {{ firmware_form.bmc_ip }}
-                            {% if is_rma and firmware_form.bmc_ip_custom %}
-                            <div id="firmware_custom_ip_container" style="display: none; margin-top: 10px;">
-                                <label for="{{ firmware_form.bmc_ip_custom.id_for_label }}" class="form-label fw-bold">
-                                    <i class="fas fa-edit me-2 text-info"></i>Custom BMC IP
-                                </label>
-                                {{ firmware_form.bmc_ip_custom }}
-                            </div>
-                            {% endif %}
                             <small class="form-text text-muted">
                                 {% if is_rma %}
-                                    <i class="fas fa-info-circle me-1"></i>Select from golden numbers or choose "Custom IP..." to enter manually.
+                                    <i class="fas fa-info-circle me-1"></i>Enter the BMC IP address manually.
                                 {% endif %}
                             </small>
                         </div>
@@ -377,75 +361,6 @@
                 </div>
             </div>
         </div>
-        
-        {% if is_rma %}
-        <!-- Golden Status Panel -->
-        <div class="col-lg-4">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas me-2"></i>Golden Status
-                    </h6>
-                </div>
-                <div class="card-body" style="max-height: 600px; overflow-y: auto;">
-                    {% if golden_entries %}
-                        <div class="list-group">
-                            {% for entry in golden_entries %}
-                                <div class="list-group-item d-flex justify-content-between align-items-center mb-2 border rounded">
-                                    <div class="flex-grow-1">
-                                        <div class="d-flex align-items-center">
-                                            {% if entry.linked_user %}
-                                                <i class="fas fa-circle text-danger me-2" title="In Use"></i>
-                                                <div>
-                                                    <strong>{{ entry.golden_number|default:"N/A" }}</strong>
-                                                    <br>
-                                                    <small class="text-muted">
-                                                        <i class="fas fa-user me-1"></i>{{ entry.linked_user.username }}
-                                                    </small>
-                                                    <br>
-                                                    <small class="text-muted">{{ entry.bmc_ip }}</small>
-                                                </div>
-                                            {% else %}
-                                                <i class="fas fa-circle text-success me-2" title="Available"></i>
-                                                <div>
-                                                    <strong>{{ entry.golden_number|default:"N/A" }}</strong>
-                                                    <br>
-                                                    <small class="text-success">Available</small>
-                                                    <br>
-                                                    <small class="text-muted">{{ entry.bmc_ip }}</small>
-                                                </div>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        {% if entry.linked_user %}
-                                            {% if entry.linked_user == request.user or can_force_unlink %}
-                                                <button class="btn btn-sm btn-outline-danger unlink-golden-btn" 
-                                                        data-entry-id="{{ entry.id }}"
-                                                        data-golden="{{ entry.golden_number }}"
-                                                        title="Unlink">
-                                                    <i class="fas fa-unlink"></i>
-                                                </button>
-                                            {% endif %}
-                                        {% else %}
-                                            <button class="btn btn-sm btn-outline-success link-golden-btn" 
-                                                    data-entry-id="{{ entry.id }}"
-                                                    data-golden="{{ entry.golden_number }}"
-                                                    title="Link to me">
-                                                <i class="fas fa-link"></i>
-                                            </button>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <p class="text-muted text-center">No golden numbers available</p>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-        {% endif %}
     </div>
 
     <!-- Firmware Information Section -->
@@ -761,48 +676,6 @@
             const bmcIpField = document.getElementById('{{ form.bmc_ip.id_for_label }}');
             const pwdField = document.getElementById('{{ form.pwd.id_for_label }}');
             
-            // RMA mode: Handle custom IP field visibility and form submission
-            {% if is_rma %}
-            const customIpContainer = document.getElementById('custom_ip_container');
-            const customIpField = document.getElementById('{{ form.bmc_ip_custom.id_for_label }}');
-            
-            if (bmcIpField && customIpContainer && customIpField) {
-                // Show/hide custom IP field based on dropdown selection
-                bmcIpField.addEventListener('change', function() {
-                    if (this.value === '__custom__') {
-                        customIpContainer.style.display = 'block';
-                        customIpField.required = true;
-                        customIpField.focus();
-                    } else {
-                        customIpContainer.style.display = 'none';
-                        customIpField.required = false;
-                        customIpField.value = '';
-                    }
-                });
-                
-                // On form submission, replace "__custom__" with actual custom IP value
-                form.addEventListener('submit', function(e) {
-                    if (bmcIpField.value === '__custom__') {
-                        const customIp = customIpField.value.trim();
-                        if (!customIp) {
-                            e.preventDefault();
-                            alert('Please enter a custom BMC IP address');
-                            customIpField.focus();
-                            return false;
-                        }
-                        // Create a hidden input with the actual IP value
-                        const hiddenInput = document.createElement('input');
-                        hiddenInput.type = 'hidden';
-                        hiddenInput.name = 'bmc_ip';
-                        hiddenInput.value = customIp;
-                        form.appendChild(hiddenInput);
-                        // Remove the original dropdown value
-                        bmcIpField.disabled = true;
-                    }
-                });
-            }
-            {% endif %}
-            
             // Validate IP and password count match (for non-RMA mode)
             {% if not is_rma %}
             form.addEventListener('submit', function(e) {
@@ -1018,48 +891,12 @@
         const progressSection = document.getElementById('updateProgress');
         const updateResults = document.getElementById('updateResults');
 
-        // RMA mode: Handle custom IP field for firmware form
-        {% if is_rma %}
-        const firmwareBmcIpField = document.getElementById('{{ firmware_form.bmc_ip.id_for_label }}');
-        const firmwareCustomIpContainer = document.getElementById('firmware_custom_ip_container');
-        const firmwareCustomIpField = document.getElementById('{{ firmware_form.bmc_ip_custom.id_for_label }}');
-        
-        if (firmwareBmcIpField && firmwareCustomIpContainer && firmwareCustomIpField) {
-            // Show/hide custom IP field based on dropdown selection
-            firmwareBmcIpField.addEventListener('change', function() {
-                if (this.value === '__custom__') {
-                    firmwareCustomIpContainer.style.display = 'block';
-                    firmwareCustomIpField.required = true;
-                    firmwareCustomIpField.focus();
-                } else {
-                    firmwareCustomIpContainer.style.display = 'none';
-                    firmwareCustomIpField.required = false;
-                    firmwareCustomIpField.value = '';
-                }
-            });
-        }
-        {% endif %}
-
         firmwareForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             clearAllDisplays();
             
             const formData = new FormData(this);
-            
-            // RMA mode: Replace "__custom__" with actual custom IP value
-            {% if is_rma %}
-            if (firmwareBmcIpField && firmwareBmcIpField.value === '__custom__') {
-                const customIp = firmwareCustomIpField ? firmwareCustomIpField.value.trim() : '';
-                if (!customIp) {
-                    alert('Please enter a custom BMC IP address');
-                    if (firmwareCustomIpField) firmwareCustomIpField.focus();
-                    return false;
-                }
-                formData.set('bmc_ip', customIp);
-            }
-            {% endif %}
-            
             formData.append('operation_type', 'firmware');
 
             try {
@@ -1430,76 +1267,6 @@
                 }
             }
         });
-
-        // Golden Number Link/Unlink functionality
-        const linkButtons = document.querySelectorAll('.link-golden-btn');
-        const unlinkButtons = document.querySelectorAll('.unlink-golden-btn');
-        
-        linkButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const entryId = this.dataset.entryId;
-                const goldenNumber = this.dataset.golden;
-                
-                if (confirm(`Link golden number "${goldenNumber}" to your account?`)) {
-                    linkGolden(entryId, goldenNumber);
-                }
-            });
-        });
-        
-        unlinkButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const entryId = this.dataset.entryId;
-                const goldenNumber = this.dataset.golden;
-                
-                if (confirm(`Unlink golden number "${goldenNumber}"?`)) {
-                    unlinkGolden(entryId, goldenNumber);
-                }
-            });
-        });
-        
-        function linkGolden(entryId, goldenNumber) {
-            fetch(`/rma/golden/link/${entryId}/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert(`Successfully linked golden number "${goldenNumber}"`);
-                    location.reload();
-                } else {
-                    alert(`Error: ${data.error || 'Failed to link golden number'}`);
-                }
-            })
-            .catch(error => {
-                alert('An error occurred while linking the golden number');
-            });
-        }
-        
-        function unlinkGolden(entryId, goldenNumber) {
-            fetch(`/rma/golden/unlink/${entryId}/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert(`Successfully unlinked golden number "${goldenNumber}"`);
-                    location.reload();
-                } else {
-                    alert(`Error: ${data.error || 'Failed to unlink golden number'}`);
-                }
-            })
-            .catch(error => {
-                alert('An error occurred while unlinking the golden number');
-            });
-        }
 
     });
 </script>

@@ -205,29 +205,14 @@ class IpmiForm(forms.Form):
         super().__init__(*args, **kwargs)
 
         if rma:
-            # In RMA mode, BMC IP is a select dropdown with golden numbers
-            self.fields['bmc_ip'] = forms.ChoiceField(
-                choices=[],
-                widget=forms.Select(attrs={'class': 'form-control', 'style': 'width: 500px;'}),
-                label='BMC IP'
-            )
-            if user:
-                from .models import RmaTestingDb
-                linked_entries = RmaTestingDb.objects.filter(linked_user=user).order_by('bmc_ip')
-                self.fields['bmc_ip'].choices = [(entry.bmc_ip, f"{entry.bmc_ip} - {entry.golden_number}") for entry in linked_entries]
-            
-            # Add "Custom IP..." option to the dropdown
-            self.fields['bmc_ip'].choices.append(('__custom__', 'Custom IP...'))
-            
-            # Add a hidden custom IP input field
-            self.fields['bmc_ip_custom'] = forms.CharField(
+            # In RMA mode, BMC IP is a manual text input
+            self.fields['bmc_ip'] = forms.CharField(
                 widget=forms.TextInput(attrs={
                     'class': 'form-control', 
-                    'style': 'width: 500px; display: none;',
-                    'placeholder': 'Enter custom BMC IP address'
+                    'style': 'width: 500px;',
+                    'placeholder': 'Enter BMC IP address'
                 }),
-                label='Custom BMC IP',
-                required=False
+                label='BMC IP'
             )
             
             # In RMA mode, Password is a single text input, prefilled
@@ -287,29 +272,14 @@ class FirmwareUploadForm(forms.Form):
         super().__init__(*args, **kwargs)
 
         if rma:
-            # In RMA mode, BMC IP is a select dropdown with golden numbers
-            self.fields['bmc_ip'] = forms.ChoiceField(
-                choices=[],
-                widget=forms.Select(attrs={'class': 'form-control', 'style': 'width: 500px;'}),
-                label='BMC IP'
-            )
-            if user:
-                from .models import RmaTestingDb
-                linked_entries = RmaTestingDb.objects.filter(linked_user=user).order_by('bmc_ip')
-                self.fields['bmc_ip'].choices = [(entry.bmc_ip, f"{entry.bmc_ip} - {entry.golden_number}") for entry in linked_entries]
-            
-            # Add "Custom IP..." option to the dropdown
-            self.fields['bmc_ip'].choices.append(('__custom__', 'Custom IP...'))
-            
-            # Add a hidden custom IP input field
-            self.fields['bmc_ip_custom'] = forms.CharField(
+            # In RMA mode, BMC IP is a manual text input
+            self.fields['bmc_ip'] = forms.CharField(
                 widget=forms.TextInput(attrs={
                     'class': 'form-control', 
-                    'style': 'width: 500px; display: none;',
-                    'placeholder': 'Enter custom BMC IP address'
+                    'style': 'width: 500px;',
+                    'placeholder': 'Enter BMC IP address'
                 }),
-                label='Custom BMC IP',
-                required=False
+                label='BMC IP'
             )
             
             # In RMA mode, Password is a single text input, prefilled

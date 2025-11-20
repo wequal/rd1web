@@ -124,12 +124,9 @@ def ipmitool(request):
 
         elif operation_type == 'firmware' and firmware_form.is_valid():
             try:
-                bmc_ip = firmware_form.cleaned_data['bmc_ip']
-                # Handle custom IP in RMA mode
-                if bmc_ip == '__custom__':
-                    bmc_ip = firmware_form.cleaned_data.get('bmc_ip_custom', '').strip()
-                    if not bmc_ip:
-                        raise ValueError('Custom BMC IP is required when "Custom IP..." is selected')
+                bmc_ip = firmware_form.cleaned_data['bmc_ip'].strip()
+                if not bmc_ip:
+                    raise ValueError('BMC IP is required')
                 user = firmware_form.cleaned_data.get('user', 'ADMIN')
                 pwd = firmware_form.cleaned_data.get('pwd', '')
                 uploaded_files = firmware_form.cleaned_data['firmware_file']
@@ -195,25 +192,22 @@ def ipmitool(request):
         else:
             # Handle regular IPMI commands (default case, operation_type == 'ipmi', or None)
             if ipmi_form.is_valid():
-                bmc_ip = []
                 bmc_ip_raw = ipmi_form.cleaned_data['bmc_ip']
-                # Handle custom IP in RMA mode
-                if bmc_ip_raw == '__custom__':
-                    bmc_ip_custom = ipmi_form.cleaned_data.get('bmc_ip_custom', '').strip()
-                    if not bmc_ip_custom:
-                        result['error'] = 'Custom BMC IP is required when "Custom IP..." is selected'
-                    else:
-                        bmc_ip = [bmc_ip_custom]
+                
+                # In RMA mode, bmc_ip is a single text input
+                # In non-RMA mode, it's a textarea with newline-separated IPs
+                if is_rma:
+                    bmc_ip = [bmc_ip_raw.strip()] if bmc_ip_raw.strip() else []
                 else:
                     # Check if bmc_ip is a list (from MultipleChoiceField/textarea split) or single string
                     if isinstance(bmc_ip_raw, list):
                         bmc_ip = [x.strip() for x in bmc_ip_raw if x.strip()]
                     else:
-                         # Handle both textarea (newline separated) and Select (single value)
+                         # Handle textarea (newline separated)
                         bmc_ip = [x.strip() for x in bmc_ip_raw.split('\n') if x.strip()]
                 
-                # Only proceed if we have valid BMC IP(s) and no error
-                if 'error' not in result and bmc_ip:
+                # Only proceed if we have valid BMC IP(s)
+                if bmc_ip:
                     command = ipmi_form.cleaned_data['command']
                     user = ipmi_form.cleaned_data.get('user', 'ADMIN')
                     
@@ -242,11 +236,6 @@ def ipmitool(request):
         'task_id': task_id,
         'is_rma': is_rma,
     }
-    
-    if is_rma:
-        from ..models import RmaTestingDb
-        context['golden_entries'] = RmaTestingDb.objects.all().order_by('golden_number')
-        context['can_force_unlink'] = request.user.has_perm('pxe.can_force_unlink_golden')
     
     return render(request, 'features/ipmitool.html', context)
 
