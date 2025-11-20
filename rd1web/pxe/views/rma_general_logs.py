@@ -34,12 +34,13 @@ RMA_GENERAL_CACHE_TIMEOUT = 30  # 30 seconds cache for basic directory listings
 RMA_GENERAL_DETAILS_CACHE_TIMEOUT = 60  # 1 minute cache for directory details
 
 def get_rma_host_ip():
-    """Extract RMA host IP from local_config REMOTE_SERVERS"""
+    """Extract RMA host IP from local_config REMOTE_SERVERS using DEPLOYMENT_LOCATION"""
     try:
         # Try to read from local_config REMOTE_SERVERS first
-        from ..local_config import REMOTE_SERVERS
-        if 'rma' in REMOTE_SERVERS:
-            rma_host = REMOTE_SERVERS['rma']['host']
+        from ..local_config import REMOTE_SERVERS, DEPLOYMENT_LOCATION
+        deployment_key = DEPLOYMENT_LOCATION
+        if deployment_key in REMOTE_SERVERS:
+            rma_host = REMOTE_SERVERS[deployment_key]['host']
             # Extract IP from format like "root@10.4.4.140"
             if '@' in rma_host:
                 return rma_host.split('@')[1]
@@ -49,9 +50,11 @@ def get_rma_host_ip():
     
     # Fallback: try remote_dict if available (for backward compatibility)
     try:
+        from ..local_config import DEPLOYMENT_LOCATION
         from ..remote_config import remote_dict
-        if 'rma' in remote_dict and hasattr(remote_dict['rma'], 'host'):
-            rma_host = remote_dict['rma'].host
+        deployment_key = DEPLOYMENT_LOCATION
+        if deployment_key in remote_dict and hasattr(remote_dict[deployment_key], 'host'):
+            rma_host = remote_dict[deployment_key].host
             if '@' in rma_host:
                 return rma_host.split('@')[1]
             return rma_host

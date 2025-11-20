@@ -29,6 +29,7 @@ try:
         RMA_DETAILS_CACHE_TIMEOUT,
         RMA_STATS_CACHE_TIMEOUT,
         ZIP_TASK_TIMEOUT,
+        DEPLOYMENT_LOCATION,
     )
     logger.info("RMA logs using configuration from local_config.py")
 except ImportError:
@@ -110,12 +111,13 @@ def run_with_timeout(func, timeout_seconds=60):
         return result[0], True, None
 
 def get_rma_host_ip():
-    """Extract RMA host IP from local_config REMOTE_SERVERS"""
+    """Extract RMA host IP from local_config REMOTE_SERVERS using DEPLOYMENT_LOCATION"""
     try:
         # Try to read from local_config REMOTE_SERVERS first
-        from ..local_config import REMOTE_SERVERS
-        if 'rma' in REMOTE_SERVERS:
-            rma_host = REMOTE_SERVERS['rma']['host']
+        from ..local_config import REMOTE_SERVERS, DEPLOYMENT_LOCATION
+        deployment_key = DEPLOYMENT_LOCATION
+        if deployment_key in REMOTE_SERVERS:
+            rma_host = REMOTE_SERVERS[deployment_key]['host']
             # Extract IP from format like "root@10.4.4.140"
             if '@' in rma_host:
                 return rma_host.split('@')[1]
@@ -125,12 +127,14 @@ def get_rma_host_ip():
     
     # Fallback: try remote_dict if available (for backward compatibility)
     try:
-        if 'rma' in remote_dict and hasattr(remote_dict['rma'], 'host'):
-            rma_host = remote_dict['rma'].host
+        from ..local_config import DEPLOYMENT_LOCATION
+        deployment_key = DEPLOYMENT_LOCATION
+        if deployment_key in remote_dict and hasattr(remote_dict[deployment_key], 'host'):
+            rma_host = remote_dict[deployment_key].host
             if '@' in rma_host:
                 return rma_host.split('@')[1]
             return rma_host
-    except (KeyError, AttributeError):
+    except (KeyError, AttributeError, ImportError):
         pass
     
     # Final fallback - use default IP
