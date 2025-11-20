@@ -125,6 +125,11 @@ def ipmitool(request):
         elif operation_type == 'firmware' and firmware_form.is_valid():
             try:
                 bmc_ip = firmware_form.cleaned_data['bmc_ip']
+                # Handle custom IP in RMA mode
+                if bmc_ip == '__custom__':
+                    bmc_ip = firmware_form.cleaned_data.get('bmc_ip_custom', '').strip()
+                    if not bmc_ip:
+                        raise ValueError('Custom BMC IP is required when "Custom IP..." is selected')
                 user = firmware_form.cleaned_data.get('user', 'ADMIN')
                 pwd = firmware_form.cleaned_data.get('pwd', '')
                 uploaded_files = firmware_form.cleaned_data['firmware_file']
@@ -190,32 +195,43 @@ def ipmitool(request):
         else:
             # Handle regular IPMI commands (default case, operation_type == 'ipmi', or None)
             if ipmi_form.is_valid():
+                bmc_ip = []
                 bmc_ip_raw = ipmi_form.cleaned_data['bmc_ip']
-                # Check if bmc_ip is a list (from MultipleChoiceField/textarea split) or single string
-                if isinstance(bmc_ip_raw, list):
-                    bmc_ip = [x.strip() for x in bmc_ip_raw if x.strip()]
+                # Handle custom IP in RMA mode
+                if bmc_ip_raw == '__custom__':
+                    bmc_ip_custom = ipmi_form.cleaned_data.get('bmc_ip_custom', '').strip()
+                    if not bmc_ip_custom:
+                        result['error'] = 'Custom BMC IP is required when "Custom IP..." is selected'
+                    else:
+                        bmc_ip = [bmc_ip_custom]
                 else:
-                     # Handle both textarea (newline separated) and Select (single value)
-                    bmc_ip = [x.strip() for x in bmc_ip_raw.split('\n') if x.strip()]
+                    # Check if bmc_ip is a list (from MultipleChoiceField/textarea split) or single string
+                    if isinstance(bmc_ip_raw, list):
+                        bmc_ip = [x.strip() for x in bmc_ip_raw if x.strip()]
+                    else:
+                         # Handle both textarea (newline separated) and Select (single value)
+                        bmc_ip = [x.strip() for x in bmc_ip_raw.split('\n') if x.strip()]
                 
-                command = ipmi_form.cleaned_data['command']
-                user = ipmi_form.cleaned_data.get('user', 'ADMIN')
-                
-                pwd_raw = ipmi_form.cleaned_data.get('pwd', '')
-                if isinstance(pwd_raw, list):
-                    pwd = [x.strip() for x in pwd_raw if x.strip()]
-                else:
-                    pwd = [x.strip() for x in pwd_raw.split('\n')] if pwd_raw else [''] * len(bmc_ip)
+                # Only proceed if we have valid BMC IP(s) and no error
+                if 'error' not in result and bmc_ip:
+                    command = ipmi_form.cleaned_data['command']
+                    user = ipmi_form.cleaned_data.get('user', 'ADMIN')
+                    
+                    pwd_raw = ipmi_form.cleaned_data.get('pwd', '')
+                    if isinstance(pwd_raw, list):
+                        pwd = [x.strip() for x in pwd_raw if x.strip()]
+                    else:
+                        pwd = [x.strip() for x in pwd_raw.split('\n')] if pwd_raw else [''] * len(bmc_ip)
 
-                if len(pwd) == 1 and len(bmc_ip) > 1:
-                    pwd = pwd * len(bmc_ip)
+                    if len(pwd) == 1 and len(bmc_ip) > 1:
+                        pwd = pwd * len(bmc_ip)
 
-                try:
-                    output = asyncio.run(run_all_ipmitool(bmc_ip, user, pwd, command))
-                    result = {ip: out for ip, out in output}
-                except Exception as e:
-                    logger.error(f"Error running IPMI command: {str(e)}")
-                    result['error'] = str(e)
+                    try:
+                        output = asyncio.run(run_all_ipmitool(bmc_ip, user, pwd, command))
+                        result = {ip: out for ip, out in output}
+                    except Exception as e:
+                        logger.error(f"Error running IPMI command: {str(e)}")
+                        result['error'] = str(e)
 
     # Prepare context
     context = {

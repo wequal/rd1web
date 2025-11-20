@@ -70,10 +70,18 @@
                                         <i class="fas fa-network-wired me-2 text-primary"></i>BMC IP Addresses
                                     </label>
                                     {{ form.bmc_ip }}
+                                    {% if is_rma and form.bmc_ip_custom %}
+                                    <div id="custom_ip_container" style="display: none; margin-top: 10px;">
+                                        <label for="{{ form.bmc_ip_custom.id_for_label }}" class="form-label fw-bold">
+                                            <i class="fas fa-edit me-2 text-info"></i>Custom BMC IP
+                                        </label>
+                                        {{ form.bmc_ip_custom }}
+                                    </div>
+                                    {% endif %}
                                     <small class="form-text text-muted">
                                         <i class="fas fa-info-circle me-1"></i>
                                         {% if is_rma %}
-                                            Select the BMC IP (linked to Golden Number).
+                                            Select the BMC IP from golden numbers or choose "Custom IP..." to enter manually.
                                         {% else %}
                                             Enter one IP address per line for each BMC interface.
                                         {% endif %}
@@ -255,6 +263,19 @@
                                 <i class="fas fa-network-wired me-2 text-primary"></i>BMC IP Address
                             </label>
                             {{ firmware_form.bmc_ip }}
+                            {% if is_rma and firmware_form.bmc_ip_custom %}
+                            <div id="firmware_custom_ip_container" style="display: none; margin-top: 10px;">
+                                <label for="{{ firmware_form.bmc_ip_custom.id_for_label }}" class="form-label fw-bold">
+                                    <i class="fas fa-edit me-2 text-info"></i>Custom BMC IP
+                                </label>
+                                {{ firmware_form.bmc_ip_custom }}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                {% if is_rma %}
+                                    <i class="fas fa-info-circle me-1"></i>Select from golden numbers or choose "Custom IP..." to enter manually.
+                                {% endif %}
+                            </small>
                         </div>
 
                         <div class="mb-4">
@@ -740,7 +761,50 @@
             const bmcIpField = document.getElementById('{{ form.bmc_ip.id_for_label }}');
             const pwdField = document.getElementById('{{ form.pwd.id_for_label }}');
             
-            // Validate IP and password count match
+            // RMA mode: Handle custom IP field visibility and form submission
+            {% if is_rma %}
+            const customIpContainer = document.getElementById('custom_ip_container');
+            const customIpField = document.getElementById('{{ form.bmc_ip_custom.id_for_label }}');
+            
+            if (bmcIpField && customIpContainer && customIpField) {
+                // Show/hide custom IP field based on dropdown selection
+                bmcIpField.addEventListener('change', function() {
+                    if (this.value === '__custom__') {
+                        customIpContainer.style.display = 'block';
+                        customIpField.required = true;
+                        customIpField.focus();
+                    } else {
+                        customIpContainer.style.display = 'none';
+                        customIpField.required = false;
+                        customIpField.value = '';
+                    }
+                });
+                
+                // On form submission, replace "__custom__" with actual custom IP value
+                form.addEventListener('submit', function(e) {
+                    if (bmcIpField.value === '__custom__') {
+                        const customIp = customIpField.value.trim();
+                        if (!customIp) {
+                            e.preventDefault();
+                            alert('Please enter a custom BMC IP address');
+                            customIpField.focus();
+                            return false;
+                        }
+                        // Create a hidden input with the actual IP value
+                        const hiddenInput = document.createElement('input');
+                        hiddenInput.type = 'hidden';
+                        hiddenInput.name = 'bmc_ip';
+                        hiddenInput.value = customIp;
+                        form.appendChild(hiddenInput);
+                        // Remove the original dropdown value
+                        bmcIpField.disabled = true;
+                    }
+                });
+            }
+            {% endif %}
+            
+            // Validate IP and password count match (for non-RMA mode)
+            {% if not is_rma %}
             form.addEventListener('submit', function(e) {
                 const ips = bmcIpField.value.split('\n').filter(ip => ip.trim() !== '');
                 const passwords = pwdField.value.split('\n').filter(pwd => pwd.trim() !== '');
@@ -750,8 +814,11 @@
                     alert('Number of IP addresses must match number of passwords!');
                     return false;
                 }
-                
-                // Clear firmware-related displays when submitting IPMI command
+            });
+            {% endif %}
+            
+            // Clear firmware-related displays when submitting IPMI command
+            form.addEventListener('submit', function(e) {
                 const firmwareInfoSection = document.getElementById('firmwareInfoSection');
                 if (firmwareInfoSection) {
                     firmwareInfoSection.style.display = 'none';
@@ -951,12 +1018,48 @@
         const progressSection = document.getElementById('updateProgress');
         const updateResults = document.getElementById('updateResults');
 
+        // RMA mode: Handle custom IP field for firmware form
+        {% if is_rma %}
+        const firmwareBmcIpField = document.getElementById('{{ firmware_form.bmc_ip.id_for_label }}');
+        const firmwareCustomIpContainer = document.getElementById('firmware_custom_ip_container');
+        const firmwareCustomIpField = document.getElementById('{{ firmware_form.bmc_ip_custom.id_for_label }}');
+        
+        if (firmwareBmcIpField && firmwareCustomIpContainer && firmwareCustomIpField) {
+            // Show/hide custom IP field based on dropdown selection
+            firmwareBmcIpField.addEventListener('change', function() {
+                if (this.value === '__custom__') {
+                    firmwareCustomIpContainer.style.display = 'block';
+                    firmwareCustomIpField.required = true;
+                    firmwareCustomIpField.focus();
+                } else {
+                    firmwareCustomIpContainer.style.display = 'none';
+                    firmwareCustomIpField.required = false;
+                    firmwareCustomIpField.value = '';
+                }
+            });
+        }
+        {% endif %}
+
         firmwareForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             clearAllDisplays();
             
             const formData = new FormData(this);
+            
+            // RMA mode: Replace "__custom__" with actual custom IP value
+            {% if is_rma %}
+            if (firmwareBmcIpField && firmwareBmcIpField.value === '__custom__') {
+                const customIp = firmwareCustomIpField ? firmwareCustomIpField.value.trim() : '';
+                if (!customIp) {
+                    alert('Please enter a custom BMC IP address');
+                    if (firmwareCustomIpField) firmwareCustomIpField.focus();
+                    return false;
+                }
+                formData.set('bmc_ip', customIp);
+            }
+            {% endif %}
+            
             formData.append('operation_type', 'firmware');
 
             try {

@@ -216,6 +216,20 @@ class IpmiForm(forms.Form):
                 linked_entries = RmaTestingDb.objects.filter(linked_user=user).order_by('bmc_ip')
                 self.fields['bmc_ip'].choices = [(entry.bmc_ip, f"{entry.bmc_ip} - {entry.golden_number}") for entry in linked_entries]
             
+            # Add "Custom IP..." option to the dropdown
+            self.fields['bmc_ip'].choices.append(('__custom__', 'Custom IP...'))
+            
+            # Add a hidden custom IP input field
+            self.fields['bmc_ip_custom'] = forms.CharField(
+                widget=forms.TextInput(attrs={
+                    'class': 'form-control', 
+                    'style': 'width: 500px; display: none;',
+                    'placeholder': 'Enter custom BMC IP address'
+                }),
+                label='Custom BMC IP',
+                required=False
+            )
+            
             # In RMA mode, Password is a single text input, prefilled
             self.fields['pwd'] = forms.CharField(
                 initial='Golden@1234',
@@ -283,6 +297,20 @@ class FirmwareUploadForm(forms.Form):
                 from .models import RmaTestingDb
                 linked_entries = RmaTestingDb.objects.filter(linked_user=user).order_by('bmc_ip')
                 self.fields['bmc_ip'].choices = [(entry.bmc_ip, f"{entry.bmc_ip} - {entry.golden_number}") for entry in linked_entries]
+            
+            # Add "Custom IP..." option to the dropdown
+            self.fields['bmc_ip'].choices.append(('__custom__', 'Custom IP...'))
+            
+            # Add a hidden custom IP input field
+            self.fields['bmc_ip_custom'] = forms.CharField(
+                widget=forms.TextInput(attrs={
+                    'class': 'form-control', 
+                    'style': 'width: 500px; display: none;',
+                    'placeholder': 'Enter custom BMC IP address'
+                }),
+                label='Custom BMC IP',
+                required=False
+            )
             
             # In RMA mode, Password is a single text input, prefilled
             self.fields['pwd'].initial = 'Golden@1234'
