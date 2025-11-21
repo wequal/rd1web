@@ -134,11 +134,9 @@
                                                 <a href="{% url 'rma_general_view_file' path=item.path %}" class="btn btn-sm btn-outline-success" target="_blank">
                                                     View
                                                 </a>
-                                                {% if item.apache_download_url %}
-                                                <a href="{{ item.apache_download_url }}" class="btn btn-sm btn-primary" target="_blank">
+                                                <a href="{% url 'rma_general_view_file' path=item.path %}?download=true" class="btn btn-sm btn-primary" target="_blank">
                                                     Download
                                                 </a>
-                                                {% endif %}
                                             </div>
                                         {% endif %}
                                     </td>

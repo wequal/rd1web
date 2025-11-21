@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from django.http import HttpResponse, Http404, JsonResponse
+from django.http import HttpResponse, Http404, JsonResponse, FileResponse
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.template import Template, Context
@@ -706,7 +706,6 @@ def rma_general_log_browser(request, path=""):
                 "mtime": mtime,
                 "path": item_path,
                 "file_type": "Directory" if is_dir else get_file_extension(name),
-                "apache_download_url": get_apache_url(f"general/{item_path}") if not is_dir else None,
             }
             
             if is_dir:
@@ -959,40 +958,30 @@ def rma_general_view_file(request, path):
         # Check if download is requested FIRST - before doing any heavy operations
         download_requested = request.GET.get('download', 'false').lower() == 'true'
         
-        # For downloads, proxy through Django with minimal memory usage
+        # For downloads, serve through Django from local disk
         if download_requested:
-            # Stream file from Apache2 with proper download headers (minimal memory approach)
-            import requests
-            from django.http import StreamingHttpResponse
-            
-            apache_url = get_apache_url(f"general/{path}")
-            
+            # Stream file from local disk with proper download headers
             try:
-                # Head request to get file size first
-                head_response = requests.head(apache_url, timeout=30)
-                head_response.raise_for_status()
+                # Determine content type
+                _, ext = os.path.splitext(remote_path)
+                ext = ext.lower()
+                content_type, _ = mimetypes.guess_type(remote_path)
+                if content_type is None:
+                    content_type = 'application/octet-stream'
                 
-                # Get file from Apache2 with streaming
-                file_response = requests.get(apache_url, stream=True, timeout=300)
-                file_response.raise_for_status()
-                
-                # Create streaming response with download headers
-                def file_generator():
-                    for chunk in file_response.iter_content(chunk_size=8192):
-                        yield chunk
-                
-                # Determine content type from Apache response
-                content_type = file_response.headers.get('content-type', 'application/octet-stream')
-                
-                response = StreamingHttpResponse(file_generator(), content_type='application/octet-stream')
-                response['Content-Disposition'] = f'attachment; filename="{filename}"'
-                response['Content-Length'] = head_response.headers.get('content-length', '')
+                # Use FileResponse for efficient streaming from local disk
+                response = FileResponse(
+                    open(remote_path, 'rb'),
+                    content_type=content_type,
+                    as_attachment=True,
+                    filename=filename
+                )
                 response['Cache-Control'] = 'no-cache'
                 
                 return response
                 
-            except requests.exceptions.RequestException as e:
-                logger.error(f"Error downloading file from Apache2: {e}")
+            except Exception as e:
+                logger.error(f"Error downloading file from local disk: {e}")
                 raise Http404(f"Cannot download file: {str(e)}")
 
         # For viewing only - continue with file size checks and content reading
@@ -1057,11 +1046,21 @@ def rma_general_view_file(request, path):
             response['Cache-Control'] = 'no-cache'
             return response
 
-        # For binary files, redirect to Apache2 for direct serving/viewing
+        # For binary files, serve through Django from local disk
         else:
-            apache_url = get_apache_url(f"general/{path}")
-            from django.shortcuts import redirect
-            return redirect(apache_url)
+            try:
+                # Use FileResponse for efficient streaming from local disk
+                response = FileResponse(
+                    open(remote_path, 'rb'),
+                    content_type=content_type,
+                    filename=filename
+                )
+                response['Content-Disposition'] = f'inline; filename="{filename}"'
+                response['Cache-Control'] = 'no-cache'
+                return response
+            except Exception as e:
+                logger.error(f"Error serving binary file from local disk: {e}")
+                raise Http404(f"Cannot serve file: {str(e)}")
             
     except Exception as e:
         logger.error(f"Error viewing remote file {remote_path}: {e}")
