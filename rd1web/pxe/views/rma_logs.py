@@ -375,8 +375,9 @@ def rma_download_folder_status(request, task_id):
         if status == 'completed':
             # Zip is ready, return download URL
             zip_filename = task['zip_filename']
-            apache_url = get_apache_url(f".TempZips/{zip_filename}")
-            response_data['download_url'] = apache_url
+            from django.urls import reverse
+            django_url = reverse('rma_download_zip', kwargs={'zip_filename': zip_filename})
+            response_data['download_url'] = django_url
             # Cache will auto-expire after ZIP_TASK_TIMEOUT
             
         elif status == 'failed':
@@ -2532,12 +2533,54 @@ def rma_collect_mi3xx_alllog_status(request, task_id):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @login_required
+def rma_download_zip(request, zip_filename):
+    """
+    Serve zip file from TEMP_ZIPS_DIR through Django
+    """
+    # Security check - ensure filename is safe (no path traversal)
+    if '..' in zip_filename or '/' in zip_filename or '\\' in zip_filename:
+        raise Http404("Invalid filename")
+    
+    # Construct full path to zip file
+    zip_path = os.path.normpath(os.path.join(TEMP_ZIPS_DIR, zip_filename))
+    
+    # Security check - ensure path stays within TEMP_ZIPS_DIR
+    if not zip_path.startswith(TEMP_ZIPS_DIR):
+        raise Http404("Access denied")
+    
+    try:
+        # Check if file exists
+        if not os.path.exists(zip_path):
+            raise Http404("Zip file does not exist")
+        
+        if not os.path.isfile(zip_path):
+            raise Http404("Path is not a file")
+        
+        # Use FileResponse for efficient streaming from local disk
+        response = FileResponse(
+            open(zip_path, 'rb'),
+            content_type='application/zip',
+            as_attachment=True,
+            filename=zip_filename
+        )
+        response['Cache-Control'] = 'no-cache'
+        
+        return response
+        
+    except Http404:
+        raise
+    except Exception as e:
+        logger.error(f"Error serving zip file {zip_filename}: {e}")
+        raise Http404(f"Cannot serve zip file: {str(e)}")
+
+@login_required
 def rma_download_folder(request, path):
     """
     Download RMA folder as a zip file
-    Creates a temporary zip file and redirects to Apache server for direct download
+    Creates a temporary zip file and serves through Django
     """
     from django.shortcuts import redirect
+    from django.urls import reverse
     
     decoded_path = unquote(path)
     # Construct directory path
@@ -2564,13 +2607,13 @@ def rma_download_folder(request, path):
         if zip_filename is None:
             raise Http404("Failed to create zip file")
         
-        # Generate Apache URL for direct download
-        apache_url = get_apache_url(f".TempZips/{zip_filename}")
+        # Generate Django URL for download
+        django_url = reverse('rma_download_zip', kwargs={'zip_filename': zip_filename})
         
-        logger.info(f"Redirecting to Apache for folder download: {apache_url}")
+        logger.info(f"Redirecting to Django for folder download: {django_url}")
         
-        # Redirect to Apache server for direct download
-        return redirect(apache_url)
+        # Redirect to Django view for download
+        return redirect(django_url)
         
     except Http404:
         raise
