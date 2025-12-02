@@ -138,6 +138,14 @@
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" name="tests" value="dcgm_r4" id="id_tests_dcgm_r4">
+                                        <label class="form-check-label" for="id_tests_dcgm_r4">
+                                            <i class="fas  me-1 text-info"></i>DCGM R4
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
                                         <input type="checkbox" class="form-check-input" name="tests" value="fd2" id="id_tests_3">
                                         <label class="form-check-label" for="id_tests_3">
                                             <i class="fas  me-1 text-primary"></i>FD2
@@ -511,6 +519,7 @@
         const imageSelect = document.getElementById('{{ form.image.id_for_label }}');
         const defaultCheckbox = document.getElementById('id_tests_0');
         const dcgmCheckbox = document.getElementById('id_tests_2');
+        const dcgmR4Checkbox = document.getElementById('id_tests_dcgm_r4');
         const fd2Checkbox = document.getElementById('id_tests_3');
         const gpudiagCheckbox = document.getElementById('id_tests_4');
         const level3Checkbox = document.getElementById('id_tests_5');
@@ -526,6 +535,7 @@
 
             // Get the parent divs that contain the checkboxes
             const dcgmContainer = dcgmCheckbox ? dcgmCheckbox.closest('.col-md-3') : null;
+            const dcgmR4Container = dcgmR4Checkbox ? dcgmR4Checkbox.closest('.col-md-3') : null;
             const fd2Container = fd2Checkbox ? fd2Checkbox.closest('.col-md-3') : null;
             const gpudiagContainer = gpudiagCheckbox ? gpudiagCheckbox.closest('.col-md-3') : null;
             const level3Container = level3Checkbox ? level3Checkbox.closest('.col-md-3') : null;
@@ -535,10 +545,14 @@
             const remoteFwContainer = remoteFwCheckbox ? remoteFwCheckbox.closest('.col-md-3') : null;
 
             if (isMi3xxImage) {
-                // Hide DCGM, FD2, and GPU Field Diag for MI3XX images
+                // Hide DCGM, DCGM R4, FD2, and GPU Field Diag for MI3XX images
                 if (dcgmContainer) {
                     dcgmContainer.style.display = 'none';
                     dcgmCheckbox.checked = false;
+                }
+                if (dcgmR4Container) {
+                    dcgmR4Container.style.display = 'none';
+                    dcgmR4Checkbox.checked = false;
                 }
                 if (fd2Container) {
                     fd2Container.style.display = 'none';
@@ -565,8 +579,9 @@
                     defaultCheckbox.checked = true;
                 }
             } else {
-                // Show DCGM, FD2, GPU Field Diag for other images
+                // Show DCGM, DCGM R4, FD2, GPU Field Diag for other images
                 if (dcgmContainer) dcgmContainer.style.display = '';
+                if (dcgmR4Container) dcgmR4Container.style.display = '';
                 if (fd2Container) fd2Container.style.display = '';
                 if (gpudiagContainer) gpudiagContainer.style.display = '';
 
@@ -601,6 +616,7 @@
             const defaultCheckbox = document.getElementById('id_tests_0');
             const nvidiaCheckbox = document.getElementById('id_tests_1');
             const dcgmCheckbox = document.getElementById('id_tests_2');
+            const dcgmR4Checkbox = document.getElementById('id_tests_dcgm_r4');
             const fd2Checkbox = document.getElementById('id_tests_3');
             const gpudiagCheckbox = document.getElementById('id_tests_4');
             const level3Checkbox = document.getElementById('id_tests_5');
@@ -608,7 +624,7 @@
             const allLogCheckboxTest = document.getElementById('id_tests_6');
             const fwUpdateCheckboxTest = document.getElementById('id_fw_update');
 
-            const specificCheckboxes = [nvidiaCheckbox, dcgmCheckbox, fd2Checkbox, gpudiagCheckbox, level3Checkbox].filter(cb => cb !== null);
+            const specificCheckboxes = [nvidiaCheckbox, dcgmCheckbox, dcgmR4Checkbox, fd2Checkbox, gpudiagCheckbox, level3Checkbox].filter(cb => cb !== null);
             const otherCheckboxes = [...specificCheckboxes, fwUpdateCheckboxTest, allLogCheckboxTest, remoteFwCheckboxTest].filter(cb => cb !== null);
             const testCheckboxes = [defaultCheckbox, ...otherCheckboxes].filter(cb => cb !== null);
             

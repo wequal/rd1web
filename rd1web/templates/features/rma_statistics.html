@@ -184,6 +184,7 @@
                             <th class="text-center">GPU Detection</th>
                             <th class="text-center">ECC Error</th>
                             <th class="text-center">DCGM Test</th>
+                            <th class="text-center">DCGM R4 Test</th>
                             <th class="text-center">FD2 Test</th>
                         </tr>
                     </thead>
@@ -214,6 +215,13 @@
                             <td class="text-center">
                                 {% if data.failures.dcgm_test > 0 %}
                                 <span class="badge bg-danger failure-badge">{{ data.failures.dcgm_test }}</span>
+                                {% else %}
+                                <span class="badge bg-secondary failure-badge">0</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if data.failures.dcgm_r4_test > 0 %}
+                                <span class="badge bg-danger failure-badge">{{ data.failures.dcgm_r4_test }}</span>
                                 {% else %}
                                 <span class="badge bg-secondary failure-badge">0</span>
                                 {% endif %}

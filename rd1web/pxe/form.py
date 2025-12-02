@@ -321,6 +321,7 @@ class RmaForm(forms.Form):
             ('default', 'Default'),
             ('pre_gpu_test', 'Pre GPU Test'),
             ('dcgm', 'DCGM'),
+            ('dcgm_r4', 'DCGM R4'),
             ('fd2', 'FD2'),
             ('gpudiag', 'GPU Field Diag'),
             ('level3_test', 'AGHFC Level 3'),

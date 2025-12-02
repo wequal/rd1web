@@ -45,6 +45,7 @@ def parse_test_results_log(log_content):
         'gpu_detection': 'unknown',
         'ecc_error': 'unknown',
         'dcgm_test': 'unknown',
+        'dcgm_r4_test': 'unknown',
         'fd2_test': 'unknown',
         'agfhc_test': 'unknown',
     }
@@ -97,6 +98,21 @@ def parse_test_results_log(log_content):
             results['dcgm_test'] = 'fail'
         elif last_pass_pos > last_fail_pos:
             results['dcgm_test'] = 'pass'
+    
+    # DCGM R4 Test - use last occurrence to determine final result
+    dcgm_r4_fail_matches = list(re.finditer(r'DCGM_R4 Failed', log_content))
+    dcgm_r4_pass_matches = list(re.finditer(r'DCGM_R4 Passed', log_content))
+    
+    if dcgm_r4_fail_matches or dcgm_r4_pass_matches:
+        # Get position of last fail and last pass
+        last_fail_pos = dcgm_r4_fail_matches[-1].start() if dcgm_r4_fail_matches else -1
+        last_pass_pos = dcgm_r4_pass_matches[-1].start() if dcgm_r4_pass_matches else -1
+        
+        # Whichever comes last in the log is the final result
+        if last_fail_pos > last_pass_pos:
+            results['dcgm_r4_test'] = 'fail'
+        elif last_pass_pos > last_fail_pos:
+            results['dcgm_r4_test'] = 'pass'
     
     # Field Diagnostic Level 2 Test
     has_fd2_fail = bool(re.search(r'Field Diagnostic level 2 test Failed', log_content))
@@ -509,6 +525,7 @@ def get_weekly_statistics(start_date, end_date):
         'gpu_detection': 0,
         'ecc_error': 0,
         'dcgm_test': 0,
+        'dcgm_r4_test': 0,
         'fd2_test': 0,
         'agfhc_test': 0,
     }
@@ -528,6 +545,7 @@ def get_weekly_statistics(start_date, end_date):
                     'gpu_detection': 0,
                     'ecc_error': 0,
                     'dcgm_test': 0,
+                    'dcgm_r4_test': 0,
                     'fd2_test': 0,
                     'agfhc_test': 0,
                 }
