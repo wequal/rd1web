@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import HttpResponse, Http404, JsonResponse, FileResponse
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -28,6 +28,12 @@ except AttributeError:
     # Fallback if local_config exists but RMA_GENERAL_BASE_DIR is not defined
     logger.warning("RMA_GENERAL_BASE_DIR not defined in local_config.py, using default value")
     RMA_GENERAL_BASE_DIR = '/srv/rma-b31-general/'
+
+# Import remote_download from local_config
+try:
+    from ..local_config import remote_download
+except ImportError:
+    remote_download = None
 
 # Cache timeout settings
 RMA_GENERAL_CACHE_TIMEOUT = 30  # 30 seconds cache for basic directory listings
@@ -960,6 +966,11 @@ def rma_general_view_file(request, path):
         
         # For downloads, serve through Django from local disk
         if download_requested:
+            if remote_download:
+                # Use remote Apache download
+                apache_url = f"http://{remote_download}/{path}"
+                return redirect(apache_url)
+
             # Stream file from local disk with proper download headers
             try:
                 # Determine content type

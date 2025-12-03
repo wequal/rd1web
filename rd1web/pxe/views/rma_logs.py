@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import HttpResponse, Http404, FileResponse, JsonResponse, StreamingHttpResponse
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -31,6 +31,13 @@ try:
         ZIP_TASK_TIMEOUT,
         DEPLOYMENT_LOCATION,
     )
+    
+    # Try to import remote_download separately
+    try:
+        from ..local_config import remote_download
+    except ImportError:
+        remote_download = None
+        
     logger.info("RMA logs using configuration from local_config.py")
 except ImportError:
     # Fallback to defaults if local_config doesn't exist
@@ -41,6 +48,7 @@ except ImportError:
     RMA_DETAILS_CACHE_TIMEOUT = 60  # 1 minute cache for directory details
     RMA_STATS_CACHE_TIMEOUT = 300  # 5 minutes cache for file stats
     ZIP_TASK_TIMEOUT = 3600  # 1 hour timeout for zip creation tasks
+    remote_download = None
 
 class TimeoutError(Exception):
     """Custom timeout exception"""
@@ -1909,6 +1917,11 @@ def rma_view_file(request, path):
         
         # For downloads, serve through Django from local disk
         if download_requested:
+            if remote_download:
+                # Use remote Apache download
+                apache_url = f"http://{remote_download}/{path}"
+                return redirect(apache_url)
+
             # Stream file from local disk with proper download headers
             try:
                 # Determine content type
