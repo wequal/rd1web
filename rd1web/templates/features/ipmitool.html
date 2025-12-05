@@ -195,6 +195,25 @@
                                     </ul>
                                 </div>
                                 
+                                <!-- Password Setting Dropdown -->
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="passwordSettingDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="fas fa-key me-1"></i>Password Setting
+                                    </button>
+                                    <ul class="dropdown-menu" aria-labelledby="passwordSettingDropdown">
+                                        <li>
+                                            <a class="dropdown-item" href="#" onclick="setCommand('user set password 2 Golden@1234')">
+                                                <i class="fas fa-user-shield me-2 text-success"></i>Golden Password
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="#" onclick="setCommand('raw 0x30 0x40')">
+                                                <i class="fas fa-industry me-2 text-warning"></i>Factory Default
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                                
                                 <!-- Other Quick Commands -->
                                 <button type="button" class="btn btn-sm btn-outline-info" onclick="setCommand('sdr')">
                                     <i class="fas fa-thermometer-half me-1"></i>Sensors
