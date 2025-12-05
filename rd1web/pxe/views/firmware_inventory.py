@@ -14,7 +14,7 @@ from ..form import EcoFolderForm, FirmwareInventoryUploadForm
 logger = logging.getLogger(__name__)
 
 # Base directory for firmware inventory
-FIRMWARE_BASE_DIR = '/srv/firmwareinventory'
+FIRMWARE_BASE_DIR = '/srv/share/firmwareinventory'
 
 # Product types configuration
 PRODUCT_TYPES = [
