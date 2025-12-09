@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
 from ..form import RmaForm
 from fabric import Connection
 from django.contrib.auth.decorators import login_required, permission_required
@@ -369,4 +370,70 @@ def rma_pxe(request):
         'result':result,
         'golden_entries': golden_entries,
         'can_force_unlink': can_force_unlink
-    })    
+    })
+
+@login_required
+@permission_required('pxe.can_view_golden_test_setting', raise_exception=True)
+@require_http_methods(["GET"])
+def golden_setting_api(request, entry_id):
+    """API endpoint to get PXE setting for a golden unit"""
+    try:
+        entry = RmaTestingDb.objects.get(id=entry_id)
+        
+        # Helper to normalize MAC
+        def normalize_mac(mac):
+            if not mac: return None
+            return mac.replace(':', '').replace('-', '').lower()
+
+        # Check LAN0
+        lan0 = normalize_mac(entry.lan0_mac)
+        pxe_entry_0 = None
+        if lan0:
+            pxe_entry_0 = PxeEntry.objects.filter(mac=lan0).first()
+
+        # Check LAN1
+        lan1 = normalize_mac(entry.lan1_mac)
+        pxe_entry_1 = None
+        if lan1:
+            pxe_entry_1 = PxeEntry.objects.filter(mac=lan1).first()
+            
+        if not pxe_entry_0 and not pxe_entry_1:
+            return JsonResponse({
+                'success': False,
+                'error': 'No PXE configuration found for this unit'
+            })
+
+        result_data = {}
+        
+        if pxe_entry_0:
+            result_data['lan0'] = {
+                'mac': entry.lan0_mac,
+                'image': pxe_entry_0.image,
+                'parameters': pxe_entry_0.parameters,
+                'updated_at': pxe_entry_0.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+            }
+            
+        if pxe_entry_1:
+             result_data['lan1'] = {
+                'mac': entry.lan1_mac,
+                'image': pxe_entry_1.image,
+                'parameters': pxe_entry_1.parameters,
+                'updated_at': pxe_entry_1.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+            }
+
+        return JsonResponse({
+            'success': True,
+            'settings': result_data
+        })
+
+    except RmaTestingDb.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Golden unit not found'
+        })
+    except Exception as e:
+        logger.error(f"Error fetching golden setting: {e}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })

@@ -318,6 +318,14 @@
                                         </div>
                                     </div>
                                     <div>
+                                        {% if perms.pxe.can_view_golden_test_setting %}
+                                            <button class="btn btn-sm btn-outline-secondary setting-golden-btn me-1" 
+                                                    data-entry-id="{{ entry.id }}"
+                                                    data-golden="{{ entry.golden_number }}"
+                                                    title="View Test Setting">
+                                                <i class="fas fa-cog"></i>
+                                            </button>
+                                        {% endif %}
                                         {% if entry.linked_user %}
                                             {% if entry.linked_user == request.user or can_force_unlink %}
                                                 <button class="btn btn-sm btn-outline-danger unlink-golden-btn" 
@@ -412,6 +420,31 @@
                     <li><strong>Remove:</strong> Delete existing PXE boot configurations for the specified BMC IP</li>
                     <li><strong>Add (Default):</strong> Create new PXE boot configurations with RMA parameters</li>
                 </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Golden Test Setting Modal -->
+<div class="modal fade" id="goldenSettingModal" tabindex="-1" aria-labelledby="goldenSettingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="goldenSettingModalLabel">
+                    <i class="fas fa-cog me-2"></i>Test Settings
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="goldenSettingModalBody">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Loading settings...</p>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -1075,6 +1108,210 @@
             });
         }
         
+        // Golden Unit Test Setting functionality
+        const settingButtons = document.querySelectorAll('.setting-golden-btn');
+        const goldenSettingModal = new bootstrap.Modal(document.getElementById('goldenSettingModal'));
+        const goldenSettingModalBody = document.getElementById('goldenSettingModalBody');
+        const goldenSettingModalLabel = document.getElementById('goldenSettingModalLabel');
+        
+        // Helper function to parse parameters
+        function parseParameters(paramsStr) {
+            if (!paramsStr) return {};
+            try {
+                // Try JSON first
+                return JSON.parse(paramsStr);
+            } catch (e) {
+                // If not JSON, try to parse as Python dict string representation
+                try {
+                    // Remove any leading/trailing whitespace
+                    const trimmed = paramsStr.trim();
+                    // Check if it looks like a Python dict
+                    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+                        // Try to convert Python dict string to JSON-compatible format
+                        // Replace single quotes with double quotes (simple approach)
+                        const jsonLike = trimmed.replace(/'/g, '"');
+                        return JSON.parse(jsonLike);
+                    }
+                } catch (e2) {
+                    // If all parsing fails, return as raw string
+                    return { raw: paramsStr };
+                }
+            }
+            return { raw: paramsStr };
+        }
+        
+        // Helper function to format parameters for display
+        function formatParameters(params) {
+            if (!params || Object.keys(params).length === 0) {
+                return '<span class="text-muted">No parameters</span>';
+            }
+            
+            let html = '<div class="table-responsive"><table class="table table-sm table-bordered mb-0">';
+            html += '<thead class="table-light"><tr><th style="width: 30%;">Parameter</th><th>Value</th></tr></thead><tbody>';
+            
+            for (const [key, value] of Object.entries(params)) {
+                let displayValue = '';
+                if (value === null || value === undefined) {
+                    displayValue = '<span class="text-muted">N/A</span>';
+                } else if (typeof value === 'object') {
+                    displayValue = `<pre class="mb-0 small">${JSON.stringify(value, null, 2)}</pre>`;
+                } else if (typeof value === 'boolean') {
+                    displayValue = value ? '<span class="badge bg-success">True</span>' : '<span class="badge bg-secondary">False</span>';
+                } else {
+                    displayValue = `<code class="text-dark">${String(value)}</code>`;
+                }
+                
+                html += `
+                    <tr>
+                        <td><strong class="text-primary">${key}</strong></td>
+                        <td>${displayValue}</td>
+                    </tr>
+                `;
+            }
+            
+            html += '</tbody></table></div>';
+            return html;
+        }
+        
+        settingButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const entryId = this.dataset.entryId;
+                const goldenNumber = this.dataset.golden;
+                
+                // Show loading state
+                const originalHtml = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                this.disabled = true;
+                
+                // Set modal title
+                goldenSettingModalLabel.innerHTML = `<i class="fas fa-cog me-2"></i>Test Settings - ${goldenNumber}`;
+                
+                // Show loading in modal
+                goldenSettingModalBody.innerHTML = `
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Loading settings...</p>
+                    </div>
+                `;
+                
+                // Show modal
+                goldenSettingModal.show();
+                
+                fetch(`/rma/golden/setting/${entryId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            const settings = data.settings;
+                            let html = '';
+                            
+                            if (!settings.lan0 && !settings.lan1) {
+                                html = `
+                                    <div class="alert alert-warning" role="alert">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        No active PXE configuration found for this golden unit.
+                                    </div>
+                                `;
+                            } else {
+                                // LAN0 Section
+                                if (settings.lan0) {
+                                    const params = parseParameters(settings.lan0.parameters);
+                                    html += `
+                                        <div class="card mb-3 border-primary">
+                                            <div class="card-header bg-primary text-white">
+                                                <h6 class="mb-0">
+                                                    <i class="fas fa-network-wired me-2"></i>LAN0 Configuration
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <strong><i class="fas fa-ethernet me-2 text-info"></i>MAC Address:</strong>
+                                                        <div><code class="text-dark">${settings.lan0.mac}</code></div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <strong><i class="fas fa-image me-2 text-success"></i>Image:</strong>
+                                                        <div><span class="badge bg-success">${settings.lan0.image}</span></div>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <strong><i class="fas fa-cogs me-2 text-warning"></i>Parameters:</strong>
+                                                    ${formatParameters(params)}
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-clock me-1"></i>Last Updated: ${settings.lan0.updated_at}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }
+                                
+                                // LAN1 Section
+                                if (settings.lan1) {
+                                    const params = parseParameters(settings.lan1.parameters);
+                                    html += `
+                                        <div class="card mb-3 border-info">
+                                            <div class="card-header bg-info text-white">
+                                                <h6 class="mb-0">
+                                                    <i class="fas fa-network-wired me-2"></i>LAN1 Configuration
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <strong><i class="fas fa-ethernet me-2 text-info"></i>MAC Address:</strong>
+                                                        <div><code class="text-dark">${settings.lan1.mac}</code></div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <strong><i class="fas fa-image me-2 text-success"></i>Image:</strong>
+                                                        <div><span class="badge bg-success">${settings.lan1.image}</span></div>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <strong><i class="fas fa-cogs me-2 text-warning"></i>Parameters:</strong>
+                                                    ${formatParameters(params)}
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-clock me-1"></i>Last Updated: ${settings.lan1.updated_at}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }
+                            }
+                            
+                            goldenSettingModalBody.innerHTML = html;
+                        } else {
+                            goldenSettingModalBody.innerHTML = `
+                                <div class="alert alert-danger" role="alert">
+                                    <i class="fas fa-exclamation-circle me-2"></i>
+                                    <strong>Error:</strong> ${data.error || 'Failed to fetch settings'}
+                                </div>
+                            `;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching settings:', error);
+                        goldenSettingModalBody.innerHTML = `
+                            <div class="alert alert-danger" role="alert">
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                                <strong>Error:</strong> An error occurred while fetching settings. Please try again.
+                            </div>
+                        `;
+                    })
+                    .finally(() => {
+                        // Restore button state
+                        this.innerHTML = originalHtml;
+                        this.disabled = false;
+                    });
+            });
+        });
+
         // Initialize on page load
         updateEcoSection();
         

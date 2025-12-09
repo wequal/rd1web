@@ -19,7 +19,7 @@ from .views.remote_control import (
 )
 from .views.archive import archive_system
 from .views.mac_ip_view import mac_ip_results, mac_ip_api, manual_scan, scan_status_api
-from .views.rma_pxe import rma_pxe, get_eco_numbers_api, get_rma_info_by_bmc
+from .views.rma_pxe import rma_pxe, get_eco_numbers_api, get_rma_info_by_bmc, golden_setting_api
 from .views.rma_general_test import rma_general_test
 from .views.rma_logs import (
     rma_log,
@@ -112,6 +112,7 @@ urlpatterns = [
     # Golden Number Link/Unlink URLs
     path('rma/golden/link/<int:entry_id>/', golden_link, name='golden_link'),
     path('rma/golden/unlink/<int:entry_id>/', golden_unlink, name='golden_unlink'),
+    path('rma/golden/setting/<int:entry_id>/', golden_setting_api, name='golden_setting'),
     
     # RMA API URLs
     path('api/rma/eco-numbers/<str:image_type>/', get_eco_numbers_api, name='rma_eco_numbers_api'),

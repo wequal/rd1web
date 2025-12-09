@@ -134,6 +134,7 @@ class RmaTestingDb(models.Model):
         permissions = [
             ('can_access_rma_testing_db', 'Can access RMA Testing DB'),
             ('can_force_unlink_golden', 'Can force unlink any golden number'),
+            ('can_view_golden_test_setting', 'Can view golden unit test setting'),
         ]
     
     def clean(self):
