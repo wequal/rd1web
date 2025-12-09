@@ -214,6 +214,55 @@
         background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
         color: white;
     }
+    
+    /* Pagination Styles */
+    .pagination-container {
+        padding: 20px;
+        background: white;
+        border-top: 1px solid #e9ecef;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+    
+    .pagination-info {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    
+    .pagination {
+        margin: 0;
+    }
+    
+    .pagination .page-link {
+        color: #667eea;
+        border: 1px solid #dee2e6;
+        padding: 8px 16px;
+        transition: all 0.3s ease;
+    }
+    
+    .pagination .page-link:hover {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-color: #667eea;
+        transform: translateY(-2px);
+    }
+    
+    .pagination .page-item.active .page-link {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: #667eea;
+        color: white;
+    }
+    
+    .pagination .page-item.disabled .page-link {
+        color: #6c757d;
+        background-color: #e9ecef;
+        border-color: #dee2e6;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
 </style>
 {% endblock %}
 
@@ -321,6 +370,23 @@
                     {% endfor %}
                 </tbody>
             </table>
+            
+            <!-- Pagination Controls -->
+            <div id="paginationControls" class="pagination-container" style="padding: 20px; background: white; border-top: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center;">
+                <div class="pagination-info">
+                    <span id="paginationInfo">Showing 0-0 of 0 entries</span>
+                </div>
+                <nav>
+                    <ul class="pagination mb-0" id="paginationNav">
+                        <li class="page-item" id="prevPageBtn">
+                            <a class="page-link" href="#" onclick="goToPage(currentPage - 1); return false;">Previous</a>
+                        </li>
+                        <li class="page-item" id="nextPageBtn">
+                            <a class="page-link" href="#" onclick="goToPage(currentPage + 1); return false;">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
         </div>
     </div>
 </div>
@@ -519,6 +585,9 @@
 <script>
 let table;
 let deleteEntryId = null;
+let currentPage = 1;
+let totalRecords = 0;
+let recordsPerPage = 20;
 
 $(document).ready(function() {
     console.log('RMA Testing DB: Modern UI initialized');
@@ -529,8 +598,8 @@ $(document).ready(function() {
         return;
     }
     
-    // Initialize modern table (no DataTables needed)
-    updateStats();
+    // Initialize pagination on page load
+    loadTableData(1);
 
     // Add entry form submission
     $('#addEntryForm').on('submit', function(e) {
@@ -554,8 +623,8 @@ $(document).ready(function() {
                     showAlert('success', response.message);
                     $('#addEntryForm')[0].reset();
                     
-                    // Reload table data
-                    loadTableData();
+                    // Reload table data (go to first page after add)
+                    loadTableData(1);
                 } else {
                     showAlert('danger', response.message || 'Failed to add entry');
                     if (response.errors) {
@@ -608,8 +677,8 @@ $(document).ready(function() {
                     $('#editEntryModal').modal('hide');
                     showAlert('success', response.message);
                     
-                    // Reload table data
-                    loadTableData();
+                    // Reload table data (go to first page after add)
+                    loadTableData(1);
                 } else {
                     showAlert('danger', response.message || 'Failed to update entry');
                     if (response.errors) {
@@ -661,8 +730,8 @@ $(document).ready(function() {
                 if (response.success) {
                     showAlert('success', response.message);
                     
-                    // Reload table data
-                    loadTableData();
+                    // Reload table data (go to first page after add)
+                    loadTableData(1);
                 } else {
                     showAlert('danger', response.message || 'Failed to delete entry');
                 }
@@ -722,26 +791,111 @@ function confirmDelete(entryId, bmcMac, bmcIp) {
 }
 
 function refreshTable() {
-    loadTableData();
+    loadTableData(currentPage);
 }
 
-function loadTableData() {
-    showAlert('info', 'Refreshing data...');
+function loadTableData(page) {
+    if (page < 1) page = 1;
+    currentPage = page;
+    
+    const start = (page - 1) * recordsPerPage;
     
     $.ajax({
         url: "{% url 'rma_testing_db_api' %}",
         type: 'GET',
+        data: {
+            'start': start,
+            'length': recordsPerPage,
+            'draw': page
+        },
         success: function(response) {
             if (response.data) {
                 updateTable(response.data);
-                showAlert('success', 'Data refreshed successfully!');
+                totalRecords = response.recordsTotal || response.recordsFiltered || 0;
+                updatePagination();
                 updateStats();
             }
         },
         error: function() {
-            showAlert('danger', 'Failed to refresh data. Please try again.');
+            showAlert('danger', 'Failed to load data. Please try again.');
         }
     });
+}
+
+function goToPage(page) {
+    if (page < 1) return;
+    const totalPages = Math.ceil(totalRecords / recordsPerPage);
+    if (page > totalPages) return;
+    loadTableData(page);
+}
+
+function updatePagination() {
+    const totalPages = Math.ceil(totalRecords / recordsPerPage);
+    const startRecord = totalRecords > 0 ? (currentPage - 1) * recordsPerPage + 1 : 0;
+    const endRecord = Math.min(currentPage * recordsPerPage, totalRecords);
+    
+    // Update pagination info
+    $('#paginationInfo').text(`Showing ${startRecord}-${endRecord} of ${totalRecords} entries`);
+    
+    // Update prev/next buttons
+    const prevBtn = $('#prevPageBtn');
+    const nextBtn = $('#nextPageBtn');
+    
+    if (currentPage <= 1) {
+        prevBtn.addClass('disabled');
+        prevBtn.find('a').attr('onclick', 'return false;');
+    } else {
+        prevBtn.removeClass('disabled');
+        prevBtn.find('a').attr('onclick', `goToPage(${currentPage - 1}); return false;`);
+    }
+    
+    if (currentPage >= totalPages || totalPages === 0) {
+        nextBtn.addClass('disabled');
+        nextBtn.find('a').attr('onclick', 'return false;');
+    } else {
+        nextBtn.removeClass('disabled');
+        nextBtn.find('a').attr('onclick', `goToPage(${currentPage + 1}); return false;`);
+    }
+    
+    // Update page numbers (show current page and nearby pages)
+    const pageNumbers = $('#paginationNav .page-number');
+    pageNumbers.remove();
+    
+    if (totalPages > 1) {
+        let startPage = Math.max(1, currentPage - 2);
+        let endPage = Math.min(totalPages, currentPage + 2);
+        
+        // Add first page if not in range
+        if (startPage > 1) {
+            const firstPage = $('<li class="page-item page-number"><a class="page-link" href="#" onclick="goToPage(1); return false;">1</a></li>');
+            prevBtn.after(firstPage);
+            if (startPage > 2) {
+                const ellipsis = $('<li class="page-item disabled"><span class="page-link">...</span></li>');
+                prevBtn.after(ellipsis);
+            }
+        }
+        
+        // Add page numbers in range
+        for (let i = startPage; i <= endPage; i++) {
+            const pageItem = $('<li class="page-item page-number"></li>');
+            if (i === currentPage) {
+                pageItem.addClass('active');
+            }
+            const pageLink = $('<a class="page-link" href="#" onclick="goToPage(' + i + '); return false;">' + i + '</a>');
+            pageItem.append(pageLink);
+            nextBtn.before(pageItem);
+        }
+        
+        // Add last page if not in range
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                const ellipsis = $('<li class="page-item disabled"><span class="page-link">...</span></li>');
+                nextBtn.before(ellipsis);
+            }
+            const lastPage = $('<li class="page-item page-number"><a class="page-link" href="#" onclick="goToPage(' + totalPages + '); return false;">' + totalPages + '</a></li>');
+            nextBtn.before(lastPage);
+        }
+    }
 }
 
 function updateTable(data) {
@@ -814,10 +968,9 @@ function displayFormErrors(errors, formType) {
 }
 
 function updateStats() {
-    // Update statistics with current table data
-    const rowCount = $('#tableBody tr').length;
-    $('#total-count').text(rowCount);
-    $('#bmc-count').text(rowCount);
+    // Update statistics with total records from API
+    $('#total-count').text(totalRecords);
+    $('#bmc-count').text(totalRecords);
     $('#status').text('Active');
 }
 </script>

@@ -47,7 +47,7 @@ def rma_testing_db_list(request):
             )
     
     # Pagination
-    paginator = Paginator(queryset, 25)  # Show 25 entries per page
+    paginator = Paginator(queryset, 20)  # Show 20 entries per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
@@ -198,7 +198,7 @@ def rma_testing_db_api(request):
     # Get query parameters
     search_value = request.GET.get('search[value]', '')
     start = int(request.GET.get('start', 0))
-    length = int(request.GET.get('length', 25))
+    length = int(request.GET.get('length', 20))
     
     # Build queryset
     queryset = RmaTestingDb.objects.all()
