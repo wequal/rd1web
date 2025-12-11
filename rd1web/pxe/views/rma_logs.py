@@ -721,7 +721,7 @@ def load_directory_details_batch(directory_names):
             logger.warning(f"Error loading details for {dir_name}: {e}")
             # Return minimal details on error
             details = {
-                'test_details': {'Overall': 'Unknown'},
+                'test_details': {'N/A': 'Unknown'},
                 'gpu_model': 'Unknown',
                 'golden_number': 'N/A',
                 'tester_name': 'N/A',
@@ -787,7 +787,7 @@ async def async_load_directory_details_batch(directory_names, max_concurrent=10)
                 # Handle exceptions
                 if isinstance(test_details, Exception):
                     logger.warning(f"Error loading test_status for {dir_name}: {test_details}")
-                    test_details = {'Overall': 'Unknown'}
+                    test_details = {'N/A': 'Unknown'}
                 
                 if isinstance(gpu_model, Exception):
                     logger.warning(f"Error loading gpu_model for {dir_name}: {gpu_model}")
@@ -817,7 +817,7 @@ async def async_load_directory_details_batch(directory_names, max_concurrent=10)
             except Exception as e:
                 logger.error(f"Unexpected error loading details for {dir_name}: {e}")
                 return dir_name, {
-                    'test_details': {'Overall': 'Unknown'},
+                    'test_details': {'N/A': 'Unknown'},
                     'gpu_model': 'Unknown',
                     'golden_number': 'N/A',
                     'tester_name': 'N/A',
@@ -1521,17 +1521,17 @@ def get_test_status(directory_name):
                 if test_details:
                     return test_details
                 else:
-                    return {'Overall': 'No Status'}
+                    return {'N/A': 'No Status'}
             except Exception as e:
                 logger.warning(f"Error reading test status file for {directory_name}: {e}")
-                return {'Overall': 'Unknown'}
+                return {'N/A': 'Unknown'}
         else:
             # File doesn't exist
-            return {'Overall': 'No Status'}
+            return {'N/A': 'No Status'}
             
     except Exception as e:
         logger.warning(f"Error reading test status for {directory_name}: {e}")
-        return {'Overall': 'Unknown'}
+        return {'N/A': 'Unknown'}
 
 
 
@@ -2110,7 +2110,27 @@ def monitor_remote_progress(task_id, progress_file, rma_remote, stop_event):
         # Check every 2 seconds
         time.sleep(2)
 
-def collect_mi3xx_alllog_task(task_id, dir_name, base_sn, rma_number, bmc_ip):
+def get_gpu_model_from_image(image_value):
+    """
+    Map image value to GPU model label
+    
+    Args:
+        image_value (str): Image value from form (e.g., 'ubuntu2204-x86-rma')
+        
+    Returns:
+        str: GPU model label (e.g., 'H100/200') or None if not found
+    """
+    image_to_gpu_map = {
+        'ubuntu2204-x86-rma': 'H100/200',
+        'ubuntu2204-b200-rma': 'B200',
+        'ubuntu2204-gb200': 'GB200',
+        'ubuntu2204-mi300x': 'MI300X',
+        'ubuntu2204-mi325x': 'MI325X',
+        'ubuntu2204-mi355x': 'MI355X',
+    }
+    return image_to_gpu_map.get(image_value)
+
+def collect_mi3xx_alllog_task(task_id, dir_name, base_sn, rma_number, bmc_ip, image=None):
     """
     Background task to collect MI3XX ALL LOG on remote RMA server
     """
@@ -2128,6 +2148,11 @@ def collect_mi3xx_alllog_task(task_id, dir_name, base_sn, rma_number, bmc_ip):
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
+        # Map image to GPU model if image is provided
+        gpu_model = None
+        if image:
+            gpu_model = get_gpu_model_from_image(image)
+        
         # Create Python script with progress reporting
         remote_script = f'''#!/usr/bin/env python3
 import requests
@@ -2135,6 +2160,7 @@ import sys
 from time import sleep
 import urllib3
 import json
+import os
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 bmc_ip = "{bmc_ip}"
@@ -2145,6 +2171,7 @@ task_id = "{task_id}"
 user = "ADMIN"
 pwd = "Golden@1234"
 log_path = "/srv/rma"
+gpu_model = {repr(gpu_model)}
 
 # Progress file for tracking
 progress_file = f"/tmp/mi3xx_progress_{{task_id}}.json"
@@ -2261,6 +2288,18 @@ try:
         for chunk in log_resp.iter_content(chunk_size=8192):
             if chunk:
                 f.write(chunk)
+    
+    # Step 6: Create sys_info.txt if GPU model is provided
+    if gpu_model:
+        sys_info_dir = os.path.dirname(alllog_file_path)
+        sys_info_path = os.path.join(sys_info_dir, "sys_info.txt")
+        try:
+            with open(sys_info_path, 'w') as f:
+                f.write(f"GPU_Model: {{gpu_model}}\\n")
+                f.write(f"BMC_IP: {{bmc_ip}}\\n")
+        except Exception as e:
+            # Non-fatal error, log but don't fail the entire process
+            print(f"WARNING: Failed to create sys_info.txt: {{e}}")
     
     update_progress(100, f"Successfully saved: {{alllog_file_name}}")
     print(f"SUCCESS: {{alllog_file_name}}")
@@ -2418,7 +2457,7 @@ def rma_collect_mi3xx_alllog(request, path):
         # Start background thread
         thread = threading.Thread(
             target=collect_mi3xx_alllog_task,
-            args=(task_id, dir_name, base_sn, rma_number, bmc_ip),
+            args=(task_id, dir_name, base_sn, rma_number, bmc_ip, None),
             daemon=True
         )
         thread.start()
@@ -2458,6 +2497,7 @@ def rma_collect_mi3xx_alllog_from_form(request):
         base_sn = (payload.get('base_sn') or '').strip()
         rma_number = (payload.get('rma_number') or '').strip()
         bmc_ip = (payload.get('bmc_ip') or '').strip()
+        image = (payload.get('image') or '').strip()
 
         if not base_sn or not rma_number or not bmc_ip:
             return JsonResponse(
@@ -2504,7 +2544,7 @@ def rma_collect_mi3xx_alllog_from_form(request):
         # Start background thread using the existing collection task
         thread = threading.Thread(
             target=collect_mi3xx_alllog_task,
-            args=(task_id, dir_name, base_sn, rma_number, bmc_ip),
+            args=(task_id, dir_name, base_sn, rma_number, bmc_ip, image),
             daemon=True,
         )
         thread.start()

@@ -774,10 +774,12 @@
             const baseSnInput = document.getElementById('{{ form.base_sn.id_for_label }}');
             const rmaNumberInput = document.getElementById('{{ form.rma_number.id_for_label }}');
             const bmcIpInput = document.getElementById('{{ form.bmc_ip.id_for_label }}');
+            const imageInput = document.getElementById('{{ form.image.id_for_label }}');
 
             const baseSn = baseSnInput ? baseSnInput.value.trim() : '';
             const rmaNumber = rmaNumberInput ? rmaNumberInput.value.trim() : '';
             const bmcIp = bmcIpInput ? bmcIpInput.value : '';
+            const image = imageInput ? imageInput.value : '';
 
             const allLogSelected = allLogCheckbox && allLogCheckbox.checked;
 
@@ -808,7 +810,8 @@
                 const payload = {
                     base_sn: baseSn,
                     rma_number: rmaNumber,
-                    bmc_ip: bmcIp
+                    bmc_ip: bmcIp,
+                    image: image
                 };
 
                 fetch('/rma/collect-mi3xx-alllog-from-form/', {
