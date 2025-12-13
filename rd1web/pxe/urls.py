@@ -136,11 +136,12 @@ urlpatterns = [
     path('api/rma/statistics/scan/', trigger_scan, name='rma_statistics_scan'),
     
     # Firmware Inventory URLs
+    # IMPORTANT: More specific patterns must come BEFORE generic patterns
     path('rma/firmware-inventory/', firmware_inventory_main, name='firmware_inventory'),
-    path('rma/firmware-inventory/<str:product_type>/', firmware_inventory_eco_list, name='firmware_inventory_eco_list'),
+    path('rma/firmware-inventory/file/<int:file_id>/delete/', firmware_inventory_file_delete, name='firmware_inventory_file_delete'),
     path('rma/firmware-inventory/<str:product_type>/create-eco/', firmware_inventory_eco_create, name='firmware_inventory_eco_create'),
-    path('rma/firmware-inventory/<str:product_type>/<str:eco_number>/', firmware_inventory_eco_detail, name='firmware_inventory_eco_detail'),
     path('rma/firmware-inventory/<str:product_type>/<str:eco_number>/delete/', firmware_inventory_eco_delete, name='firmware_inventory_eco_delete'),
     path('rma/firmware-inventory/<str:product_type>/<str:eco_number>/upload/', firmware_inventory_file_upload, name='firmware_inventory_file_upload'),
-    path('rma/firmware-inventory/file/<int:file_id>/delete/', firmware_inventory_file_delete, name='firmware_inventory_file_delete'),
+    path('rma/firmware-inventory/<str:product_type>/<str:eco_number>/', firmware_inventory_eco_detail, name='firmware_inventory_eco_detail'),
+    path('rma/firmware-inventory/<str:product_type>/', firmware_inventory_eco_list, name='firmware_inventory_eco_list'),
 ]
