@@ -26,6 +26,15 @@ except ImportError:
     RMA_PXE_GENERATION_SCRIPT = '/srv/share/scripts/rma_pxe_generation'
     PXE_BOOT_PATH = '/var/www/pxe/boot/'
 
+def normalize_mac_for_pxe(mac):
+    """Normalize MAC to 12 hex chars (lowercase), or None if invalid/empty."""
+    if not mac:
+        return None
+    normalized = mac.strip().replace(":", "").replace("-", "").lower()
+    if len(normalized) != 12:
+        return None
+    return normalized
+
 def get_lan_macs(bmc_ip):
     try:
         entry = RmaTestingDb.objects.get(bmc_ip=bmc_ip)
@@ -56,6 +65,42 @@ def run_rma_command_sync(command, timeout=30):
     except Exception as e:
         logger.error(f"RMA command exception: {command}, Error: {e}")
         return False, str(e)
+
+def remove_pxe_entries_and_boot_files(macs):
+    """
+    Remove PXE DB entries and remote iPXE boot files for provided MACs.
+
+    Returns a list of human-readable action/warning strings.
+    """
+    actions = []
+
+    # Ensure PXE_BOOT_PATH has trailing slash for string concat
+    pxe_boot_path = PXE_BOOT_PATH if PXE_BOOT_PATH.endswith("/") else f"{PXE_BOOT_PATH}/"
+
+    for mac in macs or []:
+        normalized_mac = normalize_mac_for_pxe(mac)
+        if not normalized_mac:
+            actions.append(f"Skipped invalid/empty MAC: {mac}")
+            continue
+
+        formatted_mac = "-".join(
+            normalized_mac[i:i + 2] for i in range(0, len(normalized_mac), 2)
+        )
+
+        deleted, _ = PxeEntry.objects.filter(mac=normalized_mac).delete()
+        if deleted:
+            actions.append(f"Deleted entry for MAC: {normalized_mac}")
+            success, error = run_rma_command_sync(
+                f"rm -f {pxe_boot_path}{formatted_mac}-boot.ipxe"
+            )
+            if not success:
+                actions.append(
+                    f"Warning: Failed to delete PXE boot file for {normalized_mac}: {error}"
+                )
+        else:
+            actions.append(f"No entry found to delete for MAC: {normalized_mac}")
+
+    return actions
 
 @login_required
 @permission_required('pxe.can_access_rma_pxe', raise_exception=True)
@@ -265,7 +310,8 @@ def rma_pxe(request):
             logger.info(f"Built tests_param: {tests_param}")
             
             macs = get_lan_macs(bmc_ip)
-            macs= [x.strip().replace(":","").replace("-","").lower() for x in macs if x!='']
+            macs = [normalize_mac_for_pxe(x) for x in macs if x]
+            macs = [x for x in macs if x]
             
             logger.info(f"Retrieved MACs: {macs}")
 
@@ -293,20 +339,7 @@ def rma_pxe(request):
                 })
         
             if remove:
-                result['actions']=[]
-                for x in macs:
-                    formatted_mac = '-'.join(x[i:i+2] for i in range(0, len(x), 2))
-                    deleted,_= PxeEntry.objects.filter(mac=x).delete()
-                    if deleted:
-                        result['actions'].append(f"Deleted entry for MAC: {x}")
-                        # Use sync RMA command with async wrapper
-                        success, error = run_rma_command_sync(
-                            f"rm -f {PXE_BOOT_PATH}{formatted_mac}-boot.ipxe"
-                        )
-                        if not success:
-                            result['actions'].append(f"Warning: Failed to delete PXE boot file for {x}: {error}")
-                    else:
-                        result['actions'].append(f"No entry found to delete for MAC: {x}")
+                result['actions'] = remove_pxe_entries_and_boot_files(macs)
             
             
             elif check:

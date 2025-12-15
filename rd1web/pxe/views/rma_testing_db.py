@@ -14,6 +14,7 @@ import logging
 from ..models import RmaTestingDb
 from ..form import RmaTestingDbForm, RmaTestingDbSearchForm
 from ..remote_config import remote_dict
+from .rma_pxe import remove_pxe_entries_and_boot_files
 
 logger = logging.getLogger(__name__)
 
@@ -309,10 +310,14 @@ def golden_unlink(request, entry_id):
         entry.linked_user = None
         entry.linked_at = None
         entry.save()
+
+        # Also remove PXE configuration (DB + PXE server boot files) for this golden's LAN MACs
+        cleanup_actions = remove_pxe_entries_and_boot_files([entry.lan0_mac, entry.lan1_mac])
         
         return JsonResponse({
             'success': True,
-            'message': f'Successfully unlinked golden number "{entry.golden_number}"'
+            'message': f'Successfully unlinked golden number "{entry.golden_number}"',
+            'cleanup_actions': cleanup_actions,
         })
         
     except RmaTestingDb.DoesNotExist:
