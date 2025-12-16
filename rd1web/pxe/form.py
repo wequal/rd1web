@@ -406,10 +406,10 @@ class RmaGeneralForm(forms.Form):
         choices=[
             ('ubuntu2204-x86-rma', 'H100/200'),
             ('ubuntu2204-gb200', 'GB200'),
-            # ('ubuntu2204-b200-rma', 'B200'),
-            # ('ubuntu2204-mi300x', 'MI300X'),
-            # ('ubuntu2204-mi325x', 'MI325X'),
-            # ('ubuntu2204-mi355x', 'MI355X')
+            ('ubuntu2204-b200-rma', 'B200'),
+            ('ubuntu2204-mi300x', 'MI300X'),
+            ('ubuntu2204-mi325x', 'MI325X'),
+            ('ubuntu2204-mi355x', 'MI355X')
         ],
         label='Image'
     )

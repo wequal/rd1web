@@ -194,6 +194,26 @@
     {% endif %}
 </div>
 
+<!-- Test Details Modal -->
+<div class="modal fade" id="testDetailsModal" tabindex="-1" aria-labelledby="testDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="testDetailsModalLabel">
+                    Default Test Configuration
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="testDetailsContent"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Help Modal -->
 <div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -310,6 +330,48 @@
                 }
             }
         });
+
+        // Popup logic for Default Test
+        const imageSelect = document.getElementById('{{ form.image.id_for_label }}');
+        const defaultTestCheckbox = document.getElementById('id_tests_0');
+        // Initialize modal only if element exists to avoid errors
+        const modalElement = document.getElementById('testDetailsModal');
+        const testDetailsModal = modalElement ? new bootstrap.Modal(modalElement) : null;
+        const testDetailsContent = document.getElementById('testDetailsContent');
+
+        function showDefaultTestPopup() {
+            if (!defaultTestCheckbox.checked || !testDetailsModal) return;
+
+            const selectedImage = imageSelect.value;
+            let tests = '';
+
+            if (selectedImage === 'ubuntu2204-x86-rma') { // H100/200
+                tests = '<strong>Pre GPU test, DCGM and FD2</strong>';
+            } else if (selectedImage === 'ubuntu2204-b200-rma') { // B200
+                tests = '<strong>Pre GPU Test and FD2</strong>';
+            }
+
+            if (tests) {
+                testDetailsContent.innerHTML = `The default test for this image includes:<br><br>${tests}`;
+                testDetailsModal.show();
+            }
+        }
+
+        if (imageSelect && defaultTestCheckbox) {
+            // Trigger when image changes IF default is checked
+            imageSelect.addEventListener('change', function() {
+                if (defaultTestCheckbox.checked) {
+                    showDefaultTestPopup();
+                }
+            });
+
+            // Trigger when default test is checked
+            defaultTestCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    showDefaultTestPopup();
+                }
+            });
+        }
     });
 </script>
 {% endblock %}
