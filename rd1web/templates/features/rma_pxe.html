@@ -419,6 +419,26 @@
     {% endif %}
 </div>
 
+<!-- Test Details Modal -->
+<div class="modal fade" id="testDetailsModal" tabindex="-1" aria-labelledby="testDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="testDetailsModalLabel">
+                    Default Test Configuration
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="testDetailsContent"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Help Modal -->
 <div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -1376,6 +1396,69 @@
             if (selectedBmcIp) {
                 fetchAndFillRmaInfo(selectedBmcIp);
             }
+        }
+
+        // Popup logic for Default Test
+        const testDetailsModalElement = document.getElementById('testDetailsModal');
+        let testDetailsModal = null;
+        
+        if (testDetailsModalElement) {
+            try {
+                if (typeof bootstrap !== 'undefined') {
+                    testDetailsModal = new bootstrap.Modal(testDetailsModalElement);
+                }
+            } catch (e) {
+                console.error('Failed to initialize Bootstrap Modal:', e);
+            }
+        }
+        
+        const testDetailsContent = document.getElementById('testDetailsContent');
+
+        function showDefaultTestPopup() {
+            // Re-select elements to be safe or reuse existing variables if available in scope
+            // Using the robust selectors pattern
+            const imgSel = document.getElementById('{{ form.image.id_for_label }}') || document.querySelector('[name="image"]');
+            const defCb = document.getElementById('id_tests_0') || document.querySelector('input[name="tests"][value="default"]');
+
+            if (!imgSel || !defCb || !testDetailsModal) {
+                return;
+            }
+
+            if (!defCb.checked) {
+                return;
+            }
+
+            const selectedImage = imgSel.value;
+            let tests = '';
+
+            if (selectedImage === 'ubuntu2204-x86-rma') { // H100/200
+                tests = '<strong>Pre GPU test, DCGM and FD2</strong>';
+            } else if (selectedImage === 'ubuntu2204-b200-rma') { // B200
+                tests = '<strong>Pre GPU Test and FD2</strong>';
+            }
+
+            if (tests) {
+                testDetailsContent.innerHTML = `The default test for this image includes:<br><br>${tests}`;
+                testDetailsModal.show();
+            }
+        }
+
+        // Attach listeners for popup
+        const imgSelForPopup = document.getElementById('{{ form.image.id_for_label }}');
+        const defCbForPopup = document.getElementById('id_tests_0');
+
+        if (imgSelForPopup && defCbForPopup) {
+            imgSelForPopup.addEventListener('change', function() {
+                if (defCbForPopup.checked) {
+                    showDefaultTestPopup();
+                }
+            });
+
+            defCbForPopup.addEventListener('change', function() {
+                if (this.checked) {
+                    showDefaultTestPopup();
+                }
+            });
         }
 
         // Remote FW Update Polling Logic
