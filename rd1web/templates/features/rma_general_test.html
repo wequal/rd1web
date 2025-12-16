@@ -332,17 +332,48 @@
         });
 
         // Popup logic for Default Test
-        const imageSelect = document.getElementById('{{ form.image.id_for_label }}');
-        const defaultTestCheckbox = document.getElementById('id_tests_0');
-        // Initialize modal only if element exists to avoid errors
+        // Use more robust selectors
+        const imageSelect = document.getElementById('{{ form.image.id_for_label }}') || document.querySelector('[name="image"]');
+        const defaultTestCheckbox = document.getElementById('id_tests_0') || document.querySelector('input[name="tests"][value="default"]');
+        
+        console.log('RMA Popup Script Loaded');
+        console.log('Image Select:', imageSelect);
+        console.log('Default Test Checkbox:', defaultTestCheckbox);
+
+        // Initialize modal
         const modalElement = document.getElementById('testDetailsModal');
-        const testDetailsModal = modalElement ? new bootstrap.Modal(modalElement) : null;
+        let testDetailsModal = null;
+        
+        if (modalElement) {
+            try {
+                // Check if bootstrap is defined
+                if (typeof bootstrap !== 'undefined') {
+                    testDetailsModal = new bootstrap.Modal(modalElement);
+                } else {
+                    console.error('Bootstrap is not defined!');
+                }
+            } catch (e) {
+                console.error('Failed to initialize Bootstrap Modal:', e);
+            }
+        }
+        
         const testDetailsContent = document.getElementById('testDetailsContent');
 
         function showDefaultTestPopup() {
-            if (!defaultTestCheckbox.checked || !testDetailsModal) return;
+            if (!imageSelect || !defaultTestCheckbox || !testDetailsModal) {
+                console.warn('Missing required elements for popup');
+                return;
+            }
+
+            // Check if default test is selected
+            if (!defaultTestCheckbox.checked) {
+                console.log('Default test not checked, skipping popup');
+                return;
+            }
 
             const selectedImage = imageSelect.value;
+            console.log('Checking popup for image:', selectedImage);
+            
             let tests = '';
 
             if (selectedImage === 'ubuntu2204-x86-rma') { // H100/200
@@ -352,14 +383,18 @@
             }
 
             if (tests) {
+                console.log('Showing popup with tests:', tests);
                 testDetailsContent.innerHTML = `The default test for this image includes:<br><br>${tests}`;
                 testDetailsModal.show();
+            } else {
+                console.log('No popup content for this image');
             }
         }
 
         if (imageSelect && defaultTestCheckbox) {
             // Trigger when image changes IF default is checked
             imageSelect.addEventListener('change', function() {
+                console.log('Image changed');
                 if (defaultTestCheckbox.checked) {
                     showDefaultTestPopup();
                 }
@@ -367,6 +402,7 @@
 
             // Trigger when default test is checked
             defaultTestCheckbox.addEventListener('change', function() {
+                console.log('Checkbox changed. Checked:', this.checked);
                 if (this.checked) {
                     showDefaultTestPopup();
                 }
