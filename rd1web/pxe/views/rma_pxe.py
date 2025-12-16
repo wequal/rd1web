@@ -278,6 +278,7 @@ def rma_pxe(request):
         bound_form = RmaForm(request.POST, user=request.user)
         if bound_form.is_valid():
             base_sn = bound_form.cleaned_data.get('base_sn', '')
+            replacement_sn = bound_form.cleaned_data.get('replacement_sn', '').strip()
             rma_number = bound_form.cleaned_data.get('rma_number', '')
             bmc_ip = bound_form.cleaned_data.get('bmc_ip', '')
             tests = bound_form.cleaned_data.get('tests', [])
@@ -288,6 +289,10 @@ def rma_pxe(request):
             eco_number = bound_form.cleaned_data.get('eco_number', '')
             gpu_model = bound_form.cleaned_data.get('gpu_model', '')
             cooling = bound_form.cleaned_data.get('cooling', '')
+            
+            # Append replacement_sn to base_sn if provided
+            if replacement_sn:
+                base_sn = f"{base_sn}-{replacement_sn}"
             
             # Debug logging
             logger.info(f"RMA PXE form submitted: base_sn={base_sn}, rma_number={rma_number}, bmc_ip={bmc_ip}, tests={tests}, fw_update={fw_update}, eco_number={eco_number}, gpu_model={gpu_model}, cooling={cooling}, remove={remove}, check={check}")

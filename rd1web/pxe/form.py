@@ -307,6 +307,7 @@ class UniquePasswordForm(forms.Form):
 
 class RmaForm(forms.Form):
     base_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Base SN',required=False)
+    replacement_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='GPUBOARD/UBB8 replacement SN',required=False)
     rma_number=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='RMA Number',required=False)
     bmc_ip=forms.ChoiceField(choices=[], widget=forms.Select(attrs={'class':'form-control','style': 'width: 500px;',}),label='BMC IP')
     image=forms.ChoiceField(choices=[('ubuntu2204-x86-rma','H100/200'),('ubuntu2204-b200-rma','B200'),('ubuntu2204-gb200','GB200'),('ubuntu2204-mi300x','MI300X'),('ubuntu2204-mi325x','MI325X'),('ubuntu2204-mi355x','MI355X')],label='Image')
