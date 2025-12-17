@@ -290,9 +290,9 @@ def rma_pxe(request):
             gpu_model = bound_form.cleaned_data.get('gpu_model', '')
             cooling = bound_form.cleaned_data.get('cooling', '')
             
-            # Append replacement_sn to base_sn if provided
+            # Use replacement_sn if provided, otherwise use base_sn
             if replacement_sn:
-                base_sn = f"{base_sn}-{replacement_sn}"
+                base_sn = replacement_sn
             
             # Debug logging
             logger.info(f"RMA PXE form submitted: base_sn={base_sn}, rma_number={rma_number}, bmc_ip={bmc_ip}, tests={tests}, fw_update={fw_update}, eco_number={eco_number}, gpu_model={gpu_model}, cooling={cooling}, remove={remove}, check={check}")

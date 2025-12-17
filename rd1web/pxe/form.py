@@ -346,6 +346,19 @@ class RmaForm(forms.Form):
         else:
             self.fields['bmc_ip'].choices = []
     
+    def clean(self):
+        """Validate that base_sn and replacement_sn are not both filled."""
+        cleaned_data = super().clean()
+        base_sn = cleaned_data.get('base_sn', '').strip()
+        replacement_sn = cleaned_data.get('replacement_sn', '').strip()
+        
+        if base_sn and replacement_sn:
+            raise ValidationError(
+                "Please enter either Base SN OR Replacement SN, not both."
+            )
+        
+        return cleaned_data
+    
     def clean_tests(self):
         """Validate that Default and All Log are not combined with other tests or firmware update."""
         tests = self.cleaned_data.get('tests', [])

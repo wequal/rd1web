@@ -811,23 +811,34 @@
         // Enhanced form validation
         form.addEventListener('submit', function(e) {
             const baseSnInput = document.getElementById('{{ form.base_sn.id_for_label }}');
+            const replacementSnInput = document.getElementById('{{ form.replacement_sn.id_for_label }}');
             const rmaNumberInput = document.getElementById('{{ form.rma_number.id_for_label }}');
             const bmcIpInput = document.getElementById('{{ form.bmc_ip.id_for_label }}');
             const imageInput = document.getElementById('{{ form.image.id_for_label }}');
 
             const baseSn = baseSnInput ? baseSnInput.value.trim() : '';
+            const replacementSn = replacementSnInput ? replacementSnInput.value.trim() : '';
             const rmaNumber = rmaNumberInput ? rmaNumberInput.value.trim() : '';
             const bmcIp = bmcIpInput ? bmcIpInput.value : '';
             const image = imageInput ? imageInput.value : '';
 
+            const effectiveBaseSn = replacementSn || baseSn;
+
             const allLogSelected = allLogCheckbox && allLogCheckbox.checked;
+
+            // Validate that both base_sn and replacement_sn are not filled at the same time
+            if (baseSn && replacementSn) {
+                alert('Please enter either Base Serial Number OR Replacement SN, not both.');
+                e.preventDefault();
+                return;
+            }
 
             // When All Log is selected, run MI3XX ALL LOG collection instead of normal PXE flow
             if (allLogSelected) {
                 e.preventDefault();
 
-                if (!baseSn) {
-                    alert('Base Serial Number is required for All Log.');
+                if (!effectiveBaseSn) {
+                    alert('Base Serial Number or Replacement SN is required for All Log.');
                     return;
                 }
 
@@ -847,7 +858,7 @@
                 }
 
                 const payload = {
-                    base_sn: baseSn,
+                    base_sn: effectiveBaseSn,
                     rma_number: rmaNumber,
                     bmc_ip: bmcIp,
                     image: image
@@ -869,7 +880,7 @@
                 })
                 .then(data => {
                     if (data.success && data.task_id) {
-                        const dirName = `${baseSn}_${rmaNumber}`;
+                        const dirName = `${effectiveBaseSn}_${rmaNumber}`;
                         const encodedDir = encodeURIComponent(dirName);
                         const redirectUrl = `/rma/logs/${encodedDir}/`;
                         window.Mi3xxAllLog.startTask(data.task_id, {
@@ -888,8 +899,9 @@
             }
 
             // Standard validation path for non-All-Log flows
-            if (!baseSn) {
-                alert('Base Serial Number is required');
+            // Note: Validation for both fields being filled is already checked above
+            if (!effectiveBaseSn) {
+                alert('Base Serial Number or Replacement SN is required');
                 e.preventDefault();
                 return;
             }
