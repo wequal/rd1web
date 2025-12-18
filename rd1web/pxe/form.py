@@ -404,6 +404,7 @@ class RmaGeneralForm(forms.Form):
     )
     image = forms.ChoiceField(
         choices=[
+            ('','-- Select Image --'),
             ('ubuntu2204-x86-rma', 'H100/200'),
             ('ubuntu2204-gb200', 'GB200'),
             ('ubuntu2204-b200-rma', 'B200'),
