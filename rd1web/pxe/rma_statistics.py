@@ -10,31 +10,12 @@ Contains functions for:
 import os
 import re
 import logging
-import json
 from datetime import datetime, timedelta
 from django.db.models import Count, Q
 from django.utils import timezone
 from .models import RmaTestStatistic
 
 logger = logging.getLogger(__name__)
-
-# Debug logging helper
-DEBUG_LOG_PATH = '/home/devin/rd1web-dev/.cursor/debug.log'
-def _debug_log(hypothesis_id, location, message, data=None):
-    try:
-        log_entry = {
-            'sessionId': 'debug-session',
-            'runId': 'run1',
-            'hypothesisId': hypothesis_id,
-            'location': location,
-            'message': message,
-            'data': data or {},
-            'timestamp': int(datetime.now().timestamp() * 1000)
-        }
-        with open(DEBUG_LOG_PATH, 'a') as f:
-            f.write(json.dumps(log_entry) + '\n')
-    except Exception:
-        pass  # Silently fail if logging fails
 
 # Import configuration from local_config (required, no fallback)
 from .local_config import RMA_BASE_DIR
@@ -241,11 +222,7 @@ def scan_rma_directory(dir_name):
             return False, f"Directory not found: {dir_path}"
         
         # Check if test_results.log exists
-        test_log_exists = os.path.exists(test_results_path)
-        # #region agent log
-        _debug_log('H2', 'rma_statistics.py:225', 'test_results.log exists check', {'dir_name': dir_name, 'exists': test_log_exists, 'path': test_results_path})
-        # #endregion
-        if not test_log_exists:
+        if not os.path.exists(test_results_path):
             return False, f"test_results.log not found in {dir_name}"
         
         # Get directory mtime for test_date
@@ -274,15 +251,9 @@ def scan_rma_directory(dir_name):
             test_date = datetime.fromtimestamp(dir_mtime)
             # Make it timezone aware
             test_date = timezone.make_aware(test_date)
-            # #region agent log
-            _debug_log('H5', 'rma_statistics.py:253', 'test_date calculated', {'dir_name': dir_name, 'test_date': test_date.isoformat(), 'dir_mtime': dir_mtime})
-            # #endregion
         except Exception as e:
             logger.warning(f"Cannot get directory mtime, using current time: {e}")
             test_date = timezone.now()
-            # #region agent log
-            _debug_log('H5', 'rma_statistics.py:256', 'test_date fallback to now', {'dir_name': dir_name, 'test_date': test_date.isoformat()})
-            # #endregion
         
         # Get GPU model
         gpu_model = parse_sys_info_file(sys_info_path)
@@ -342,15 +313,7 @@ def scan_rma_directory(dir_name):
         test_results = parse_test_results_log(log_content)
         
         # Create or update record - ensure only one record per directory
-        # #region agent log
-        _debug_log('H5', 'rma_statistics.py:316', 'About to create/update DB record', {
-            'dir_name': dir_name,
-            'test_date': test_date.isoformat(),
-            'gpu_model': gpu_model,
-            'file_mtime': file_mtime
-        })
-        # #endregion
-        obj, created = RmaTestStatistic.objects.update_or_create(
+        RmaTestStatistic.objects.update_or_create(
             directory_name=dir_name,
             defaults={
                 'base_sn': base_sn,
@@ -361,14 +324,6 @@ def scan_rma_directory(dir_name):
                 'file_mtime': file_mtime,
             }
         )
-        # #region agent log
-        _debug_log('H5', 'rma_statistics.py:328', 'DB record created/updated', {
-            'dir_name': dir_name,
-            'created': created,
-            'record_id': obj.id if obj else None,
-            'test_date': obj.test_date.isoformat() if obj else None
-        })
-        # #endregion
         
         return True, f"Updated: {dir_name} ({gpu_model})"
         
@@ -386,9 +341,6 @@ def scan_all_rma_directories():
     Returns:
         dict: Statistics about the scan (processed, skipped, errors)
     """
-    # #region agent log
-    _debug_log('H1,H2,H3,H4', 'rma_statistics.py:335', 'scan_all_rma_directories ENTRY', {'rma_base_dir': RMA_BASE_DIR})
-    # #endregion
     stats = {
         'total': 0,
         'processed': 0,
@@ -399,70 +351,36 @@ def scan_all_rma_directories():
     
     try:
         # Check if RMA base directory exists
-        dir_exists = os.path.exists(RMA_BASE_DIR)
-        # #region agent log
-        _debug_log('H3', 'rma_statistics.py:354', 'Directory exists check', {'exists': dir_exists, 'path': RMA_BASE_DIR})
-        # #endregion
-        if not dir_exists:
+        if not os.path.exists(RMA_BASE_DIR):
             logger.error(f"RMA base directory not found: {RMA_BASE_DIR}")
-            # #region agent log
-            _debug_log('H3', 'rma_statistics.py:356', 'Directory not found - returning early', {})
-            # #endregion
             return stats
         
         # Get all directories
         try:
             items = os.listdir(RMA_BASE_DIR)
-            # #region agent log
-            _debug_log('H1,H2', 'rma_statistics.py:360', 'Directory listing result', {'item_count': len(items), 'sample_items': items[:5] if items else []})
-            # #endregion
         except Exception as e:
             logger.error(f"Cannot list RMA directory: {e}")
-            # #region agent log
-            _debug_log('H3', 'rma_statistics.py:362', 'Directory listing failed', {'error': str(e)})
-            # #endregion
             return stats
         
         # Pattern to match {base_sn}_{rma_number}
         pattern = re.compile(r'^(.+)_(.+)$')
-        
-        total_dirs = 0
-        total_files = 0
-        non_matching = 0
-        matching = 0
         
         # Process each directory
         for item in items:
             item_path = os.path.join(RMA_BASE_DIR, item)
             
             # Skip non-directories
-            is_dir = os.path.isdir(item_path)
-            if not is_dir:
-                total_files += 1
+            if not os.path.isdir(item_path):
                 continue
-            
-            total_dirs += 1
             
             # Check if it matches pattern
-            matches_pattern = bool(pattern.match(item))
-            # #region agent log
-            _debug_log('H1', 'rma_statistics.py:377', 'Pattern match check', {'item': item, 'matches': matches_pattern})
-            # #endregion
-            if not matches_pattern:
-                non_matching += 1
+            if not pattern.match(item):
                 continue
             
-            matching += 1
             stats['total'] += 1
             
             # Scan directory
-            # #region agent log
-            _debug_log('H2,H4', 'rma_statistics.py:383', 'About to scan directory', {'dir_name': item})
-            # #endregion
             success, message = scan_rma_directory(item)
-            # #region agent log
-            _debug_log('H2,H4', 'rma_statistics.py:385', 'Directory scan result', {'dir_name': item, 'success': success, 'message': message})
-            # #endregion
             
             if success:
                 if 'Skipped' in message:
@@ -474,31 +392,13 @@ def scan_all_rma_directories():
                 stats['error_messages'].append(message)
                 logger.warning(f"Scan error: {message}")
         
-        # #region agent log
-        _debug_log('H1,H2,H3,H4', 'rma_statistics.py:395', 'Scan summary', {
-            'total_items': len(items),
-            'total_dirs': total_dirs,
-            'total_files': total_files,
-            'matching_pattern': matching,
-            'non_matching': non_matching,
-            'processed': stats['processed'],
-            'skipped': stats['skipped'],
-            'errors': stats['errors']
-        })
-        # #endregion
         logger.info(f"RMA statistics scan complete: {stats['processed']} processed, "
                    f"{stats['skipped']} skipped, {stats['errors']} errors out of {stats['total']} total")
         
     except Exception as e:
         logger.error(f"Error in scan_all_rma_directories: {e}")
-        # #region agent log
-        _debug_log('H4', 'rma_statistics.py:399', 'Exception in scan_all_rma_directories', {'error': str(e), 'type': type(e).__name__})
-        # #endregion
         stats['error_messages'].append(str(e))
     
-    # #region agent log
-    _debug_log('H1,H2,H3,H4', 'rma_statistics.py:402', 'scan_all_rma_directories EXIT', {'stats': stats})
-    # #endregion
     return stats
 
 
@@ -598,32 +498,11 @@ def get_weekly_statistics(start_date, end_date):
     Returns:
         dict: Statistics with total unique RMAs and GPU model breakdown
     """
-    # #region agent log
-    _debug_log('H5,H6', 'rma_statistics.py:493', 'get_weekly_statistics ENTRY', {
-        'start_date': start_date.isoformat(),
-        'end_date': end_date.isoformat()
-    })
-    # #endregion
-    
     # Get all records in the date range
-    # #region agent log
-    total_db_records = RmaTestStatistic.objects.count()
-    _debug_log('H6', 'rma_statistics.py:502', 'Total records in DB', {'count': total_db_records})
-    # #endregion
-    
     all_records = RmaTestStatistic.objects.filter(
         test_date__gte=start_date,
         test_date__lte=end_date
     ).order_by('directory_name', '-file_mtime', '-test_date', '-updated_at')
-    
-    # #region agent log
-    filtered_count = all_records.count()
-    _debug_log('H5,H6', 'rma_statistics.py:505', 'Filtered records by date range', {
-        'filtered_count': filtered_count,
-        'start_date': start_date.isoformat(),
-        'end_date': end_date.isoformat()
-    })
-    # #endregion
     
     # Get unique directories (most recent record for each directory)
     seen_directories = set()
@@ -635,13 +514,6 @@ def get_weekly_statistics(start_date, end_date):
             unique_records.append(record)
     
     total_units = len(unique_records)
-    
-    # #region agent log
-    _debug_log('H5,H6', 'rma_statistics.py:516', 'Unique records after deduplication', {
-        'unique_count': total_units,
-        'sample_dirs': [r.directory_name for r in unique_records[:5]]
-    })
-    # #endregion
     
     # Initialize counters
     total_failures = {
@@ -682,20 +554,13 @@ def get_weekly_statistics(start_date, end_date):
                 total_failures[test_type] += 1
                 gpu_breakdown[gpu_model]['failures'][test_type] += 1
     
-    result = {
+    return {
         'start_date': start_date,
         'end_date': end_date,
         'total_units': total_units,
         'total_failures': total_failures,
         'gpu_breakdown': gpu_breakdown,
     }
-    # #region agent log
-    _debug_log('H5,H6', 'rma_statistics.py:563', 'get_weekly_statistics EXIT', {
-        'total_units': total_units,
-        'gpu_breakdown_keys': list(gpu_breakdown.keys()) if gpu_breakdown else []
-    })
-    # #endregion
-    return result
 
 
 def get_monthly_statistics(year, month):

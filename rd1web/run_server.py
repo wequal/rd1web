@@ -69,6 +69,10 @@ def main():
                        help='First parameter for hiding sidebar sections (when equal to mac2ip)')
     parser.add_argument('--mac2ip', type=str, default=None,
                        help='Second parameter for hiding sidebar sections (when equal to rd1pxe)')
+    parser.add_argument('--no-celery', action='store_true',
+                       help='Disable automatic Celery worker startup')
+    parser.add_argument('--no-celery-beat', action='store_true',
+                       help='Disable automatic Celery beat scheduler startup')
     parser.add_argument('command', nargs='?', default=None,
                        help='Django management command (runserver, migrate, etc.)')
     
@@ -211,18 +215,92 @@ def main():
             sys.exit(1)
     
     print()
-    print(f"✅ All {workers} workers started successfully!")
+    print(f"✅ All {workers} Daphne workers started successfully!")
     print(f"🔗 Nginx upstream should include ports: {start_port}-{start_port + workers - 1}")
+    print()
+    
+    # Start Celery worker if enabled
+    celery_worker_process = None
+    celery_beat_process = None
+    
+    if not args.no_celery:
+        try:
+            print("🔄 Starting Celery worker...")
+            # Get parent directory (project root)
+            project_root = BASE_DIR.parent
+            celery_worker_cmd = [
+                'celery', '-A', 'rd1web', 'worker',
+                '--loglevel=info',
+                '--concurrency=2',
+                '--max-tasks-per-child=1000',
+                '--time-limit=300',
+                '--soft-time-limit=240',
+                '--logfile=' + str(project_root / 'celery_worker.log'),
+                '--pidfile=' + str(project_root / 'celery_worker.pid')
+            ]
+            
+            celery_env = os.environ.copy()
+            celery_env['DJANGO_SETTINGS_MODULE'] = 'rd1web.settings'
+            
+            celery_worker_process = subprocess.Popen(
+                celery_worker_cmd,
+                cwd=str(BASE_DIR),
+                env=celery_env
+            )
+            worker_processes.append(celery_worker_process)
+            time.sleep(1)  # Give Celery time to start
+            print("✅ Celery worker started (PID: {})".format(celery_worker_process.pid))
+        except Exception as e:
+            print(f"⚠ Warning: Failed to start Celery worker: {e}")
+            print("⚠ Celery tasks will run synchronously (fallback mode)")
+    
+    # Start Celery beat if enabled
+    if not args.no_celery_beat and not args.no_celery:
+        try:
+            print("🔄 Starting Celery beat scheduler...")
+            project_root = BASE_DIR.parent
+            celery_beat_cmd = [
+                'celery', '-A', 'rd1web', 'beat',
+                '--loglevel=info',
+                '--logfile=' + str(project_root / 'celery_beat.log'),
+                '--pidfile=' + str(project_root / 'celery_beat.pid'),
+                '--schedule=' + str(project_root / 'celerybeat-schedule.db')
+            ]
+            
+            celery_env = os.environ.copy()
+            celery_env['DJANGO_SETTINGS_MODULE'] = 'rd1web.settings'
+            
+            celery_beat_process = subprocess.Popen(
+                celery_beat_cmd,
+                cwd=str(BASE_DIR),
+                env=celery_env
+            )
+            worker_processes.append(celery_beat_process)
+            time.sleep(1)
+            print("✅ Celery beat started (PID: {})".format(celery_beat_process.pid))
+        except Exception as e:
+            print(f"⚠ Warning: Failed to start Celery beat: {e}")
+            print("⚠ Periodic tasks will not run automatically")
+    
     print()
     print("📋 Worker Status:")
     for i, process in enumerate(worker_processes):
-        port = start_port + i
-        status = "RUNNING" if process.poll() is None else "STOPPED"
-        print(f"   Worker {i+1}: {host}:{port} - {status} (PID: {process.pid})")
+        if i < workers:
+            port = start_port + i
+            status = "RUNNING" if process.poll() is None else "STOPPED"
+            print(f"   Daphne Worker {i+1}: {host}:{port} - {status} (PID: {process.pid})")
+        elif process == celery_worker_process:
+            status = "RUNNING" if process.poll() is None else "STOPPED"
+            print(f"   Celery Worker: {status} (PID: {process.pid})")
+        elif process == celery_beat_process:
+            status = "RUNNING" if process.poll() is None else "STOPPED"
+            print(f"   Celery Beat: {status} (PID: {process.pid})")
     
     print()
     print("🎯 Load balancing: Nginx will distribute requests across all workers")
-    print("💡 Tip: Monitor with 'ps aux | grep daphne' and 'netstat -tlnp | grep 800'")
+    if not args.no_celery:
+        print("⚡ Celery: Background tasks enabled")
+    print("💡 Tip: Monitor with 'ps aux | grep daphne' and 'ps aux | grep celery'")
     print("🛑 Press Ctrl+C to stop all workers")
     print()
     
