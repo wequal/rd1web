@@ -17,14 +17,9 @@ from .models import RmaTestStatistic
 
 logger = logging.getLogger(__name__)
 
-# Import configuration from local_config
-try:
-    from .local_config import RMA_BASE_DIR
-    logger.info("RMA statistics using RMA_BASE_DIR from local_config.py")
-except ImportError:
-    # Fallback to default if local_config doesn't exist
-    logger.warning("local_config.py not found, using default RMA_BASE_DIR")
-    RMA_BASE_DIR = '/srv/rma-b31'
+# Import configuration from local_config (required, no fallback)
+from .local_config import RMA_BASE_DIR
+logger.info("RMA statistics using RMA_BASE_DIR from local_config.py")
 
 
 def parse_test_results_log(log_content):
