@@ -3,7 +3,7 @@
 Script to run the Django development server with ASGI support for WebSocket functionality.
 This enables the SOL terminal feature with real-time WebSocket communication.
 Configured to work with Nginx reverse proxy setup.
-Supports multiple workers for better concurrent SOL session handling.
+Supports multiple workers for better concurrent SOL session handling
 """
 
 import os
