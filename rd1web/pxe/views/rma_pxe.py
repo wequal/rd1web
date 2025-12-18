@@ -182,11 +182,13 @@ def get_rma_info_by_bmc(request, bmc_ip):
             params_dict = {}
         
         base_sn = params_dict.get('base_sn', '') if isinstance(params_dict, dict) else ''
+        replacement_sn = params_dict.get('replacement_sn', '') if isinstance(params_dict, dict) else ''
         rma_number = params_dict.get('rma_number', '') if isinstance(params_dict, dict) else ''
         
         return JsonResponse({
             'success': True,
             'base_sn': base_sn,
+            'replacement_sn': replacement_sn,
             'rma_number': rma_number
         })
         
@@ -290,12 +292,8 @@ def rma_pxe(request):
             gpu_model = bound_form.cleaned_data.get('gpu_model', '')
             cooling = bound_form.cleaned_data.get('cooling', '')
             
-            # Use replacement_sn if provided, otherwise use base_sn
-            if replacement_sn:
-                base_sn = replacement_sn
-            
             # Debug logging
-            logger.info(f"RMA PXE form submitted: base_sn={base_sn}, rma_number={rma_number}, bmc_ip={bmc_ip}, tests={tests}, fw_update={fw_update}, eco_number={eco_number}, gpu_model={gpu_model}, cooling={cooling}, remove={remove}, check={check}")
+            logger.info(f"RMA PXE form submitted: base_sn={base_sn}, replacement_sn={replacement_sn}, rma_number={rma_number}, bmc_ip={bmc_ip}, tests={tests}, fw_update={fw_update}, eco_number={eco_number}, gpu_model={gpu_model}, cooling={cooling}, remove={remove}, check={check}")
             
             # Build tests parameter including fw_update, eco_number, gpu_model, and cooling
             tests_list = list(tests) if tests else []
@@ -363,6 +361,7 @@ def rma_pxe(request):
                     # Build parameters dict - use tests_param which includes eco_number, gpu_model, cooling
                     params = {
                         'base_sn': base_sn, 
+                        'replacement_sn': replacement_sn,
                         'rma_number': rma_number, 
                         'tests': tests_param,
                         'fw_update': fw_update,
@@ -376,11 +375,15 @@ def rma_pxe(request):
                         defaults={'parameters': params,'image':image},
                     )
                     action = "Created" if created else "Updated"
-                    result['actions'].append(f"{action} entry for MAC: {x} | Image: {image} | Parameters: base_sn={base_sn}, rma_number={rma_number}, tests={tests_param}")
+                    result['actions'].append(f"{action} entry for MAC: {x} | Image: {image} | Parameters: base_sn={base_sn}, replacement_sn={replacement_sn}, rma_number={rma_number}, tests={tests_param}")
                     
                     # Use sync RMA command with async wrapper for PXE generation
+                    # Base SN and Replacement SN are passed in key=value format
+                    # Replacement SN is passed as the 5th argument
+                    base_sn_arg = f"base_sn={base_sn}" if base_sn else "base_sn="
+                    replacement_sn_arg = f"replacement_sn={replacement_sn}" if replacement_sn else "replacement_sn="
                     success, error = run_rma_command_sync(
-                        f"{RMA_PXE_GENERATION_SCRIPT} {x} {image} {base_sn} {rma_number} {tests_param}",
+                        f"{RMA_PXE_GENERATION_SCRIPT} '{x}' '{image}' '{base_sn_arg}' '{rma_number}' '{replacement_sn_arg}' '{tests_param}'",
                         timeout=60  # Longer timeout for script execution
                     )
                     if not success:

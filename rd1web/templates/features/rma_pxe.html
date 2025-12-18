@@ -45,7 +45,7 @@
                             {% endif %}
                             <small class="form-text text-muted">
                                 <i class="fas me-1"></i>
-                                Enter the base system serial number for RMA tracking.
+                                Enter the base system serial number for RMA tracking. (Required)
                             </small>
                         </div>
 
@@ -64,7 +64,7 @@
                             {% endif %}
                             <small class="form-text text-muted">
                                 <i class="fas me-1"></i>
-                                Optional: Enter the GPUBOARD/UBB8 replacement serial number.
+                                Optional: Enter the GPUBOARD/UBB8 replacement serial number. (Optional)
                             </small>
                         </div>
 
@@ -451,7 +451,8 @@
             </div>
             <div class="modal-body">
                 <h6>RMA Information</h6>
-                <p><strong>Base SN:</strong> The serial number of the base system being processed for RMA.</p>
+                <p><strong>Base SN:</strong> The serial number of the base system being processed for RMA. (Required)</p>
+                <p><strong>Replacement SN:</strong> The serial number of the GPUBOARD/UBB8 being replaced. (Optional)</p>
                 <p><strong>RMA Number:</strong> The unique identifier assigned to this RMA case for tracking purposes.</p>
                 <h6>Available Actions</h6>
                 <ul>
@@ -822,23 +823,14 @@
             const bmcIp = bmcIpInput ? bmcIpInput.value : '';
             const image = imageInput ? imageInput.value : '';
 
-            const effectiveBaseSn = replacementSn || baseSn;
-
             const allLogSelected = allLogCheckbox && allLogCheckbox.checked;
-
-            // Validate that both base_sn and replacement_sn are not filled at the same time
-            if (baseSn && replacementSn) {
-                alert('Please enter either Base Serial Number OR Replacement SN, not both.');
-                e.preventDefault();
-                return;
-            }
 
             // When All Log is selected, run MI3XX ALL LOG collection instead of normal PXE flow
             if (allLogSelected) {
                 e.preventDefault();
 
-                if (!effectiveBaseSn) {
-                    alert('Base Serial Number or Replacement SN is required for All Log.');
+                if (!baseSn) {
+                    alert('Base Serial Number is required for All Log.');
                     return;
                 }
 
@@ -858,7 +850,7 @@
                 }
 
                 const payload = {
-                    base_sn: effectiveBaseSn,
+                    base_sn: baseSn,
                     rma_number: rmaNumber,
                     bmc_ip: bmcIp,
                     image: image
@@ -880,7 +872,7 @@
                 })
                 .then(data => {
                     if (data.success && data.task_id) {
-                        const dirName = `${effectiveBaseSn}_${rmaNumber}`;
+                        const dirName = `${baseSn}_${rmaNumber}`;
                         const encodedDir = encodeURIComponent(dirName);
                         const redirectUrl = `/rma/logs/${encodedDir}/`;
                         window.Mi3xxAllLog.startTask(data.task_id, {
@@ -899,9 +891,8 @@
             }
 
             // Standard validation path for non-All-Log flows
-            // Note: Validation for both fields being filled is already checked above
-            if (!effectiveBaseSn) {
-                alert('Base Serial Number or Replacement SN is required');
+            if (!baseSn) {
+                alert('Base Serial Number is required');
                 e.preventDefault();
                 return;
             }
@@ -1372,6 +1363,7 @@
         // Auto-fill base_sn and rma_number when BMC IP is selected
         const bmcIpSelect = document.getElementById('id_bmc_ip');
         const baseSnInput = document.getElementById('id_base_sn');
+        const replacementSnInput = document.getElementById('id_replacement_sn');
         const rmaNumberInput = document.getElementById('id_rma_number');
         
         if (bmcIpSelect && baseSnInput && rmaNumberInput) {
@@ -1379,6 +1371,7 @@
             async function fetchAndFillRmaInfo(bmcIp) {
                 if (!bmcIp) {
                     baseSnInput.value = '';
+                    if (replacementSnInput) replacementSnInput.value = '';
                     rmaNumberInput.value = '';
                     return;
                 }
@@ -1389,11 +1382,13 @@
                     
                     if (data.success) {
                         baseSnInput.value = data.base_sn || '';
+                        if (replacementSnInput) replacementSnInput.value = data.replacement_sn || '';
                         rmaNumberInput.value = data.rma_number || '';
                     }
                 } catch (error) {
                     // Silently handle errors
                     baseSnInput.value = '';
+                    if (replacementSnInput) replacementSnInput.value = '';
                     rmaNumberInput.value = '';
                 }
             }

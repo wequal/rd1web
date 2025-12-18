@@ -306,7 +306,7 @@ class UniquePasswordForm(forms.Form):
         return macs
 
 class RmaForm(forms.Form):
-    base_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Base SN',required=False)
+    base_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Base SN',required=True)
     replacement_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='GPUBOARD/UBB8 replacement SN',required=False)
     rma_number=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='RMA Number',required=False)
     bmc_ip=forms.ChoiceField(choices=[], widget=forms.Select(attrs={'class':'form-control','style': 'width: 500px;',}),label='BMC IP')
@@ -345,19 +345,6 @@ class RmaForm(forms.Form):
             self.fields['bmc_ip'].choices = [(entry.bmc_ip, f"{entry.bmc_ip} - {entry.golden_number}") for entry in linked_entries]
         else:
             self.fields['bmc_ip'].choices = []
-    
-    def clean(self):
-        """Validate that base_sn and replacement_sn are not both filled."""
-        cleaned_data = super().clean()
-        base_sn = cleaned_data.get('base_sn', '').strip()
-        replacement_sn = cleaned_data.get('replacement_sn', '').strip()
-        
-        if base_sn and replacement_sn:
-            raise ValidationError(
-                "Please enter either Base SN OR Replacement SN, not both."
-            )
-        
-        return cleaned_data
     
     def clean_tests(self):
         """Validate that Default and All Log are not combined with other tests or firmware update."""
