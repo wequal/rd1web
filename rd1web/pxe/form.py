@@ -372,6 +372,19 @@ class RmaForm(forms.Form):
             )
 
         return tests
+    
+    def clean_replacement_sn(self):
+        """Validate that replacement_sn does not start with S9 or s9"""
+        replacement_sn = self.cleaned_data.get('replacement_sn', '').strip()
+        
+        # Only validate if a value is provided (field is optional)
+        if replacement_sn:
+            if replacement_sn.upper().startswith('S9'):
+                raise ValidationError(
+                    "GPUBOARD/UBB8 replacement SN cannot start with S9 or s9"
+                )
+        
+        return replacement_sn
 
 
 class RmaGeneralForm(forms.Form):
