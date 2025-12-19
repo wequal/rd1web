@@ -378,10 +378,10 @@ def rma_pxe(request):
                     result['actions'].append(f"{action} entry for MAC: {x} | Image: {image} | Parameters: base_sn={base_sn}, replacement_sn={replacement_sn}, rma_number={rma_number}, tests={tests_param}")
                     
                     # Use sync RMA command with async wrapper for PXE generation
-                    # Base SN and Replacement SN are passed in key=value format
+                    # Base SN and Replacement SN are passed as positional arguments (values only)
                     # Replacement SN is passed as the 5th argument
-                    base_sn_arg = f"base_sn={base_sn}" if base_sn else "base_sn="
-                    replacement_sn_arg = f"replacement_sn={replacement_sn}" if replacement_sn else "replacement_sn="
+                    base_sn_arg = base_sn if base_sn else ""
+                    replacement_sn_arg = replacement_sn if replacement_sn else ""
                     success, error = run_rma_command_sync(
                         f"{RMA_PXE_GENERATION_SCRIPT} '{x}' '{image}' '{base_sn_arg}' '{rma_number}' '{replacement_sn_arg}' '{tests_param}'",
                         timeout=60  # Longer timeout for script execution
