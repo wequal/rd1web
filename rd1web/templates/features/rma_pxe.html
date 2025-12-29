@@ -1959,8 +1959,14 @@
                         const rgFieldId = `id_pcie-rg${i}_sn`;
                         const gpuField = document.getElementById(gpuFieldId);
                         const rgField = document.getElementById(rgFieldId);
-                        const gpuValue = data[`gpu${i}_sn`] || '';
-                        const rgValue = data[`rg${i}_sn`] || '';
+                        
+                        // Robust data access: check flattened keys and nested dictionaries
+                        const gpuValue = data[`gpu${i}_sn`] || 
+                                       (data.gpu_sns ? data.gpu_sns[`gpu${i}_sn`] : '') || 
+                                       '';
+                        const rgValue = data[`rg${i}_sn`] || 
+                                      (data.rgpu_sns ? data.rgpu_sns[`rg${i}_sn`] : '') || 
+                                      '';
                         
                         if (gpuField) {
                             gpuField.value = gpuValue;

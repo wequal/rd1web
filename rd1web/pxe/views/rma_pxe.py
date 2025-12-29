@@ -186,6 +186,10 @@ def get_rma_info_by_bmc(request, bmc_ip):
                 pxe_entry = entry
                 break
         
+        # Robust Fallback: If no type-specific entry found, use the most recent one overall
+        if not pxe_entry and pxe_entries.exists():
+            pxe_entry = pxe_entries.first()
+        
         if not pxe_entry:
             # No matching PXE entries - skip auto-fill
             # Return empty structure with all expected fields
