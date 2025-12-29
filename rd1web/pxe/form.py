@@ -387,6 +387,74 @@ class RmaForm(forms.Form):
         return replacement_sn
 
 
+class PcieGpuForm(forms.Form):
+    rma_number=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='RMA Number',required=False)
+    
+    # GPU1-8 SN
+    gpu1_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='GPU1 SN',required=False)
+    gpu2_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='GPU2 SN',required=False)
+    gpu3_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='GPU3 SN',required=False)
+    gpu4_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='GPU4 SN',required=False)
+    gpu5_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='GPU5 SN',required=False)
+    gpu6_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='GPU6 SN',required=False)
+    gpu7_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='GPU7 SN',required=False)
+    gpu8_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='GPU8 SN',required=False)
+
+    # Replacement GPU1-8 SN
+    rg1_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Replacement GPU1 SN',required=False)
+    rg2_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Replacement GPU2 SN',required=False)
+    rg3_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Replacement GPU3 SN',required=False)
+    rg4_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Replacement GPU4 SN',required=False)
+    rg5_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Replacement GPU5 SN',required=False)
+    rg6_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Replacement GPU6 SN',required=False)
+    rg7_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Replacement GPU7 SN',required=False)
+    rg8_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Replacement GPU8 SN',required=False)
+
+    show_replacement=forms.BooleanField(required=False,label="Replacement GPU SN",initial=False)
+    bmc_ip=forms.ChoiceField(choices=[], widget=forms.Select(attrs={'class':'form-control','style': 'width: 500px;',}),label='BMC IP')
+    image=forms.ChoiceField(choices=[('','-- Select Image --'),('ubuntu2204-x86-rma','Ubuntu2204')],label='Image')
+    
+    fw_update=forms.BooleanField(required=False,label="Firmware Update",initial=False)
+    pcie_model=forms.CharField(required=False,label='PCIE Model',widget=forms.Select(attrs={'class':'form-control pcie-model-select','style': 'width: 500px;'}))
+    pcie_eco_number=forms.CharField(required=False,label='PCIE ECO Number',widget=forms.Select(attrs={'class':'form-control pcie-eco-select','style': 'width: 500px;'}))
+    
+    tests = forms.MultipleChoiceField(
+        choices=[
+            ('default', 'Default'),
+            ('pre_gpu_test', 'Pre GPU Test'),
+            ('fd2', 'FD2'),
+        ],
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
+        label='Tests',
+        required=False
+    )
+    
+    remove=forms.BooleanField(required=False,label="Remove",initial=False)
+    check=forms.BooleanField(required=False,label="Check",initial=False)
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Populate BMC IP choices based on user's linked golden numbers
+        if user:
+            from .models import RmaTestingDb
+            linked_entries = RmaTestingDb.objects.filter(linked_user=user).order_by('bmc_ip')
+            self.fields['bmc_ip'].choices = [(entry.bmc_ip, f"{entry.bmc_ip} - {entry.golden_number}") for entry in linked_entries]
+        else:
+            self.fields['bmc_ip'].choices = []
+
+    def clean_tests(self):
+        """Validate that Default is not combined with other tests."""
+        tests = self.cleaned_data.get('tests', [])
+        if 'default' in tests and len(tests) > 1:
+            raise ValidationError(
+                "Default test cannot be combined with other tests. "
+                "Please select either Default OR any combination of the specific tests."
+            )
+        return tests
+
+
 class RmaGeneralForm(forms.Form):
     """Form for RMA General TEST - simplified version without golden number dependencies"""
     system_sn = forms.CharField(

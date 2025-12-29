@@ -17,10 +17,33 @@
         </div>
     </div>
 
+    <!-- Operation Type Selection -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input operation-type-radio" type="radio" name="operationType" id="rmaTest" value="rma" {% if operation_type != 'pcie' %}checked{% endif %}>
+                        <label class="form-check-label" for="rmaTest">
+                            RMA GPU TEST
+                        </label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input operation-type-radio" type="radio" name="operationType" id="pcieTest" value="pcie" {% if operation_type == 'pcie' %}checked{% endif %}>
+                        <label class="form-check-label" for="pcieTest">
+                            PCIE GPU TEST
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Form Card -->
     <div class="row">
         <div class="col-lg-8">
-            <div class="card shadow mb-4">
+            <!-- RMA GPU TEST Form Card -->
+            <div class="card shadow mb-4" id="rmaFormCard" style="display: {% if operation_type != 'pcie' %}block{% else %}none{% endif %};">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                     <h6 class="m-0 font-weight-bold text-primary">
                         <i class="fas me-2"></i>RMA GPU TEST Configuration
@@ -29,6 +52,7 @@
                 <div class="card-body">
                     <form method="post" id="rmaPxeForm">
                         {% csrf_token %}
+                        <input type="hidden" name="operation_type" value="rma">
                         
                         <!-- Base Serial Number -->
                         <div class="mb-4">
@@ -133,80 +157,80 @@
                             <div id="tests-container" class="row">
                                 <div class="col-md-3">
                                     <div class="form-check">
-                                        <input type="checkbox" class="form-check-input" name="tests" value="default" id="id_tests_0">
-                                        <label class="form-check-label" for="id_tests_0">
+                                        <input type="checkbox" class="form-check-input" name="rma-tests" value="default" id="id_rma-tests_0" {% if 'default' in form.tests.value %}checked{% endif %}>
+                                        <label class="form-check-label" for="id_rma-tests_0">
                                             <i class="fas fa-star me-1 text-warning"></i>Default
                                         </label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
-                                        <input type="checkbox" class="form-check-input" name="tests" value="pre_gpu_test" id="id_tests_1">
-                                        <label class="form-check-label" for="id_tests_1">
+                                        <input type="checkbox" class="form-check-input" name="rma-tests" value="pre_gpu_test" id="id_rma-tests_1" {% if 'pre_gpu_test' in form.tests.value %}checked{% endif %}>
+                                        <label class="form-check-label" for="id_rma-tests_1">
                                             <i class="fas  me-1 text-success"></i>PRE GPU TEST
                                         </label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
-                                        <input type="checkbox" class="form-check-input" name="tests" value="dcgm" id="id_tests_2">
-                                        <label class="form-check-label" for="id_tests_2">
+                                        <input type="checkbox" class="form-check-input" name="rma-tests" value="dcgm" id="id_rma-tests_2" {% if 'dcgm' in form.tests.value %}checked{% endif %}>
+                                        <label class="form-check-label" for="id_rma-tests_2">
                                             <i class="fas  me-1 text-info"></i>DCGM
                                         </label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
-                                        <input type="checkbox" class="form-check-input" name="tests" value="dcgm_r4" id="id_tests_dcgm_r4">
-                                        <label class="form-check-label" for="id_tests_dcgm_r4">
+                                        <input type="checkbox" class="form-check-input" name="rma-tests" value="dcgm_r4" id="id_rma-tests_dcgm_r4" {% if 'dcgm_r4' in form.tests.value %}checked{% endif %}>
+                                        <label class="form-check-label" for="id_rma-tests_dcgm_r4">
                                             <i class="fas  me-1 text-info"></i>DCGM R4
                                         </label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
-                                        <input type="checkbox" class="form-check-input" name="tests" value="fd2" id="id_tests_3">
-                                        <label class="form-check-label" for="id_tests_3">
+                                        <input type="checkbox" class="form-check-input" name="rma-tests" value="fd2" id="id_rma-tests_3" {% if 'fd2' in form.tests.value %}checked{% endif %}>
+                                        <label class="form-check-label" for="id_rma-tests_3">
                                             <i class="fas  me-1 text-primary"></i>FD2
                                         </label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
-                                        <input type="checkbox" class="form-check-input" name="tests" value="gpudiag" id="id_tests_4">
-                                        <label class="form-check-label" for="id_tests_4">
+                                        <input type="checkbox" class="form-check-input" name="rma-tests" value="gpudiag" id="id_rma-tests_4" {% if 'gpudiag' in form.tests.value %}checked{% endif %}>
+                                        <label class="form-check-label" for="id_rma-tests_4">
                                             <i class="fas  me-1 text-success"></i>GPU Field Diag
                                         </label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
-                                        <input type="checkbox" class="form-check-input" name="tests" value="level3_test" id="id_tests_5">
-                                        <label class="form-check-label" for="id_tests_5">
+                                        <input type="checkbox" class="form-check-input" name="rma-tests" value="level3_test" id="id_rma-tests_5" {% if 'level3_test' in form.tests.value %}checked{% endif %}>
+                                        <label class="form-check-label" for="id_rma-tests_5">
                                             <i class="fas me-1 text-warning"></i>AGHFC Level 3
                                         </label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
-                                        <input type="checkbox" class="form-check-input" name="tests" value="remote_fw_update" id="id_tests_remote_fw">
-                                        <label class="form-check-label" for="id_tests_remote_fw">
+                                        <input type="checkbox" class="form-check-input" name="rma-tests" value="remote_fw_update" id="id_rma-tests_remote_fw" {% if 'remote_fw_update' in form.tests.value %}checked{% endif %}>
+                                        <label class="form-check-label" for="id_rma-tests_remote_fw">
                                             <i class="fas me-1 text-info"></i>Remote FW Update
                                         </label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
-                                        <input type="checkbox" class="form-check-input" name="tests" value="all_log" id="id_tests_6">
-                                        <label class="form-check-label" for="id_tests_6">
+                                        <input type="checkbox" class="form-check-input" name="rma-tests" value="all_log" id="id_rma-tests_6" {% if 'all_log' in form.tests.value %}checked{% endif %}>
+                                        <label class="form-check-label" for="id_rma-tests_6">
                                             <i class="fas me-1 text-danger"></i>All Log
                                         </label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
-                                        <input type="checkbox" class="form-check-input" name="fw_update" id="id_fw_update">
-                                        <label class="form-check-label" for="id_fw_update">
+                                        <input type="checkbox" class="form-check-input" name="rma-fw_update" id="id_rma-fw_update" {% if form.fw_update.value %}checked{% endif %}>
+                                        <label class="form-check-label" for="id_rma-fw_update">
                                             Firmware Update
                                         </label>
                                     </div>
@@ -292,6 +316,210 @@
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-paper-plane me-1"></i>Execute
                             </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- PCIE GPU TEST Form Card -->
+            <div class="card shadow mb-4" id="pcieFormCard" style="display: {% if operation_type == 'pcie' %}block{% else %}none{% endif %};">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas me-2"></i>PCIE GPU TEST Configuration
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="pciePxeForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="operation_type" value="pcie">
+                        
+                        <!-- RMA Number -->
+                        <div class="mb-4">
+                            <label for="{{ pcie_form.rma_number.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas me-2 text-warning"></i>{{ pcie_form.rma_number.label }}
+                            </label>
+                            {{ pcie_form.rma_number }}
+                            {% if pcie_form.rma_number.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in pcie_form.rma_number.errors %}
+                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- GPU1-8 SNs -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold mb-3">GPU Serial Numbers</label>
+                            <div class="row">
+                                <div class="col-md-3 mb-3">
+                                    <label for="{{ pcie_form.gpu1_sn.id_for_label }}" class="form-label">GPU1 SN</label>
+                                    {{ pcie_form.gpu1_sn }}
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="{{ pcie_form.gpu2_sn.id_for_label }}" class="form-label">GPU2 SN</label>
+                                    {{ pcie_form.gpu2_sn }}
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="{{ pcie_form.gpu3_sn.id_for_label }}" class="form-label">GPU3 SN</label>
+                                    {{ pcie_form.gpu3_sn }}
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="{{ pcie_form.gpu4_sn.id_for_label }}" class="form-label">GPU4 SN</label>
+                                    {{ pcie_form.gpu4_sn }}
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="{{ pcie_form.gpu5_sn.id_for_label }}" class="form-label">GPU5 SN</label>
+                                    {{ pcie_form.gpu5_sn }}
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="{{ pcie_form.gpu6_sn.id_for_label }}" class="form-label">GPU6 SN</label>
+                                    {{ pcie_form.gpu6_sn }}
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="{{ pcie_form.gpu7_sn.id_for_label }}" class="form-label">GPU7 SN</label>
+                                    {{ pcie_form.gpu7_sn }}
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="{{ pcie_form.gpu8_sn.id_for_label }}" class="form-label">GPU8 SN</label>
+                                    {{ pcie_form.gpu8_sn }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Show Replacement Toggle -->
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                {{ pcie_form.show_replacement }}
+                                <label class="form-check-label fw-bold" for="{{ pcie_form.show_replacement.id_for_label }}">
+                                    {{ pcie_form.show_replacement.label }}
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Replacement GPU1-8 SNs (Conditional) -->
+                        <div id="replacement-sns-container" style="display: none;" class="mb-4">
+                            <label class="form-label fw-bold mb-3">Replacement GPU Serial Numbers</label>
+                            <div class="row">
+                                <div class="col-md-3 mb-3">
+                                    <label for="{{ pcie_form.rg1_sn.id_for_label }}" class="form-label">Replacement GPU1 SN</label>
+                                    {{ pcie_form.rg1_sn }}
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="{{ pcie_form.rg2_sn.id_for_label }}" class="form-label">Replacement GPU2 SN</label>
+                                    {{ pcie_form.rg2_sn }}
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="{{ pcie_form.rg3_sn.id_for_label }}" class="form-label">Replacement GPU3 SN</label>
+                                    {{ pcie_form.rg3_sn }}
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="{{ pcie_form.rg4_sn.id_for_label }}" class="form-label">Replacement GPU4 SN</label>
+                                    {{ pcie_form.rg4_sn }}
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="{{ pcie_form.rg5_sn.id_for_label }}" class="form-label">Replacement GPU5 SN</label>
+                                    {{ pcie_form.rg5_sn }}
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="{{ pcie_form.rg6_sn.id_for_label }}" class="form-label">Replacement GPU6 SN</label>
+                                    {{ pcie_form.rg6_sn }}
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="{{ pcie_form.rg7_sn.id_for_label }}" class="form-label">Replacement GPU7 SN</label>
+                                    {{ pcie_form.rg7_sn }}
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="{{ pcie_form.rg8_sn.id_for_label }}" class="form-label">Replacement GPU8 SN</label>
+                                    {{ pcie_form.rg8_sn }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- BMC IP -->
+                        <div class="mb-4">
+                            <label for="{{ pcie_form.bmc_ip.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas me-2 text-success"></i>{{ pcie_form.bmc_ip.label }}
+                            </label>
+                            {{ pcie_form.bmc_ip }}
+                        </div>
+
+                        <!-- Image Selection -->
+                        <div class="mb-4">
+                            <label for="{{ pcie_form.image.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas me-2 text-info"></i>{{ pcie_form.image.label }}
+                            </label>
+                            {{ pcie_form.image }}
+                        </div>
+
+                        <!-- Tests Selection -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="fas me-2 text-danger"></i>{{ pcie_form.tests.label }}
+                            </label>
+                            <div id="pcie-tests-container" class="row">
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input pcie-test-checkbox" name="pcie-tests" value="default" id="id_pcie-tests_0" {% if 'default' in pcie_form.tests.value %}checked{% endif %}>
+                                        <label class="form-check-label" for="id_pcie-tests_0">Default</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input pcie-test-checkbox" name="pcie-tests" value="pre_gpu_test" id="id_pcie-tests_1" {% if 'pre_gpu_test' in pcie_form.tests.value %}checked{% endif %}>
+                                        <label class="form-check-label" for="id_pcie-tests_1">PRE GPU TEST</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input pcie-test-checkbox" name="pcie-tests" value="fd2" id="id_pcie-tests_2" {% if 'fd2' in pcie_form.tests.value %}checked{% endif %}>
+                                        <label class="form-check-label" for="id_pcie-tests_2">FD2</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" name="pcie-fw_update" id="id_pcie-fw_update" {% if pcie_form.fw_update.value %}checked{% endif %}>
+                                        <label class="form-check-label" for="id_pcie-fw_update">Firmware Update</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PCIE Model/ECO (Conditional) -->
+                        <div id="pcie-fw-section" style="display: none;">
+                            <div class="mb-4">
+                                <label for="{{ pcie_form.pcie_model.id_for_label }}" class="form-label fw-bold">PCIE Model</label>
+                                {{ pcie_form.pcie_model }}
+                            </div>
+                            <div class="mb-4">
+                                <label for="{{ pcie_form.pcie_eco_number.id_for_label }}" class="form-label fw-bold">PCIE ECO Number</label>
+                                {{ pcie_form.pcie_eco_number }}
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Actions</label>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        {{ pcie_form.check }}
+                                        <label class="form-check-label" for="{{ pcie_form.check.id_for_label }}">Check</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        {{ pcie_form.remove }}
+                                        <label class="form-check-label" for="{{ pcie_form.remove.id_for_label }}">Remove</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="reset" class="btn btn-outline-secondary me-md-2">Reset</button>
+                            <button type="submit" class="btn btn-primary">Execute</button>
                         </div>
                     </form>
                 </div>
@@ -589,14 +817,14 @@
         }
         
         // Image selection handler - show/hide test options based on selected image
-        const imageSelect = document.getElementById('{{ form.image.id_for_label }}');
-        const defaultCheckbox = document.getElementById('id_tests_0');
-        const dcgmCheckbox = document.getElementById('id_tests_2');
-        const dcgmR4Checkbox = document.getElementById('id_tests_dcgm_r4');
-        const fd2Checkbox = document.getElementById('id_tests_3');
-        const gpudiagCheckbox = document.getElementById('id_tests_4');
-        const level3Checkbox = document.getElementById('id_tests_5');
-        const allLogCheckbox = document.getElementById('id_tests_6');
+        const imageSelect = document.getElementById('id_rma-image');
+        const defaultCheckbox = document.getElementById('id_rma-tests_0');
+        const dcgmCheckbox = document.getElementById('id_rma-tests_2');
+        const dcgmR4Checkbox = document.getElementById('id_rma-tests_dcgm_r4');
+        const fd2Checkbox = document.getElementById('id_rma-tests_3');
+        const gpudiagCheckbox = document.getElementById('id_rma-tests_4');
+        const level3Checkbox = document.getElementById('id_rma-tests_5');
+        const allLogCheckbox = document.getElementById('id_rma-tests_6');
         
         function handleImageSelection() {
             const selectedImage = imageSelect.value;
@@ -614,7 +842,7 @@
             const level3Container = level3Checkbox ? level3Checkbox.closest('.col-md-3') : null;
             const allLogContainer = allLogCheckbox ? allLogCheckbox.closest('.col-md-3') : null;
             
-            const remoteFwCheckbox = document.getElementById('id_tests_remote_fw');
+            const remoteFwCheckbox = document.getElementById('id_rma-tests_remote_fw');
             const remoteFwContainer = remoteFwCheckbox ? remoteFwCheckbox.closest('.col-md-3') : null;
 
             if (isMi3xxImage) {
@@ -686,16 +914,16 @@
         
         if (testsContainer) {
             // Find specific test checkboxes by their IDs
-            const defaultCheckbox = document.getElementById('id_tests_0');
-            const nvidiaCheckbox = document.getElementById('id_tests_1');
-            const dcgmCheckbox = document.getElementById('id_tests_2');
-            const dcgmR4Checkbox = document.getElementById('id_tests_dcgm_r4');
-            const fd2Checkbox = document.getElementById('id_tests_3');
-            const gpudiagCheckbox = document.getElementById('id_tests_4');
-            const level3Checkbox = document.getElementById('id_tests_5');
-            const remoteFwCheckboxTest = document.getElementById('id_tests_remote_fw');
-            const allLogCheckboxTest = document.getElementById('id_tests_6');
-            const fwUpdateCheckboxTest = document.getElementById('id_fw_update');
+            const defaultCheckbox = document.getElementById('id_rma-tests_0');
+            const nvidiaCheckbox = document.getElementById('id_rma-tests_1');
+            const dcgmCheckbox = document.getElementById('id_rma-tests_2');
+            const dcgmR4Checkbox = document.getElementById('id_rma-tests_dcgm_r4');
+            const fd2Checkbox = document.getElementById('id_rma-tests_3');
+            const gpudiagCheckbox = document.getElementById('id_rma-tests_4');
+            const level3Checkbox = document.getElementById('id_rma-tests_5');
+            const remoteFwCheckboxTest = document.getElementById('id_rma-tests_remote_fw');
+            const allLogCheckboxTest = document.getElementById('id_rma-tests_6');
+            const fwUpdateCheckboxTest = document.getElementById('id_rma-fw_update');
 
             const specificCheckboxes = [nvidiaCheckbox, dcgmCheckbox, dcgmR4Checkbox, fd2Checkbox, gpudiagCheckbox, level3Checkbox].filter(cb => cb !== null);
             const otherCheckboxes = [...specificCheckboxes, fwUpdateCheckboxTest, allLogCheckboxTest, remoteFwCheckboxTest].filter(cb => cb !== null);
@@ -811,11 +1039,11 @@
         
         // Enhanced form validation
         form.addEventListener('submit', function(e) {
-            const baseSnInput = document.getElementById('{{ form.base_sn.id_for_label }}');
-            const replacementSnInput = document.getElementById('{{ form.replacement_sn.id_for_label }}');
-            const rmaNumberInput = document.getElementById('{{ form.rma_number.id_for_label }}');
-            const bmcIpInput = document.getElementById('{{ form.bmc_ip.id_for_label }}');
-            const imageInput = document.getElementById('{{ form.image.id_for_label }}');
+            const baseSnInput = document.getElementById('id_rma-base_sn');
+            const replacementSnInput = document.getElementById('id_rma-replacement_sn');
+            const rmaNumberInput = document.getElementById('id_rma-rma_number');
+            const bmcIpInput = document.getElementById('id_rma-bmc_ip');
+            const imageInput = document.getElementById('id_rma-image');
 
             const baseSn = baseSnInput ? baseSnInput.value.trim() : '';
             const replacementSn = replacementSnInput ? replacementSnInput.value.trim() : '';
@@ -1361,10 +1589,10 @@
         updateEcoSection();
         
         // Auto-fill base_sn and rma_number when BMC IP is selected
-        const bmcIpSelect = document.getElementById('id_bmc_ip');
-        const baseSnInput = document.getElementById('id_base_sn');
-        const replacementSnInput = document.getElementById('id_replacement_sn');
-        const rmaNumberInput = document.getElementById('id_rma_number');
+        const bmcIpSelect = document.getElementById('id_rma-bmc_ip');
+        const baseSnInput = document.getElementById('id_rma-base_sn');
+        const replacementSnInput = document.getElementById('id_rma-replacement_sn');
+        const rmaNumberInput = document.getElementById('id_rma-rma_number');
         
         if (bmcIpSelect && baseSnInput && rmaNumberInput) {
             // Function to fetch and fill RMA info
@@ -1422,23 +1650,31 @@
         const testDetailsContent = document.getElementById('testDetailsContent');
 
         function showDefaultTestPopup() {
-            // Re-select elements to be safe or reuse existing variables if available in scope
-            // Using the robust selectors pattern
-            const imgSel = document.getElementById('{{ form.image.id_for_label }}') || document.querySelector('[name="image"]');
-            const defCb = document.getElementById('id_tests_0') || document.querySelector('input[name="tests"][value="default"]');
+            // Re-select elements to be safe
+            const rmaImgSel = document.getElementById('id_rma-image');
+            const rmaDefCb = document.getElementById('id_rma-tests_0');
+            const pcieImgSel = document.getElementById('id_pcie-image');
+            const pcieDefCb = document.getElementById('id_pcie-tests_0');
 
-            if (!imgSel || !defCb || !testDetailsModal) {
-                return;
+            if (!testDetailsModal) return;
+
+            let selectedImage = '';
+            let isDefaultChecked = false;
+
+            // Check which form is currently visible
+            const rmaFormCard = document.getElementById('rmaFormCard');
+            if (rmaFormCard && rmaFormCard.style.display !== 'none') {
+                selectedImage = rmaImgSel ? rmaImgSel.value : '';
+                isDefaultChecked = rmaDefCb ? rmaDefCb.checked : false;
+            } else {
+                selectedImage = pcieImgSel ? pcieImgSel.value : '';
+                isDefaultChecked = pcieDefCb ? pcieDefCb.checked : false;
             }
 
-            if (!defCb.checked) {
-                return;
-            }
+            if (!isDefaultChecked) return;
 
-            const selectedImage = imgSel.value;
             let tests = '';
-
-            if (selectedImage === 'ubuntu2204-x86-rma') { // H100/200
+            if (selectedImage === 'ubuntu2204-x86-rma') { // H100/200 or Ubuntu2204
                 tests = '<strong>Pre GPU test, DCGM and FD2</strong>';
             } else if (selectedImage === 'ubuntu2204-b200-rma') { // B200
                 tests = '<strong>Pre GPU Test and FD2</strong>';
@@ -1450,21 +1686,27 @@
             }
         }
 
-        // Attach listeners for popup
-        const imgSelForPopup = document.getElementById('{{ form.image.id_for_label }}');
-        const defCbForPopup = document.getElementById('id_tests_0');
-
-        if (imgSelForPopup && defCbForPopup) {
-            imgSelForPopup.addEventListener('change', function() {
-                if (defCbForPopup.checked) {
-                    showDefaultTestPopup();
-                }
+        // Attach listeners for popup - RMA form
+        const rmaImgSelForPopup = document.getElementById('id_rma-image');
+        const rmaDefCbForPopup = document.getElementById('id_rma-tests_0');
+        if (rmaImgSelForPopup && rmaDefCbForPopup) {
+            rmaImgSelForPopup.addEventListener('change', function() {
+                if (rmaDefCbForPopup.checked) showDefaultTestPopup();
             });
+            rmaDefCbForPopup.addEventListener('change', function() {
+                if (this.checked) showDefaultTestPopup();
+            });
+        }
 
-            defCbForPopup.addEventListener('change', function() {
-                if (this.checked) {
-                    showDefaultTestPopup();
-                }
+        // Attach listeners for popup - PCIE form
+        const pcieImgSelForPopup = document.getElementById('id_pcie-image');
+        const pcieDefCbForPopup = document.getElementById('id_pcie-tests_0');
+        if (pcieImgSelForPopup && pcieDefCbForPopup) {
+            pcieImgSelForPopup.addEventListener('change', function() {
+                if (pcieDefCbForPopup.checked) showDefaultTestPopup();
+            });
+            pcieDefCbForPopup.addEventListener('change', function() {
+                if (this.checked) showDefaultTestPopup();
             });
         }
 
@@ -1522,6 +1764,182 @@
             pollRemoteFwStatus();
         }
         {% endif %}
+
+        // PCIE Form Switching logic
+        const opRadios = document.querySelectorAll('.operation-type-radio');
+        const rmaFormCard = document.getElementById('rmaFormCard');
+        const pcieFormCard = document.getElementById('pcieFormCard');
+
+        // Mutual exclusion for PCIE check/remove
+        const pcieCheckBox = document.getElementById('id_pcie-check');
+        const pcieRemoveBox = document.getElementById('id_pcie-remove');
+        if (pcieCheckBox && pcieRemoveBox) {
+            pcieCheckBox.addEventListener('change', function() {
+                if (this.checked) pcieRemoveBox.checked = false;
+            });
+            pcieRemoveBox.addEventListener('change', function() {
+                if (this.checked) pcieCheckBox.checked = false;
+            });
+        }
+
+        opRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'pcie') {
+                    rmaFormCard.style.display = 'none';
+                    pcieFormCard.style.display = 'block';
+                } else {
+                    rmaFormCard.style.display = 'block';
+                    pcieFormCard.style.display = 'none';
+                }
+            });
+        });
+
+        // PCIE Replacement SNs toggle
+        const showReplacementToggle = document.getElementById('{{ pcie_form.show_replacement.id_for_label }}');
+        const replacementContainer = document.getElementById('replacement-sns-container');
+        if (showReplacementToggle && replacementContainer) {
+            showReplacementToggle.addEventListener('change', function() {
+                replacementContainer.style.display = this.checked ? 'block' : 'none';
+            });
+            // Initial state
+            replacementContainer.style.display = showReplacementToggle.checked ? 'block' : 'none';
+        }
+
+        // PCIE Firmware Update section toggle
+        const pcieFwUpdate = document.getElementById('id_pcie_fw_update');
+        const pcieFwSection = document.getElementById('pcie-fw-section');
+        if (pcieFwUpdate && pcieFwSection) {
+            pcieFwUpdate.addEventListener('change', function() {
+                pcieFwSection.style.display = this.checked ? 'block' : 'none';
+                if (this.checked) {
+                    loadPcieModels();
+                }
+            });
+            // Initial state
+            pcieFwSection.style.display = pcieFwUpdate.checked ? 'block' : 'none';
+            if (pcieFwUpdate.checked) {
+                loadPcieModels();
+            }
+        }
+
+        async function loadPcieModels() {
+            const modelSelect = document.getElementById('{{ pcie_form.pcie_model.id_for_label }}');
+            if (!modelSelect) return;
+            try {
+                const response = await fetch('/api/rma/pcie/models/');
+                const data = await response.json();
+                if (data.success) {
+                    const currentVal = modelSelect.value;
+                    modelSelect.innerHTML = '<option value="">-- Select Model --</option>';
+                    data.models.forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = m;
+                        opt.textContent = m;
+                        modelSelect.appendChild(opt);
+                    });
+                    if (currentVal) modelSelect.value = currentVal;
+                }
+            } catch (e) { console.error('Error loading PCIE models:', e); }
+        }
+
+        const pcieModelSelect = document.getElementById('{{ pcie_form.pcie_model.id_for_label }}');
+        if (pcieModelSelect) {
+            pcieModelSelect.addEventListener('change', function() {
+                loadPcieEcoNumbers(this.value);
+            });
+        }
+
+        async function loadPcieEcoNumbers(model) {
+            const ecoSelect = document.getElementById('{{ pcie_form.pcie_eco_number.id_for_label }}');
+            if (!ecoSelect || !model) return;
+            try {
+                const response = await fetch(`/api/rma/pcie/eco-numbers/${model}/`);
+                const data = await response.json();
+                if (data.success) {
+                    const currentVal = ecoSelect.value;
+                    ecoSelect.innerHTML = '<option value="">-- Select ECO --</option>';
+                    data.eco_numbers.forEach(e => {
+                        const opt = document.createElement('option');
+                        opt.value = e;
+                        opt.textContent = e;
+                        ecoSelect.appendChild(opt);
+                    });
+                    if (currentVal) ecoSelect.value = currentVal;
+                }
+            } catch (e) { console.error('Error loading PCIE ECOs:', e); }
+        }
+
+        // Auto-fill for PCIE form
+        const pcieBmcIpSelect = document.getElementById('{{ pcie_form.bmc_ip.id_for_label }}');
+        if (pcieBmcIpSelect) {
+            pcieBmcIpSelect.addEventListener('change', function() {
+                fetchAndFillPcieInfo(this.value);
+            });
+        }
+
+        async function fetchAndFillPcieInfo(bmcIp) {
+            if (!bmcIp) return;
+            try {
+                const response = await fetch(`/api/rma/get-rma-info/${bmcIp}/`);
+                const data = await response.json();
+                if (data.success) {
+                    const rmaNumField = document.getElementById('{{ pcie_form.rma_number.id_for_label }}');
+                    if (rmaNumField) rmaNumField.value = data.rma_number || '';
+                    for (let i = 1; i <= 8; i++) {
+                        const gpuField = document.getElementById(`id_pcie-gpu${i}_sn`);
+                        const rgField = document.getElementById(`id_pcie-rg${i}_sn`);
+                        if (gpuField) gpuField.value = data[`gpu${i}_sn`] || '';
+                        if (rgField) rgField.value = data[`rg${i}_sn`] || '';
+                    }
+                }
+            } catch (e) { console.error('Error auto-filling PCIE info:', e); }
+        }
+
+        // PCIE test selection logic
+        const pcieTestCheckboxes = document.querySelectorAll('.pcie-test-checkbox');
+        const pcieDefaultCb = document.getElementById('id_pcie_tests_0');
+        const pcieOtherCbs = Array.from(pcieTestCheckboxes).filter(cb => cb !== pcieDefaultCb);
+        const pcieFwUpdateCb = document.getElementById('id_pcie_fw_update');
+
+        pcieTestCheckboxes.forEach(cb => {
+            cb.addEventListener('change', function() {
+                if (this === pcieDefaultCb && this.checked) {
+                    pcieOtherCbs.forEach(ocb => ocb.checked = false);
+                    if (pcieFwUpdateCb) {
+                        pcieFwUpdateCb.checked = false;
+                        pcieFwUpdateCb.dispatchEvent(new Event('change'));
+                    }
+                } else if (this.checked) {
+                    if (pcieDefaultCb) pcieDefaultCb.checked = false;
+                }
+            });
+        });
+        
+        // PCIE form validation
+        const pciePxeForm = document.getElementById('pciePxeForm');
+        if (pciePxeForm) {
+            pciePxeForm.addEventListener('submit', function(e) {
+                const rmaNum = document.getElementById('id_pcie-rma_number');
+                const bmcIp = document.getElementById('id_pcie-bmc_ip');
+                const image = document.getElementById('id_pcie-image');
+
+                if (!rmaNum || !rmaNum.value.trim()) {
+                    alert('RMA Number is required for PCIE GPU Test.');
+                    e.preventDefault();
+                    return;
+                }
+                if (!bmcIp || !bmcIp.value) {
+                    alert('BMC IP is required.');
+                    e.preventDefault();
+                    return;
+                }
+                if (!image || !image.value) {
+                    alert('Image selection is required.');
+                    e.preventDefault();
+                    return;
+                }
+            });
+        }
     });
 </script>
 {% endblock %}

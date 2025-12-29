@@ -1,0 +1,10 @@
+[2025-12-28 20:56:30,602: INFO/MainProcess] beat: Starting...
+[2025-12-28 20:57:00,609: INFO/MainProcess] Scheduler: Sending due task prewarm-rma-directory-cache-every-30-seconds (pxe.tasks.prewarm_rma_directory_cache)
+[2025-12-28 20:57:30,608: INFO/MainProcess] Scheduler: Sending due task prewarm-rma-details-cache-every-1-minute (pxe.tasks.prewarm_rma_details_cache)
+[2025-12-28 20:57:30,609: INFO/MainProcess] Scheduler: Sending due task prewarm-rma-directory-cache-every-30-seconds (pxe.tasks.prewarm_rma_directory_cache)
+[2025-12-28 21:01:50,082: INFO/MainProcess] beat: Starting...
+[2025-12-28 21:01:50,094: INFO/MainProcess] Scheduler: Sending due task prewarm-rma-details-cache-every-1-minute (pxe.tasks.prewarm_rma_details_cache)
+[2025-12-28 21:01:50,098: INFO/MainProcess] Scheduler: Sending due task prewarm-rma-directory-cache-every-30-seconds (pxe.tasks.prewarm_rma_directory_cache)
+[2025-12-28 21:02:20,098: INFO/MainProcess] Scheduler: Sending due task prewarm-rma-directory-cache-every-30-seconds (pxe.tasks.prewarm_rma_directory_cache)
+[2025-12-28 21:02:50,092: INFO/MainProcess] Scheduler: Sending due task prewarm-rma-details-cache-every-1-minute (pxe.tasks.prewarm_rma_details_cache)
+[2025-12-28 21:02:50,098: INFO/MainProcess] Scheduler: Sending due task prewarm-rma-directory-cache-every-30-seconds (pxe.tasks.prewarm_rma_directory_cache)

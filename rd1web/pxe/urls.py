@@ -19,7 +19,14 @@ from .views.remote_control import (
 )
 from .views.archive import archive_system
 from .views.mac_ip_view import mac_ip_results, mac_ip_api, manual_scan, scan_status_api
-from .views.rma_pxe import rma_pxe, get_eco_numbers_api, get_rma_info_by_bmc, golden_setting_api
+from .views.rma_pxe import (
+    rma_pxe, 
+    get_eco_numbers_api, 
+    get_rma_info_by_bmc, 
+    golden_setting_api,
+    get_pcie_models_api,
+    get_pcie_eco_numbers_api
+)
 from .views.rma_general_test import rma_general_test
 from .views.rma_logs import (
     rma_log,
@@ -119,6 +126,8 @@ urlpatterns = [
     
     # RMA API URLs
     path('api/rma/eco-numbers/<str:image_type>/', get_eco_numbers_api, name='rma_eco_numbers_api'),
+    path('api/rma/pcie/models/', get_pcie_models_api, name='rma_pcie_models_api'),
+    path('api/rma/pcie/eco-numbers/<str:model>/', get_pcie_eco_numbers_api, name='rma_pcie_eco_numbers_api'),
     path('api/rma/get-rma-info/<str:bmc_ip>/', get_rma_info_by_bmc, name='get_rma_info_by_bmc'),
     
     # RMA Testing DB URLs

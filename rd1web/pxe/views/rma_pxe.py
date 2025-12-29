@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from ..form import RmaForm
+from ..form import RmaForm, PcieGpuForm
 from fabric import Connection
 from django.contrib.auth.decorators import login_required, permission_required
 from ..models import PxeEntry, RmaTestingDb, FirmwareFile
@@ -12,6 +12,7 @@ import ast
 import logging
 import uuid
 import threading
+import os
 from .remote_fw_update import run_remote_fw_update_task
 
 logger = logging.getLogger(__name__)
@@ -185,11 +186,21 @@ def get_rma_info_by_bmc(request, bmc_ip):
         replacement_sn = params_dict.get('replacement_sn', '') if isinstance(params_dict, dict) else ''
         rma_number = params_dict.get('rma_number', '') if isinstance(params_dict, dict) else ''
         
+        # Extract GPU SNs and Replacement GPU SNs for PCIE page
+        gpu_sns = {}
+        rgpu_sns = {}
+        if isinstance(params_dict, dict):
+            for i in range(1, 9):
+                gpu_sns[f'gpu{i}_sn'] = params_dict.get(f'gpu{i}_sn', '')
+                rgpu_sns[f'rg{i}_sn'] = params_dict.get(f'rg{i}_sn', '')
+        
         return JsonResponse({
             'success': True,
             'base_sn': base_sn,
             'replacement_sn': replacement_sn,
-            'rma_number': rma_number
+            'rma_number': rma_number,
+            'gpu_sns': gpu_sns,
+            'rgpu_sns': rgpu_sns
         })
         
     except Exception as e:
@@ -198,6 +209,42 @@ def get_rma_info_by_bmc(request, bmc_ip):
             'success': False,
             'error': str(e)
         }, status=500)
+
+@login_required
+@permission_required('pxe.can_access_rma_pxe', raise_exception=True)
+def get_pcie_models_api(request):
+    """API endpoint to get available PCIE models from Firmware Inventory"""
+    try:
+        from .firmware_inventory import FIRMWARE_BASE_DIR
+        pcie_dir = os.path.join(FIRMWARE_BASE_DIR, 'pcie')
+        models = []
+        if os.path.exists(pcie_dir):
+            for item in os.listdir(pcie_dir):
+                if os.path.isdir(os.path.join(pcie_dir, item)):
+                    models.append(item)
+        models.sort()
+        return JsonResponse({'success': True, 'models': models})
+    except Exception as e:
+        logger.error(f"Error fetching PCIE models: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@login_required
+@permission_required('pxe.can_access_rma_pxe', raise_exception=True)
+def get_pcie_eco_numbers_api(request, model):
+    """API endpoint to get available ECO numbers for a specific PCIE model"""
+    try:
+        from .firmware_inventory import FIRMWARE_BASE_DIR
+        eco_dir = os.path.join(FIRMWARE_BASE_DIR, 'pcie', model)
+        eco_numbers = []
+        if os.path.exists(eco_dir):
+            for item in os.listdir(eco_dir):
+                if os.path.isdir(os.path.join(eco_dir, item)):
+                    eco_numbers.append(item)
+        eco_numbers.sort()
+        return JsonResponse({'success': True, 'eco_numbers': eco_numbers})
+    except Exception as e:
+        logger.error(f"Error fetching PCIE ECO numbers for {model}: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @login_required
 @permission_required('pxe.can_access_rma_pxe', raise_exception=True)
@@ -276,138 +323,195 @@ def get_eco_numbers_api(request, image_type):
 @permission_required('pxe.can_access_rma_pxe', raise_exception=True)
 def rma_pxe(request):
     result = {}
+    operation_type = request.POST.get('operation_type', 'rma') if request.method == "POST" else 'rma'
+    
     if request.method == "POST":
-        bound_form = RmaForm(request.POST, user=request.user)
+        if operation_type == 'pcie':
+            bound_form = PcieGpuForm(request.POST, user=request.user, prefix='pcie')
+        else:
+            bound_form = RmaForm(request.POST, user=request.user, prefix='rma')
+            
         if bound_form.is_valid():
-            base_sn = bound_form.cleaned_data.get('base_sn', '')
-            replacement_sn = bound_form.cleaned_data.get('replacement_sn', '').strip()
-            rma_number = bound_form.cleaned_data.get('rma_number', '')
-            bmc_ip = bound_form.cleaned_data.get('bmc_ip', '')
-            tests = bound_form.cleaned_data.get('tests', [])
-            image = bound_form.cleaned_data.get('image', '')
-            remove=bound_form.cleaned_data.get('remove', False)
-            check=bound_form.cleaned_data.get('check', False)
-            fw_update=bound_form.cleaned_data.get('fw_update', False)
-            eco_number = bound_form.cleaned_data.get('eco_number', '')
-            gpu_model = bound_form.cleaned_data.get('gpu_model', '')
-            cooling = bound_form.cleaned_data.get('cooling', '')
-            
-            # Debug logging
-            logger.info(f"RMA PXE form submitted: base_sn={base_sn}, replacement_sn={replacement_sn}, rma_number={rma_number}, bmc_ip={bmc_ip}, tests={tests}, fw_update={fw_update}, eco_number={eco_number}, gpu_model={gpu_model}, cooling={cooling}, remove={remove}, check={check}")
-            
-            # Build tests parameter including fw_update, eco_number, gpu_model, and cooling
-            tests_list = list(tests) if tests else []
-            if fw_update:
-                tests_list.append('fw_update')
-                if eco_number and eco_number.strip():
-                    tests_list.append(f'eco_number={eco_number}')
-                    logger.info(f"Added eco_number to tests_list: {eco_number}")
-                else:
-                    logger.warning(f"eco_number is empty or None: '{eco_number}'")
-                if gpu_model and gpu_model.strip():
-                    tests_list.append(f'gpu_model={gpu_model}')
-                if cooling and cooling.strip():
-                    tests_list.append(f'cooling={cooling}')
-            tests_param = " ".join(tests_list) if tests_list else " "
-            
-            logger.info(f"Built tests_param: {tests_param}")
-            
-            macs = get_lan_macs(bmc_ip)
-            macs = [normalize_mac_for_pxe(x) for x in macs if x]
-            macs = [x for x in macs if x]
-            
-            logger.info(f"Retrieved MACs: {macs}")
-
-            # Handle Remote FW Update Test (skip PXE entry creation, similar to All Log)
-            if 'remote_fw_update' in tests:
-                task_id = str(uuid.uuid4())
-                thread = threading.Thread(
-                    target=run_remote_fw_update_task,
-                    args=(task_id, bmc_ip, image)
-                )
-                thread.daemon = True
-                thread.start()
-                result['remote_fw_update_started'] = ['Remote FW update task started']
-                result['remote_fw_task_id'] = task_id
-                logger.info(f"Started remote FW update task {task_id}")
-                # Skip PXE entry creation for Remote FW Update (same as All Log)
-                form=RmaForm(user=request.user)
-                golden_entries = RmaTestingDb.objects.all().order_by('golden_number')
-                can_force_unlink = request.user.has_perm('pxe.can_force_unlink_golden')
-                return render(request,'features/rma_pxe.html',{
-                    'form':form,
-                    'result':result,
-                    'golden_entries': golden_entries,
-                    'can_force_unlink': can_force_unlink
-                })
-        
-            if remove:
-                result['actions'] = remove_pxe_entries_and_boot_files(macs)
-            
-            
-            elif check:
-                result['check']=[]
-                for x in macs:
-                    try:
-                        entry=PxeEntry.objects.get(mac=x)
-                        result['check'].append(f"MAC: {entry.mac} | Image: {entry.image} | Parameters: {entry.parameters}")
-                    except PxeEntry.DoesNotExist:
-                        result['check'].append(f"MAC: {x} not found in database")
-
-            elif base_sn and rma_number and macs:
-                logger.info(f"Executing PXE generation for {len(macs)} MACs")
-                result['actions']=[]
-                for x in macs:
-                    # Build parameters dict - use tests_param which includes eco_number, gpu_model, cooling
-                    params = {
-                        'base_sn': base_sn, 
-                        'replacement_sn': replacement_sn,
-                        'rma_number': rma_number, 
-                        'tests': tests_param,
-                        'fw_update': fw_update,
-                        'eco_number': eco_number,
-                        'gpu_model': gpu_model,
-                        'cooling': cooling
-                    }
-                    
-                    obj,created = PxeEntry.objects.update_or_create(
-                        mac=x,
-                        defaults={'parameters': params,'image':image},
+            if operation_type == 'pcie':
+                rma_number = bound_form.cleaned_data.get('rma_number', '')
+                bmc_ip = bound_form.cleaned_data.get('bmc_ip', '')
+                image = bound_form.cleaned_data.get('image', '')
+                tests = bound_form.cleaned_data.get('tests', [])
+                remove = bound_form.cleaned_data.get('remove', False)
+                check = bound_form.cleaned_data.get('check', False)
+                fw_update = bound_form.cleaned_data.get('fw_update', False)
+                pcie_model = bound_form.cleaned_data.get('pcie_model', '')
+                pcie_eco_number = bound_form.cleaned_data.get('pcie_eco_number', '')
+                
+                # GPU SNs
+                gpu_params = []
+                params_storage = {'rma_number': rma_number, 'image': image}
+                for i in range(1, 9):
+                    sn = bound_form.cleaned_data.get(f'gpu{i}_sn', '').strip()
+                    gpu_params.append(f"g{i}={sn}")
+                    params_storage[f'gpu{i}_sn'] = sn
+                
+                # Replacement GPU SNs
+                for i in range(1, 9):
+                    sn = bound_form.cleaned_data.get(f'rg{i}_sn', '').strip()
+                    gpu_params.append(f"rg{i}={sn}")
+                    params_storage[f'rg{i}_sn'] = sn
+                
+                tests_list = list(tests) if tests else []
+                if fw_update:
+                    tests_list.append('fw_update')
+                    if pcie_model: tests_list.append(f'pcie_model={pcie_model}')
+                    if pcie_eco_number: tests_list.append(f'pcie_eco_number={pcie_eco_number}')
+                
+                tests_list.extend(gpu_params)
+                tests_param = " ".join(tests_list)
+                params_storage['tests'] = tests_param
+                
+                macs = get_lan_macs(bmc_ip)
+                macs = [normalize_mac_for_pxe(x) for x in macs if x]
+                macs = [x for x in macs if x]
+                
+                if remove:
+                    result['actions'] = remove_pxe_entries_and_boot_files(macs)
+                elif check:
+                    result['check']=[]
+                    for x in macs:
+                        try:
+                            entry=PxeEntry.objects.get(mac=x)
+                            result['check'].append(f"MAC: {entry.mac} | Image: {entry.image} | Parameters: {entry.parameters}")
+                        except PxeEntry.DoesNotExist:
+                            result['check'].append(f"MAC: {x} not found in database")
+                elif rma_number and macs:
+                    result['actions']=[]
+                    for x in macs:
+                        PxeEntry.objects.update_or_create(
+                            mac=x,
+                            defaults={'parameters': params_storage,'image':image},
+                        )
+                        success, error = run_rma_command_sync(
+                            f"{RMA_PXE_GENERATION_SCRIPT} '{x}' '{image}' '' '{rma_number}' '' '{tests_param}'",
+                            timeout=60
+                        )
+                        if success:
+                            result['actions'].append(f"Generated PXE for MAC: {x}")
+                        else:
+                            result['actions'].append(f"Failed to generate PXE for {x}: {error}")
+                
+                form = RmaForm(user=request.user)
+                pcie_form = PcieGpuForm(user=request.user)
+            else:
+                # Original RMA logic
+                base_sn = bound_form.cleaned_data.get('base_sn', '')
+                replacement_sn = bound_form.cleaned_data.get('replacement_sn', '').strip()
+                rma_number = bound_form.cleaned_data.get('rma_number', '')
+                bmc_ip = bound_form.cleaned_data.get('bmc_ip', '')
+                tests = bound_form.cleaned_data.get('tests', [])
+                image = bound_form.cleaned_data.get('image', '')
+                remove=bound_form.cleaned_data.get('remove', False)
+                check=bound_form.cleaned_data.get('check', False)
+                fw_update=bound_form.cleaned_data.get('fw_update', False)
+                eco_number = bound_form.cleaned_data.get('eco_number', '')
+                gpu_model = bound_form.cleaned_data.get('gpu_model', '')
+                cooling = bound_form.cleaned_data.get('cooling', '')
+                
+                # Debug logging
+                logger.info(f"RMA PXE form submitted: base_sn={base_sn}, replacement_sn={replacement_sn}, rma_number={rma_number}, bmc_ip={bmc_ip}, tests={tests}, fw_update={fw_update}, eco_number={eco_number}, gpu_model={gpu_model}, cooling={cooling}, remove={remove}, check={check}")
+                
+                # Build tests parameter including fw_update, eco_number, gpu_model, and cooling
+                tests_list = list(tests) if tests else []
+                if fw_update:
+                    tests_list.append('fw_update')
+                    if eco_number and eco_number.strip():
+                        tests_list.append(f'eco_number={eco_number}')
+                    if gpu_model and gpu_model.strip():
+                        tests_list.append(f'gpu_model={gpu_model}')
+                    if cooling and cooling.strip():
+                        tests_list.append(f'cooling={cooling}')
+                tests_param = " ".join(tests_list) if tests_list else " "
+                
+                macs = get_lan_macs(bmc_ip)
+                macs = [normalize_mac_for_pxe(x) for x in macs if x]
+                macs = [x for x in macs if x]
+                
+                # Handle Remote FW Update Test
+                if 'remote_fw_update' in tests:
+                    task_id = str(uuid.uuid4())
+                    thread = threading.Thread(
+                        target=run_remote_fw_update_task,
+                        args=(task_id, bmc_ip, image)
                     )
-                    action = "Created" if created else "Updated"
-                    result['actions'].append(f"{action} entry for MAC: {x} | Image: {image} | Parameters: base_sn={base_sn}, replacement_sn={replacement_sn}, rma_number={rma_number}, tests={tests_param}")
+                    thread.daemon = True
+                    thread.start()
+                    result['remote_fw_update_started'] = ['Remote FW update task started']
+                    result['remote_fw_task_id'] = task_id
                     
-                    # Use sync RMA command with async wrapper for PXE generation
-                    # Base SN and Replacement SN are passed as positional arguments (values only)
-                    # Replacement SN is passed as the 5th argument
-                    base_sn_arg = base_sn if base_sn else ""
-                    replacement_sn_arg = replacement_sn if replacement_sn else ""
-                    success, error = run_rma_command_sync(
-                        f"{RMA_PXE_GENERATION_SCRIPT} '{x}' '{image}' '{base_sn_arg}' '{rma_number}' '{replacement_sn_arg}' '{tests_param}'",
-                        timeout=60  # Longer timeout for script execution
-                    )
-                    if not success:
-                        result['actions'].append(f"Warning: Failed to generate PXE config for {x}: {error}")
-
-            form=RmaForm(user=request.user)
+                    form = RmaForm(user=request.user)
+                    pcie_form = PcieGpuForm(user=request.user)
+                    golden_entries = RmaTestingDb.objects.all().order_by('golden_number')
+                    can_force_unlink = request.user.has_perm('pxe.can_force_unlink_golden')
+                    return render(request,'features/rma_pxe.html',{
+                        'form':form, 'pcie_form': pcie_form, 'operation_type': operation_type,
+                        'result':result, 'golden_entries': golden_entries, 'can_force_unlink': can_force_unlink
+                    })
+            
+                if remove:
+                    result['actions'] = remove_pxe_entries_and_boot_files(macs)
+                elif check:
+                    result['check']=[]
+                    for x in macs:
+                        try:
+                            entry=PxeEntry.objects.get(mac=x)
+                            result['check'].append(f"MAC: {entry.mac} | Image: {entry.image} | Parameters: {entry.parameters}")
+                        except PxeEntry.DoesNotExist:
+                            result['check'].append(f"MAC: {x} not found in database")
+                elif base_sn and rma_number and macs:
+                    result['actions']=[]
+                    for x in macs:
+                        params = {
+                            'base_sn': base_sn, 
+                            'replacement_sn': replacement_sn,
+                            'rma_number': rma_number, 
+                            'tests': tests_param,
+                            'fw_update': fw_update,
+                            'eco_number': eco_number,
+                            'gpu_model': gpu_model,
+                            'cooling': cooling
+                        }
+                        PxeEntry.objects.update_or_create(
+                            mac=x,
+                            defaults={'parameters': params,'image':image},
+                        )
+                        success, error = run_rma_command_sync(
+                            f"{RMA_PXE_GENERATION_SCRIPT} '{x}' '{image}' '{base_sn}' '{rma_number}' '{replacement_sn}' '{tests_param}'",
+                            timeout=60
+                        )
+                        if success:
+                            result['actions'].append(f"Generated PXE for MAC: {x}")
+                        else:
+                            result['actions'].append(f"Failed to generate PXE for {x}: {error}")
+                
+                form = RmaForm(user=request.user, prefix='rma')
+                pcie_form = PcieGpuForm(user=request.user, prefix='pcie')
         else:
             # Form validation failed
-            logger.error(f"RMA PXE form validation failed: {bound_form.errors}")
-            form = RmaForm(user=request.user)
-            form._errors = bound_form.errors
-            form.data = {}
-            form.cleaned_data = {}
+            logger.error(f"Form validation failed: {bound_form.errors}")
+            form = RmaForm(user=request.user, prefix='rma')
+            pcie_form = PcieGpuForm(user=request.user, prefix='pcie')
+            if operation_type == 'pcie':
+                pcie_form._errors = bound_form.errors
+            else:
+                form._errors = bound_form.errors
     else:
-        form=RmaForm(user=request.user)
+        form = RmaForm(user=request.user, prefix='rma')
+        pcie_form = PcieGpuForm(user=request.user, prefix='pcie')
     
-    # Get all golden numbers for status display
     golden_entries = RmaTestingDb.objects.all().order_by('golden_number')
-    
-    # Check if user has force unlink permission
     can_force_unlink = request.user.has_perm('pxe.can_force_unlink_golden')
     
     return render(request,'features/rma_pxe.html',{
         'form':form,
+        'pcie_form': pcie_form,
+        'operation_type': operation_type,
         'result':result,
         'golden_entries': golden_entries,
         'can_force_unlink': can_force_unlink

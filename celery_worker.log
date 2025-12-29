@@ -1,0 +1,36 @@
+[2025-12-28 20:56:29,738: INFO/MainProcess] Connected to redis://localhost:6379/0
+[2025-12-28 20:56:29,740: INFO/MainProcess] mingle: searching for neighbors
+[2025-12-28 20:56:30,748: WARNING/MainProcess] /home/devin/rd1web/venv/lib/python3.12/site-packages/celery/app/control.py:56: DuplicateNodenameWarning: Received multiple replies from node name: celery@fishsrv.
+Please make sure you give each node a unique nodename using
+the celery worker `-n` option.
+  warnings.warn(DuplicateNodenameWarning(
+
+[2025-12-28 20:56:30,748: INFO/MainProcess] mingle: all alone
+[2025-12-28 20:56:30,761: INFO/MainProcess] celery@fishsrv ready.
+[2025-12-28 20:56:46,391: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[9f191f11-3324-4169-ac9e-97f752e7bf04] received
+[2025-12-28 20:56:46,392: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2025-12-28 20:56:47,681: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 449 directories
+[2025-12-28 20:56:47,682: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[9f191f11-3324-4169-ac9e-97f752e7bf04] succeeded in 1.2901578452438116s: {'status': 'success', 'directory_count': 449}
+[2025-12-28 20:57:02,077: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[71a882d8-26a6-4b2a-93b4-8ef60c46f65d] received
+[2025-12-28 20:57:02,079: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2025-12-28 20:57:02,080: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 449 directories
+[2025-12-28 20:57:02,080: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[71a882d8-26a6-4b2a-93b4-8ef60c46f65d] succeeded in 0.0019200313836336136s: {'status': 'success', 'directory_count': 449}
+[2025-12-28 20:57:30,611: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[e3791e23-0c97-4d1c-8236-fdde39f48485] received
+[2025-12-28 20:57:30,612: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2025-12-28 20:57:34,149: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 449 directories
+[2025-12-28 20:57:34,149: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[e3791e23-0c97-4d1c-8236-fdde39f48485] succeeded in 3.5372161511331797s: {'status': 'success', 'directory_count': 449}
+[2025-12-28 20:57:46,376: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[b179bb87-0a76-428b-b79d-4af474f048c8] received
+[2025-12-28 20:57:46,377: INFO/ForkPoolWorker-1] Starting RMA details cache pre-warming...
+[2025-12-28 20:57:46,378: INFO/ForkPoolWorker-1] Pre-warming details for 40 recent directories...
+[2025-12-28 21:01:49,205: INFO/MainProcess] Connected to redis://localhost:6379/0
+[2025-12-28 21:01:49,209: INFO/MainProcess] mingle: searching for neighbors
+[2025-12-28 21:01:50,216: WARNING/MainProcess] /home/devin/rd1web/venv/lib/python3.12/site-packages/celery/app/control.py:56: DuplicateNodenameWarning: Received multiple replies from node name: celery@fishsrv.
+Please make sure you give each node a unique nodename using
+the celery worker `-n` option.
+  warnings.warn(DuplicateNodenameWarning(
+
+[2025-12-28 21:01:50,216: INFO/MainProcess] mingle: all alone
+[2025-12-28 21:01:50,227: INFO/MainProcess] celery@fishsrv ready.
+[2025-12-28 21:02:46,377: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[46947641-a827-4c40-84ef-f43d199f5a83] received
+[2025-12-28 21:02:46,378: INFO/ForkPoolWorker-1] Starting RMA details cache pre-warming...
+[2025-12-28 21:02:46,381: INFO/ForkPoolWorker-1] Pre-warming details for 40 recent directories...
