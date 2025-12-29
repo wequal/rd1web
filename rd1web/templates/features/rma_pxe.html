@@ -1608,7 +1608,7 @@
                 }
                 
                 try {
-                    const response = await fetch(`/api/rma/get-rma-info/${bmcIp}/`);
+                    const response = await fetch(`/api/rma/get-rma-info/${bmcIp}/?operation_type=rma`);
                     const data = await response.json();
                     
                     if (data.success) {
@@ -1909,7 +1909,7 @@
         async function fetchAndFillPcieInfo(bmcIp) {
             if (!bmcIp) return;
             try {
-                const response = await fetch(`/api/rma/get-rma-info/${bmcIp}/`);
+                const response = await fetch(`/api/rma/get-rma-info/${bmcIp}/?operation_type=pcie`);
                 const data = await response.json();
                 if (data.success) {
                     const rmaNumField = document.getElementById('{{ pcie_form.rma_number.id_for_label }}');

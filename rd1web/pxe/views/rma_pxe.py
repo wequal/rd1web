@@ -108,6 +108,11 @@ def remove_pxe_entries_and_boot_files(macs):
 def get_rma_info_by_bmc(request, bmc_ip):
     """API endpoint to get base_sn and rma_number by BMC IP"""
     try:
+        # Get operation_type from query parameter (default to 'rma' for backward compatibility)
+        operation_type = request.GET.get('operation_type', 'rma')
+        # Map operation_type to form_type: 'rma' -> 'sxm', 'pcie' -> 'pcie'
+        expected_form_type = 'sxm' if operation_type == 'rma' else 'pcie'
+        
         # Step 1: Get RMA entry and check if it's actively linked
         try:
             rma_entry = RmaTestingDb.objects.get(bmc_ip=bmc_ip)
@@ -149,21 +154,47 @@ def get_rma_info_by_bmc(request, bmc_ip):
         
         # Step 2: Query PxeEntry for those MAC addresses created AFTER linked_at
         # This ensures we only auto-fill from PXE entries created while currently linked
-        pxe_entry = PxeEntry.objects.filter(
+        pxe_entries = PxeEntry.objects.filter(
             mac__in=macs,
             updated_at__gte=rma_entry.linked_at
-        ).order_by('-updated_at').first()
+        ).order_by('-updated_at')
+        
+        # Step 3: Filter by form_type matching the operation_type
+        # For backward compatibility: if form_type is missing, treat as 'sxm' for RMA requests
+        pxe_entry = None
+        for entry in pxe_entries:
+            params = entry.parameters
+            # Try to parse parameters
+            if isinstance(params, dict):
+                params_dict = params
+            elif isinstance(params, str):
+                try:
+                    params_dict = ast.literal_eval(params)
+                except (ValueError, SyntaxError):
+                    try:
+                        params_dict = json.loads(params)
+                    except json.JSONDecodeError:
+                        params_dict = {}
+            else:
+                params_dict = {}
+            
+            # Get form_type from params, default to 'sxm' for backward compatibility
+            form_type = params_dict.get('form_type', 'sxm') if isinstance(params_dict, dict) else 'sxm'
+            
+            # Match form_type with expected_form_type
+            if form_type == expected_form_type:
+                pxe_entry = entry
+                break
         
         if not pxe_entry:
-            # No PXE entries created after linking - skip auto-fill
+            # No matching PXE entries - skip auto-fill
             return JsonResponse({
                 'success': True,
                 'base_sn': '',
                 'rma_number': ''
             })
         
-        # Step 3: Extract base_sn and rma_number from parameters field
-        # Parameters is stored as TextField (string), need to parse it
+        # Step 4: Extract data from parameters field
         params = pxe_entry.parameters
         
         # Try to parse parameters (could be dict, string representation of dict, or JSON)
@@ -199,8 +230,8 @@ def get_rma_info_by_bmc(request, bmc_ip):
             'base_sn': base_sn,
             'replacement_sn': replacement_sn,
             'rma_number': rma_number,
-            'gpu_sns': gpu_sns,
-            'rgpu_sns': rgpu_sns
+            **gpu_sns,  # Include GPU SNs directly in response
+            **rgpu_sns  # Include Replacement GPU SNs directly in response
         })
         
     except Exception as e:
@@ -345,7 +376,7 @@ def rma_pxe(request):
                 
                 # GPU SNs
                 gpu_params = []
-                params_storage = {'rma_number': rma_number, 'image': image}
+                params_storage = {'rma_number': rma_number, 'image': image, 'form_type': 'pcie'}
                 for i in range(1, 9):
                     sn = bound_form.cleaned_data.get(f'gpu{i}_sn', '').strip()
                     gpu_params.append(f"g{i}={sn}")
@@ -475,7 +506,8 @@ def rma_pxe(request):
                             'fw_update': fw_update,
                             'eco_number': eco_number,
                             'gpu_model': gpu_model,
-                            'cooling': cooling
+                            'cooling': cooling,
+                            'form_type': 'sxm'
                         }
                         PxeEntry.objects.update_or_create(
                             mac=x,
