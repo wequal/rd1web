@@ -792,14 +792,17 @@
 {% endblock %}
 
 {% block scripts %}
+<script>console.log('Scripts block starting');</script>
 <script src="{% static 'js/mi3xx_alllog.js' %}"></script>
 {% include "partials/mi3xx_alllog_modal.html" %}
 <script>
+    console.log('Script tag loaded');
     // Form validation and UX improvements
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOMContentLoaded started');
         const form = document.getElementById('rmaPxeForm');
-        const checkBox = document.getElementById('{{ form.check.id_for_label }}');
-        const removeBox = document.getElementById('{{ form.remove.id_for_label }}');
+        const checkBox = document.getElementById('id_rma-check');
+        const removeBox = document.getElementById('id_rma-remove');
         
         // Ensure only one action is selected at a time
         if (checkBox && removeBox) {
@@ -817,7 +820,7 @@
         }
         
         // Image selection handler - show/hide test options based on selected image  
-        const rmaImageSelectForTests = document.getElementById('{{ form.image.id_for_label }}');
+        const rmaImageSelectForTests = document.getElementById('id_rma-image');
         const defaultCheckbox = document.getElementById('id_rma-tests_0');
         const dcgmCheckbox = document.getElementById('id_rma-tests_2');
         const dcgmR4Checkbox = document.getElementById('id_rma-tests_dcgm_r4');
@@ -1043,7 +1046,7 @@
             const replacementSnInput = document.getElementById('id_rma-replacement_sn');
             const rmaNumberInput = document.getElementById('id_rma-rma_number');
             const bmcIpInput = document.getElementById('id_rma-bmc_ip');
-            const imageInput = document.getElementById('{{ form.image.id_for_label }}');
+            const imageInput = document.getElementById('id_rma-image');
 
             const baseSn = baseSnInput ? baseSnInput.value.trim() : '';
             const replacementSn = replacementSnInput ? replacementSnInput.value.trim() : '';
@@ -1256,12 +1259,12 @@
         // Firmware Update and ECO Number functionality
         const fwUpdateCheckbox = document.getElementById('id_rma-fw_update');
         const ecoNumberSection = document.getElementById('eco-number-section');
-        const ecoNumberSelect = document.getElementById('{{ form.eco_number.id_for_label }}');
+        const ecoNumberSelect = document.getElementById('id_rma-eco_number');
         const gpuModelSection = document.getElementById('gpu-model-section');
-        const gpuModelSelect = document.getElementById('{{ form.gpu_model.id_for_label }}');
+        const gpuModelSelect = document.getElementById('id_rma-gpu_model');
         const coolingSection = document.getElementById('cooling-section');
-        const coolingSelect = document.getElementById('{{ form.cooling.id_for_label }}');
-        const rmaImageSelect = document.getElementById('{{ form.image.id_for_label }}');
+        const coolingSelect = document.getElementById('id_rma-cooling');
+        const rmaImageSelect = document.getElementById('id_rma-image');
         
         // Function to load ECO numbers from API based on image type
         async function loadEcoNumbers(imageType) {
@@ -1680,9 +1683,9 @@
 
         function showDefaultTestPopup() {
             // Re-select elements to be safe
-            const rmaImgSel = document.getElementById('{{ form.image.id_for_label }}');
+            const rmaImgSel = document.getElementById('id_rma-image');
             const rmaDefCb = document.getElementById('id_rma-tests_0');
-            const pcieImgSel = document.getElementById('{{ pcie_form.image.id_for_label }}');
+            const pcieImgSel = document.getElementById('id_pcie-image');
             const pcieDefCb = document.getElementById('id_pcie-tests_0');
 
             if (!testDetailsModal) return;
@@ -1716,7 +1719,7 @@
         }
 
         // Attach listeners for popup - RMA form
-        const rmaImgSelForPopup = document.getElementById('{{ form.image.id_for_label }}');
+        const rmaImgSelForPopup = document.getElementById('id_rma-image');
         const rmaDefCbForPopup = document.getElementById('id_rma-tests_0');
         if (rmaImgSelForPopup && rmaDefCbForPopup) {
             rmaImgSelForPopup.addEventListener('change', function() {
@@ -1791,8 +1794,8 @@
         const pcieFormCard = document.getElementById('pcieFormCard');
 
         // Mutual exclusion for PCIE check/remove
-        const pcieCheckBox = document.getElementById('{{ pcie_form.check.id_for_label }}');
-        const pcieRemoveBox = document.getElementById('{{ pcie_form.remove.id_for_label }}');
+        const pcieCheckBox = document.getElementById('id_pcie-check');
+        const pcieRemoveBox = document.getElementById('id_pcie-remove');
         if (pcieCheckBox && pcieRemoveBox) {
             pcieCheckBox.addEventListener('change', function() {
                 if (this.checked) pcieRemoveBox.checked = false;
@@ -1823,7 +1826,7 @@
         });
 
         // PCIE Replacement SNs toggle
-        const showReplacementToggle = document.getElementById('{{ pcie_form.show_replacement.id_for_label }}');
+        const showReplacementToggle = document.getElementById('id_pcie-show_replacement');
         const replacementContainer = document.getElementById('replacement-sns-container');
         if (showReplacementToggle && replacementContainer) {
             showReplacementToggle.addEventListener('change', function() {
@@ -1851,8 +1854,8 @@
                     if (pcieModelSection) pcieModelSection.style.display = 'none';
                     if (pcieEcoSection) pcieEcoSection.style.display = 'none';
                     // Clear selections
-                    const modelSelect = document.getElementById('{{ pcie_form.pcie_model.id_for_label }}');
-                    const ecoSelect = document.getElementById('{{ pcie_form.pcie_eco_number.id_for_label }}');
+                    const modelSelect = document.getElementById('id_pcie-pcie_model');
+                    const ecoSelect = document.getElementById('id_pcie-pcie_eco_number');
                     if (modelSelect) modelSelect.value = '';
                     if (ecoSelect) {
                         ecoSelect.innerHTML = '<option value="">-- Select ECO --</option>';
@@ -1870,7 +1873,7 @@
         }
 
         async function loadPcieModels() {
-            const modelSelect = document.getElementById('{{ pcie_form.pcie_model.id_for_label }}');
+            const modelSelect = document.getElementById('id_pcie-pcie_model');
             if (!modelSelect) return;
             try {
                 const response = await fetch('/api/rma/pcie/models/');
@@ -1889,12 +1892,12 @@
             } catch (e) { console.error('Error loading PCIE models:', e); }
         }
 
-        const pcieModelSelect = document.getElementById('{{ pcie_form.pcie_model.id_for_label }}');
+        const pcieModelSelect = document.getElementById('id_pcie-pcie_model');
         if (pcieModelSelect) {
             pcieModelSelect.addEventListener('change', function() {
                 const selectedModel = this.value;
                 const pcieEcoSection = document.getElementById('pcie-eco-section');
-                const ecoSelect = document.getElementById('{{ pcie_form.pcie_eco_number.id_for_label }}');
+                const ecoSelect = document.getElementById('id_pcie-pcie_eco_number');
                 
                 if (selectedModel) {
                     // Show ECO section when model is selected
@@ -1913,7 +1916,7 @@
         }
 
         async function loadPcieEcoNumbers(model) {
-            const ecoSelect = document.getElementById('{{ pcie_form.pcie_eco_number.id_for_label }}');
+            const ecoSelect = document.getElementById('id_pcie-pcie_eco_number');
             if (!ecoSelect || !model) return;
             try {
                 const response = await fetch(`/api/rma/pcie/eco-numbers/${model}/`);
@@ -1933,34 +1936,25 @@
         }
 
         // Auto-fill for PCIE form
-        const pcieBmcIpSelect = document.getElementById('{{ pcie_form.bmc_ip.id_for_label }}');
-        if (pcieBmcIpSelect) {
-            pcieBmcIpSelect.addEventListener('change', function() {
-                fetchAndFillPcieInfo(this.value);
-            });
-        }
-
+        const pcieBmcIpSelect = document.getElementById('id_pcie-bmc_ip');
+        console.log('PCIE auto-fill init - bmcIpSelect:', pcieBmcIpSelect);
+        
         async function fetchAndFillPcieInfo(bmcIp) {
+            console.log('fetchAndFillPcieInfo called with:', bmcIp);
             if (!bmcIp) return;
             try {
                 const response = await fetch(`/api/rma/get-rma-info/${bmcIp}/?operation_type=pcie`);
                 const data = await response.json();
-                console.log('PCIE Auto-fill data:', data); // Debug log
+                console.log('PCIE Auto-fill API response:', data);
                 if (data.success) {
-                    const rmaNumField = document.getElementById('{{ pcie_form.rma_number.id_for_label }}');
+                    const rmaNumField = document.getElementById('id_pcie-rma_number');
                     if (rmaNumField) {
                         rmaNumField.value = data.rma_number || '';
-                        console.log('RMA Number field found and filled:', data.rma_number);
-                    } else {
-                        console.log('RMA Number field not found:', '{{ pcie_form.rma_number.id_for_label }}');
                     }
                     for (let i = 1; i <= 8; i++) {
-                        const gpuFieldId = `id_pcie-gpu${i}_sn`;
-                        const rgFieldId = `id_pcie-rg${i}_sn`;
-                        const gpuField = document.getElementById(gpuFieldId);
-                        const rgField = document.getElementById(rgFieldId);
+                        const gpuField = document.getElementById(`id_pcie-gpu${i}_sn`);
+                        const rgField = document.getElementById(`id_pcie-rg${i}_sn`);
                         
-                        // Robust data access: check flattened keys and nested dictionaries
                         const gpuValue = data[`gpu${i}_sn`] || 
                                        (data.gpu_sns ? data.gpu_sns[`gpu${i}_sn`] : '') || 
                                        '';
@@ -1968,24 +1962,22 @@
                                       (data.rgpu_sns ? data.rgpu_sns[`rg${i}_sn`] : '') || 
                                       '';
                         
-                        if (gpuField) {
-                            gpuField.value = gpuValue;
-                            if (gpuValue) console.log(`GPU${i} SN field filled:`, gpuValue);
-                        } else {
-                            console.log(`GPU${i} SN field not found:`, gpuFieldId);
-                        }
-                        if (rgField) {
-                            rgField.value = rgValue;
-                            if (rgValue) console.log(`RG${i} SN field filled:`, rgValue);
-                        } else {
-                            console.log(`RG${i} SN field not found:`, rgFieldId);
-                        }
+                        if (gpuField) gpuField.value = gpuValue;
+                        if (rgField) rgField.value = rgValue;
                     }
-                } else {
-                    console.log('API returned success=false');
                 }
             } catch (e) { 
                 console.error('Error auto-filling PCIE info:', e); 
+            }
+        }
+
+        if (pcieBmcIpSelect) {
+            pcieBmcIpSelect.addEventListener('change', function() {
+                fetchAndFillPcieInfo(this.value);
+            });
+            
+            if (pcieBmcIpSelect.value) {
+                fetchAndFillPcieInfo(pcieBmcIpSelect.value);
             }
         }
 
@@ -2013,9 +2005,9 @@
         const pciePxeForm = document.getElementById('pciePxeForm');
         if (pciePxeForm) {
             pciePxeForm.addEventListener('submit', function(e) {
-                const rmaNum = document.getElementById('{{ pcie_form.rma_number.id_for_label }}');
-                const bmcIp = document.getElementById('{{ pcie_form.bmc_ip.id_for_label }}');
-                const image = document.getElementById('{{ pcie_form.image.id_for_label }}');
+                const rmaNum = document.getElementById('id_pcie-rma_number');
+                const bmcIp = document.getElementById('id_pcie-bmc_ip');
+                const image = document.getElementById('id_pcie-image');
 
                 if (!rmaNum || !rmaNum.value.trim()) {
                     alert('RMA Number is required for PCIE GPU Test.');
@@ -2034,6 +2026,8 @@
                 }
             });
         }
+        console.log('DOMContentLoaded listener setup complete');
     });
+    console.log('Inline script execution complete');
 </script>
 {% endblock %}
