@@ -1911,17 +1911,42 @@
             try {
                 const response = await fetch(`/api/rma/get-rma-info/${bmcIp}/?operation_type=pcie`);
                 const data = await response.json();
+                console.log('PCIE Auto-fill data:', data); // Debug log
                 if (data.success) {
                     const rmaNumField = document.getElementById('{{ pcie_form.rma_number.id_for_label }}');
-                    if (rmaNumField) rmaNumField.value = data.rma_number || '';
-                    for (let i = 1; i <= 8; i++) {
-                        const gpuField = document.getElementById(`id_pcie-gpu${i}_sn`);
-                        const rgField = document.getElementById(`id_pcie-rg${i}_sn`);
-                        if (gpuField) gpuField.value = data[`gpu${i}_sn`] || '';
-                        if (rgField) rgField.value = data[`rg${i}_sn`] || '';
+                    if (rmaNumField) {
+                        rmaNumField.value = data.rma_number || '';
+                        console.log('RMA Number field found and filled:', data.rma_number);
+                    } else {
+                        console.log('RMA Number field not found:', '{{ pcie_form.rma_number.id_for_label }}');
                     }
+                    for (let i = 1; i <= 8; i++) {
+                        const gpuFieldId = `id_pcie-gpu${i}_sn`;
+                        const rgFieldId = `id_pcie-rg${i}_sn`;
+                        const gpuField = document.getElementById(gpuFieldId);
+                        const rgField = document.getElementById(rgFieldId);
+                        const gpuValue = data[`gpu${i}_sn`] || '';
+                        const rgValue = data[`rg${i}_sn`] || '';
+                        
+                        if (gpuField) {
+                            gpuField.value = gpuValue;
+                            if (gpuValue) console.log(`GPU${i} SN field filled:`, gpuValue);
+                        } else {
+                            console.log(`GPU${i} SN field not found:`, gpuFieldId);
+                        }
+                        if (rgField) {
+                            rgField.value = rgValue;
+                            if (rgValue) console.log(`RG${i} SN field filled:`, rgValue);
+                        } else {
+                            console.log(`RG${i} SN field not found:`, rgFieldId);
+                        }
+                    }
+                } else {
+                    console.log('API returned success=false');
                 }
-            } catch (e) { console.error('Error auto-filling PCIE info:', e); }
+            } catch (e) { 
+                console.error('Error auto-filling PCIE info:', e); 
+            }
         }
 
         // PCIE test selection logic

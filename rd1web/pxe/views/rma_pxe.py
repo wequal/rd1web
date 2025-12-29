@@ -188,10 +188,16 @@ def get_rma_info_by_bmc(request, bmc_ip):
         
         if not pxe_entry:
             # No matching PXE entries - skip auto-fill
+            # Return empty structure with all expected fields
+            empty_gpu_sns = {f'gpu{i}_sn': '' for i in range(1, 9)}
+            empty_rgpu_sns = {f'rg{i}_sn': '' for i in range(1, 9)}
             return JsonResponse({
                 'success': True,
                 'base_sn': '',
-                'rma_number': ''
+                'replacement_sn': '',
+                'rma_number': '',
+                **empty_gpu_sns,
+                **empty_rgpu_sns
             })
         
         # Step 4: Extract data from parameters field
