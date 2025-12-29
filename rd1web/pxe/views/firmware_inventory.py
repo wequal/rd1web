@@ -448,7 +448,7 @@ def firmware_inventory_eco_detail(request, product_type=None, eco_number=None, m
     if not os.path.exists(eco_dir):
         messages.error(request, f'ECO folder "{eco_number}" does not exist')
         if product_type == 'pcie':
-            return redirect('firmware_inventory_eco_list', product_type=product_type, model=model)
+            return redirect('firmware_inventory_pcie_eco_list', model=model)
         else:
             return redirect('firmware_inventory_eco_list', product_type=product_type)
     
@@ -506,7 +506,7 @@ def firmware_inventory_file_upload(request, product_type=None, eco_number=None, 
     if not os.path.exists(eco_dir):
         messages.error(request, f'ECO folder "{eco_number}" does not exist')
         if product_type == 'pcie':
-            return redirect('firmware_inventory_eco_list', product_type=product_type, model=model)
+            return redirect('firmware_inventory_pcie_eco_list', model=model)
         else:
             return redirect('firmware_inventory_eco_list', product_type=product_type)
     
@@ -703,7 +703,7 @@ def firmware_inventory_file_upload(request, product_type=None, eco_number=None, 
             messages.error(request, error)
     
     if product_type == 'pcie':
-        return redirect('firmware_inventory_eco_detail', product_type=product_type, model=model, eco_number=eco_number)
+        return redirect('firmware_inventory_pcie_eco_detail', model=model, eco_number=eco_number)
     else:
         return redirect('firmware_inventory_eco_detail', product_type=product_type, eco_number=eco_number)
 
