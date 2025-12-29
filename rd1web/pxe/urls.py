@@ -149,11 +149,11 @@ urlpatterns = [
     path('rma/firmware-inventory/pcie/models/<str:model_name>/delete/', firmware_inventory_model_delete, name='firmware_inventory_model_delete'),
     
     # PCIe ECO Management (nested under model)
-    path('rma/firmware-inventory/pcie/<str:model>/create-eco/', firmware_inventory_eco_create, name='firmware_inventory_pcie_eco_create'),
-    path('rma/firmware-inventory/pcie/<str:model>/<str:eco_number>/delete/', firmware_inventory_eco_delete, name='firmware_inventory_pcie_eco_delete'),
-    path('rma/firmware-inventory/pcie/<str:model>/<str:eco_number>/upload/', firmware_inventory_file_upload, name='firmware_inventory_pcie_file_upload'),
-    path('rma/firmware-inventory/pcie/<str:model>/<str:eco_number>/', firmware_inventory_eco_detail, name='firmware_inventory_pcie_eco_detail'),
-    path('rma/firmware-inventory/pcie/<str:model>/', firmware_inventory_eco_list, name='firmware_inventory_pcie_eco_list'),
+    path('rma/firmware-inventory/pcie/<str:model>/create-eco/', firmware_inventory_eco_create, {'product_type': 'pcie'}, name='firmware_inventory_pcie_eco_create'),
+    path('rma/firmware-inventory/pcie/<str:model>/<str:eco_number>/delete/', firmware_inventory_eco_delete, {'product_type': 'pcie'}, name='firmware_inventory_pcie_eco_delete'),
+    path('rma/firmware-inventory/pcie/<str:model>/<str:eco_number>/upload/', firmware_inventory_file_upload, {'product_type': 'pcie'}, name='firmware_inventory_pcie_file_upload'),
+    path('rma/firmware-inventory/pcie/<str:model>/<str:eco_number>/', firmware_inventory_eco_detail, {'product_type': 'pcie'}, name='firmware_inventory_pcie_eco_detail'),
+    path('rma/firmware-inventory/pcie/<str:model>/', firmware_inventory_eco_list, {'product_type': 'pcie'}, name='firmware_inventory_pcie_eco_list'),
     
     # Standard Product ECO Management
     path('rma/firmware-inventory/<str:product_type>/create-eco/', firmware_inventory_eco_create, name='firmware_inventory_eco_create'),

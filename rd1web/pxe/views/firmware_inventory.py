@@ -272,9 +272,17 @@ def firmware_inventory_main(request):
 
 @login_required
 @permission_required('pxe.can_access_firmware_inventory', raise_exception=True)
-def firmware_inventory_eco_list(request, product_type, model=None):
+def firmware_inventory_eco_list(request, product_type=None, model=None):
     """List all ECO folders for a specific product type (and model if pcie)"""
     
+    # If no product_type provided, check if it's in the path or default to pcie if model exists
+    if not product_type:
+        if model:
+            product_type = 'pcie'
+        else:
+            messages.error(request, 'Product type missing')
+            return redirect('firmware_inventory')
+            
     # Validate product type
     product_info = get_product_info(product_type)
     if not product_info:
@@ -350,9 +358,12 @@ def firmware_inventory_eco_list(request, product_type, model=None):
 @login_required
 @permission_required('pxe.can_access_firmware_inventory', raise_exception=True)
 @require_http_methods(["POST"])
-def firmware_inventory_eco_create(request, product_type, model=None):
+def firmware_inventory_eco_create(request, product_type=None, model=None):
     """Create a new ECO folder (AJAX endpoint)"""
     
+    if not product_type and model:
+        product_type = 'pcie'
+        
     # Validate product type
     product_info = get_product_info(product_type)
     if not product_info:
@@ -412,9 +423,12 @@ def firmware_inventory_eco_create(request, product_type, model=None):
 
 @login_required
 @permission_required('pxe.can_access_firmware_inventory', raise_exception=True)
-def firmware_inventory_eco_detail(request, product_type, eco_number, model=None):
+def firmware_inventory_eco_detail(request, product_type=None, eco_number=None, model=None):
     """Manage firmware files in an ECO folder"""
     
+    if not product_type and model:
+        product_type = 'pcie'
+        
     # Validate product type
     product_info = get_product_info(product_type)
     if not product_info:
@@ -466,9 +480,12 @@ def firmware_inventory_eco_detail(request, product_type, eco_number, model=None)
 @login_required
 @permission_required('pxe.can_access_firmware_inventory', raise_exception=True)
 @require_http_methods(["POST"])
-def firmware_inventory_file_upload(request, product_type, eco_number, model=None):
+def firmware_inventory_file_upload(request, product_type=None, eco_number=None, model=None):
     """Handle firmware file uploads"""
     
+    if not product_type and model:
+        product_type = 'pcie'
+        
     # Validate product type
     product_info = get_product_info(product_type)
     if not product_info:
@@ -733,9 +750,12 @@ def firmware_inventory_file_delete(request, file_id):
 @login_required
 @permission_required('pxe.can_access_firmware_inventory', raise_exception=True)
 @require_http_methods(["POST"])
-def firmware_inventory_eco_delete(request, product_type, eco_number, model=None):
+def firmware_inventory_eco_delete(request, product_type=None, eco_number=None, model=None):
     """Delete an entire ECO folder and all its firmware files (AJAX endpoint)"""
     
+    if not product_type and model:
+        product_type = 'pcie'
+        
     try:
         import shutil
         
