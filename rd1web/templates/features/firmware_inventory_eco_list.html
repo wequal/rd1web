@@ -235,17 +235,6 @@
         
         <!-- Content -->
         <div class="firmware-content">
-            {% if messages %}
-            <div class="messages-container mb-4">
-                {% for message in messages %}
-                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-            
             {% if eco_folders %}
             <table class="eco-table">
                 <thead>

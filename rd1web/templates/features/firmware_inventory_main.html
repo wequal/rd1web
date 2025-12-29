@@ -160,20 +160,9 @@
         
         <!-- Content -->
         <div class="firmware-content">
-            {% if messages %}
-            <div class="messages-container mb-4">
-                {% for message in messages %}
-                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-            
             <div class="products-grid">
                 {% for product in product_types %}
-                <a href="{% if product.code == 'pcie' %}{% url 'firmware_inventory_model_list' %}{% else %}{% url 'firmware_inventory_eco_list' product.code %}{% endif %}" class="product-card">
+                <a href="{% url 'firmware_inventory_eco_list' product.code %}" class="product-card">
                     <div class="product-card-header">
                         <div class="product-info">
                             <h3>{{ product.name }}</h3>

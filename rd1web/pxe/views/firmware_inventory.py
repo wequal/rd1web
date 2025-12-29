@@ -483,8 +483,15 @@ def firmware_inventory_eco_detail(request, product_type=None, eco_number=None, m
 def firmware_inventory_file_upload(request, product_type=None, eco_number=None, model=None):
     """Handle firmware file uploads"""
     
+    # Handle URL kwargs for PCIe routes
     if not product_type and model:
         product_type = 'pcie'
+    
+    # For standard routes, product_type and eco_number come from URL path
+    # They should not be None at this point unless there's a routing issue
+    if not product_type or not eco_number:
+        messages.error(request, 'Missing required parameters for file upload')
+        return redirect('firmware_inventory')
         
     # Validate product type
     product_info = get_product_info(product_type)
@@ -699,8 +706,13 @@ def firmware_inventory_file_upload(request, product_type=None, eco_number=None, 
                 messages.error(request, error)
         
     else:
-        for error in form.errors.values():
-            messages.error(request, error)
+        # Display form errors properly
+        for field, errors in form.errors.items():
+            for error in errors:
+                messages.error(request, f'{field}: {error}')
+        if form.non_field_errors():
+            for error in form.non_field_errors():
+                messages.error(request, str(error))
     
     if product_type == 'pcie':
         return redirect('firmware_inventory_pcie_eco_detail', model=model, eco_number=eco_number)
