@@ -360,7 +360,11 @@ def get_eco_numbers_api(request, image_type):
 @permission_required('pxe.can_access_rma_pxe', raise_exception=True)
 def rma_pxe(request):
     result = {}
-    operation_type = request.POST.get('operation_type', 'rma') if request.method == "POST" else 'rma'
+    # Get operation_type from POST (form submission) or GET (page navigation) or default to 'rma'
+    if request.method == "POST":
+        operation_type = request.POST.get('operation_type', 'rma')
+    else:
+        operation_type = request.GET.get('operation_type', 'rma')
     
     if request.method == "POST":
         if operation_type == 'pcie':

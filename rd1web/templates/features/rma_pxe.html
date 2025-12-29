@@ -350,7 +350,7 @@
 
                         <!-- GPU1-8 SNs -->
                         <div class="mb-4">
-                            <label class="form-label fw-bold mb-3">GPU Serial Numbers</label>
+                            <div class="form-label fw-bold mb-3">GPU Serial Numbers</div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="{{ pcie_form.gpu1_sn.id_for_label }}" class="form-label">GPU1 SN</label>
@@ -389,20 +389,17 @@
 
                         <!-- Show Replacement Toggle -->
                         <div class="mb-4">
-                            <label class="form-label fw-bold">{{ pcie_form.show_replacement.label }}</label>
-                            <div>
-                                <div class="form-check form-switch">
-                                    {{ pcie_form.show_replacement }}
-                                    <label class="form-check-label" for="{{ pcie_form.show_replacement.id_for_label }}">
-                                        Show Replacement GPU SN fields
-                                    </label>
-                                </div>
+                            <div class="form-check form-switch">
+                                {{ pcie_form.show_replacement }}
+                                <label class="form-check-label" for="{{ pcie_form.show_replacement.id_for_label }}">
+                                    {{ pcie_form.show_replacement.label }}
+                                </label>
                             </div>
                         </div>
 
                         <!-- Replacement GPU1-8 SNs (Conditional) -->
                         <div id="replacement-sns-container" style="display: none;" class="mb-4">
-                            <label class="form-label fw-bold mb-3">Replacement GPU Serial Numbers</label>
+                            <div class="form-label fw-bold mb-3">Replacement GPU Serial Numbers</div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="{{ pcie_form.rg1_sn.id_for_label }}" class="form-label">Replacement GPU1 SN</label>
@@ -1180,7 +1177,13 @@
             .then(data => {
                 if (data.success) {
                     alert(`Successfully linked golden number "${goldenNumber}"`);
-                    location.reload();
+                    // Preserve operation_type when reloading
+                    const currentOperationType = getCurrentOperationType();
+                    if (currentOperationType === 'pcie') {
+                        window.location.href = window.location.pathname + '?operation_type=pcie';
+                    } else {
+                        window.location.href = window.location.pathname;
+                    }
                 } else {
                     alert(`Error: ${data.error || 'Failed to link golden number'}`);
                 }
@@ -1202,7 +1205,13 @@
             .then(data => {
                 if (data.success) {
                     alert(`Successfully unlinked golden number "${goldenNumber}"`);
-                    location.reload();
+                    // Preserve operation_type when reloading
+                    const currentOperationType = getCurrentOperationType();
+                    if (currentOperationType === 'pcie') {
+                        window.location.href = window.location.pathname + '?operation_type=pcie';
+                    } else {
+                        window.location.href = window.location.pathname;
+                    }
                 } else {
                     alert(`Error: ${data.error || 'Failed to unlink golden number'}`);
                 }
@@ -1210,6 +1219,23 @@
             .catch(error => {
                 alert('An error occurred while unlinking the golden number');
             });
+        }
+        
+        // Helper function to get current operation type from radio buttons or URL
+        function getCurrentOperationType() {
+            // Check radio buttons first
+            const pcieRadio = document.getElementById('pcieTest');
+            if (pcieRadio && pcieRadio.checked) {
+                return 'pcie';
+            }
+            // Check URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const opType = urlParams.get('operation_type');
+            if (opType === 'pcie') {
+                return 'pcie';
+            }
+            // Default to 'rma'
+            return 'rma';
         }
         
         function getCookie(name) {
@@ -1781,9 +1807,17 @@
                 if (this.value === 'pcie') {
                     rmaFormCard.style.display = 'none';
                     pcieFormCard.style.display = 'block';
+                    // Update URL to preserve state
+                    const url = new URL(window.location);
+                    url.searchParams.set('operation_type', 'pcie');
+                    window.history.pushState({}, '', url);
                 } else {
                     rmaFormCard.style.display = 'block';
                     pcieFormCard.style.display = 'none';
+                    // Update URL to preserve state (remove parameter for RMA)
+                    const url = new URL(window.location);
+                    url.searchParams.delete('operation_type');
+                    window.history.pushState({}, '', url);
                 }
             });
         });
