@@ -262,6 +262,7 @@ class FirmwareFile(models.Model):
         ('B200_LC', 'B200_LC'),
         ('B300_AC', 'B300_AC'),
         ('B300_LC', 'B300_LC'),
+        ('pcie', 'pcie'),
     ]
     
     FILE_TYPE_CHOICES = [
@@ -279,8 +280,15 @@ class FirmwareFile(models.Model):
     product_type = models.CharField(
         max_length=20,
         choices=PRODUCT_CHOICES,
-        help_text='Product type (e.g., H100_AC, B200_LC)',
+        help_text='Product type (e.g., H100_AC, B200_LC, pcie)',
         verbose_name='Product Type'
+    )
+    model = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        help_text='Device model (only for pcie product type)',
+        verbose_name='Model'
     )
     eco_number = models.CharField(
         max_length=100,
@@ -335,12 +343,12 @@ class FirmwareFile(models.Model):
     )
     
     class Meta:
-        ordering = ['product_type', 'eco_number', 'file_type']
+        ordering = ['product_type', 'model', 'eco_number', 'file_type']
         verbose_name = 'Firmware File'
         verbose_name_plural = 'Firmware Files'
-        unique_together = ('product_type', 'eco_number', 'file_type')
+        unique_together = ('product_type', 'model', 'eco_number', 'file_type')
         indexes = [
-            models.Index(fields=['product_type', 'eco_number']),
+            models.Index(fields=['product_type', 'model', 'eco_number']),
             models.Index(fields=['uploaded_by']),
             models.Index(fields=['uploaded_at']),
         ]

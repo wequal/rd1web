@@ -252,20 +252,25 @@
         <ol class="breadcrumb breadcrumb-custom">
             <li class="breadcrumb-item"><a href="{% url 'index' %}">Dashboard</a></li>
             <li class="breadcrumb-item"><a href="{% url 'firmware_inventory' %}">Firmware Inventory</a></li>
+            {% if product_type == 'pcie' %}
+            <li class="breadcrumb-item"><a href="{% url 'firmware_inventory_model_list' %}">PCIe Devices</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'firmware_inventory_pcie_eco_list' model %}">{{ model }}</a></li>
+            {% else %}
             <li class="breadcrumb-item"><a href="{% url 'firmware_inventory_eco_list' product_type %}">{{ product_info.name }}</a></li>
+            {% endif %}
             <li class="breadcrumb-item active">ECO {{ eco_number }}</li>
         </ol>
     </nav>
     
     <!-- Main Container -->
-    <div class="firmware-container">
+    <div class="firmware-container" {% if product_type == 'pcie' %}style="background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);"{% endif %}>
         <!-- Header -->
         <div class="firmware-header">
             <div class="page-header">
                 <div>
-                    <h1>{{ product_info.name }}</h1>
+                    <h1>{% if product_type == 'pcie' %}{{ model }}{% else %}{{ product_info.name }}{% endif %}</h1>
                     <p class="page-description">
-                        <span class="eco-badge">ECO {{ eco_number }}</span>
+                        <span class="eco-badge" {% if product_type == 'pcie' %}style="background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);"{% endif %}>ECO {{ eco_number }}</span>
                     </p>
                 </div>
             </div>
@@ -276,7 +281,7 @@
             <!-- Upload Form -->
             <div class="upload-section">
                 <h2>Upload Firmware Files</h2>
-                <form method="post" enctype="multipart/form-data" action="{% url 'firmware_inventory_file_upload' product_type eco_number %}">
+                <form method="post" enctype="multipart/form-data" action="{% if product_type == 'pcie' %}{% url 'firmware_inventory_pcie_file_upload' model eco_number %}{% else %}{% url 'firmware_inventory_file_upload' product_type eco_number %}{% endif %}">
                     {% csrf_token %}
                     
                     <div class="upload-grid">
@@ -316,7 +321,7 @@
                     </div>
                     
                     <div class="mt-3">
-                        <button type="submit" class="btn-upload">
+                        <button type="submit" class="btn-upload" {% if product_type == 'pcie' %}style="background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);"{% endif %}>
                             Upload Files
                         </button>
                     </div>

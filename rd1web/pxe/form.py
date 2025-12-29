@@ -535,6 +535,30 @@ class EcoFolderForm(forms.Form):
         return eco_number
 
 
+class ModelFolderForm(forms.Form):
+    """Form for creating new Model folder under pcie"""
+    model_name = forms.CharField(
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter model name (e.g., ConnectX-6)',
+        }),
+        label='Model Name',
+        help_text='Enter the model name for the new folder'
+    )
+    
+    def clean_model_name(self):
+        """Clean and validate model name"""
+        model_name = self.cleaned_data.get('model_name', '').strip()
+        if not model_name:
+            raise forms.ValidationError('Model name cannot be empty')
+        # Remove any potentially dangerous characters for filesystem
+        import re
+        if re.search(r'[/\\<>:"|?*]', model_name):
+            raise forms.ValidationError('Model name contains invalid characters')
+        return model_name
+
+
 class FirmwareInventoryUploadForm(forms.Form):
     """Form for uploading firmware files to ECO folder"""
     

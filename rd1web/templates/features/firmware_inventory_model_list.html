@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}{{ product_info.name }} - ECO Folders{% endblock %}
+{% block title %}PCIe Devices - Models{% endblock %}
 
 {% block extra_css %}
 <style>
     /* Main Container */
     .firmware-container {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
         border-radius: 16px;
         box-shadow: 0 20px 40px rgba(0,0,0,0.1);
         padding: 0;
@@ -47,8 +47,8 @@
         font-weight: 700;
     }
     
-    .btn-create-eco {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    .btn-create-model {
+        background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
         color: white;
         border: none;
         padding: 10px 20px;
@@ -57,22 +57,22 @@
         transition: all 0.3s ease;
     }
     
-    .btn-create-eco:hover {
+    .btn-create-model:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 4px 12px rgba(26, 32, 44, 0.4);
         color: white;
     }
     
-    /* ECO Table */
-    .eco-table {
+    /* Model Table */
+    .model-table {
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
         margin-top: 20px;
     }
     
-    .eco-table thead th {
-        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    .model-table thead th {
+        background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
         color: #ffffff;
         font-weight: 600;
         text-transform: uppercase;
@@ -82,38 +82,38 @@
         border: none;
     }
     
-    .eco-table thead th:first-child {
+    .model-table thead th:first-child {
         border-radius: 8px 0 0 0;
     }
     
-    .eco-table thead th:last-child {
+    .model-table thead th:last-child {
         border-radius: 0 8px 0 0;
     }
     
-    .eco-table tbody td {
+    .model-table tbody td {
         padding: 16px;
         border-bottom: 1px solid #f1f5f9;
         color: #4a5568;
         vertical-align: middle;
     }
     
-    .eco-table tbody tr {
+    .model-table tbody tr {
         transition: all 0.3s ease;
     }
     
-    .eco-table tbody tr:hover {
+    .model-table tbody tr:hover {
         background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
         transform: scale(1.001);
     }
     
-    .eco-number {
+    .model-name {
         font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
         font-weight: 600;
-        color: #667eea;
+        color: #2d3748;
         font-size: 1.1rem;
     }
     
-    .file-count-badge {
+    .eco-count-badge {
         background: #e6f7ff;
         color: #0066cc;
         padding: 4px 12px;
@@ -122,8 +122,8 @@
         font-size: 0.85rem;
     }
     
-    .btn-view-eco {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    .btn-view-model {
+        background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
         color: white;
         border: none;
         padding: 8px 16px;
@@ -134,14 +134,14 @@
         display: inline-block;
     }
     
-    .btn-view-eco:hover {
+    .btn-view-model:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 4px 12px rgba(45, 55, 72, 0.4);
         color: white;
         text-decoration: none;
     }
     
-    .btn-delete-eco {
+    .btn-delete-model {
         background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
         color: white;
         border: none;
@@ -152,7 +152,7 @@
         margin-left: 8px;
     }
     
-    .btn-delete-eco:hover {
+    .btn-delete-model:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
         color: white;
@@ -176,7 +176,7 @@
     }
     
     .modal-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
         color: white;
         border-radius: 12px 12px 0 0;
     }
@@ -210,58 +210,47 @@
         <ol class="breadcrumb breadcrumb-custom">
             <li class="breadcrumb-item"><a href="{% url 'index' %}">Dashboard</a></li>
             <li class="breadcrumb-item"><a href="{% url 'firmware_inventory' %}">Firmware Inventory</a></li>
-            {% if product_type == 'pcie' %}
-            <li class="breadcrumb-item"><a href="{% url 'firmware_inventory_model_list' %}">PCIe Devices</a></li>
-            <li class="breadcrumb-item active">{{ model }}</li>
-            {% else %}
-            <li class="breadcrumb-item active">{{ product_info.name }}</li>
-            {% endif %}
+            <li class="breadcrumb-item active">PCIe Devices</li>
         </ol>
     </nav>
     
     <!-- Main Container -->
-    <div class="firmware-container" {% if product_type == 'pcie' %}style="background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);"{% endif %}>
+    <div class="firmware-container">
         <!-- Header -->
         <div class="firmware-header">
             <div class="page-header">
                 <div class="header-left">
-                    <h1>{% if product_type == 'pcie' %}{{ model }}{% else %}{{ product_info.name }}{% endif %}</h1>
+                    <h1>PCIe Device Models</h1>
                 </div>
-                <button type="button" class="btn btn-create-eco" data-bs-toggle="modal" data-bs-target="#createEcoModal" {% if product_type == 'pcie' %}style="background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);"{% endif %}>
-                    Create New ECO
+                <button type="button" class="btn btn-create-model" data-bs-toggle="modal" data-bs-target="#createModelModal">
+                    Create New Model
                 </button>
             </div>
         </div>
         
         <!-- Content -->
         <div class="firmware-content">
-            {% if eco_folders %}
-            <table class="eco-table">
+            {% if models %}
+            <table class="model-table">
                 <thead>
                     <tr>
-                        <th>ECO Number</th>
-                        <th>File Count</th>
+                        <th>Model Name</th>
+                        <th>ECO Folders</th>
                         <th>Last Modified</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for eco in eco_folders %}
+                    {% for model in models %}
                     <tr>
-                        <td><span class="eco-number" {% if product_type == 'pcie' %}style="color: #2d3748;"{% endif %}>{{ eco.eco_number }}</span></td>
-                        <td><span class="file-count-badge">{{ eco.file_count }} file(s)</span></td>
-                        <td>{{ eco.last_modified|date:"Y-m-d H:i:s" }}</td>
+                        <td><span class="model-name">{{ model.model_name }}</span></td>
+                        <td><span class="eco-count-badge">{{ model.eco_count }} ECO(s)</span></td>
+                        <td>{{ model.last_modified|date:"Y-m-d H:i:s" }}</td>
                         <td>
-                            {% if product_type == 'pcie' %}
-                            <a href="{% url 'firmware_inventory_pcie_eco_detail' model eco.eco_number %}" class="btn-view-eco" style="background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);">
-                                Manage Files
+                            <a href="{% url 'firmware_inventory_pcie_eco_list' model.model_name %}" class="btn-view-model">
+                                View ECOs
                             </a>
-                            {% else %}
-                            <a href="{% url 'firmware_inventory_eco_detail' product_type eco.eco_number %}" class="btn-view-eco">
-                                Manage Files
-                            </a>
-                            {% endif %}
-                            <button type="button" class="btn-delete-eco" onclick="confirmDeleteEco('{{ eco.eco_number }}', {{ eco.file_count }})">
+                            <button type="button" class="btn-delete-model" onclick="confirmDeleteModel('{{ model.model_name }}', {{ model.eco_count }})">
                                 Delete
                             </button>
                         </td>
@@ -271,54 +260,54 @@
             </table>
             {% else %}
             <div class="empty-state">
-                <h3>No ECO Folders Yet</h3>
-                <p>Click "Create New ECO" to get started</p>
+                <h3>No Models Yet</h3>
+                <p>Click "Create New Model" to get started</p>
             </div>
             {% endif %}
         </div>
     </div>
 </div>
 
-<!-- Create ECO Modal -->
-<div class="modal fade" id="createEcoModal" tabindex="-1" aria-labelledby="createEcoModalLabel" aria-hidden="true">
+<!-- Create Model Modal -->
+<div class="modal fade" id="createModelModal" tabindex="-1" aria-labelledby="createModelModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="createEcoModalLabel">Create New ECO Folder</h5>
+                <h5 class="modal-title" id="createModelModalLabel">Create New Model Folder</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="createEcoForm">
+                <form id="createModelForm">
                     {% csrf_token %}
                     <div class="mb-3">
-                        {{ eco_form.eco_number.label_tag }}
-                        {{ eco_form.eco_number }}
-                        <div class="form-text">{{ eco_form.eco_number.help_text }}</div>
-                        <div id="ecoNumberError" class="invalid-feedback" style="display: none;"></div>
+                        {{ model_form.model_name.label_tag }}
+                        {{ model_form.model_name }}
+                        <div class="form-text">{{ model_form.model_name.help_text }}</div>
+                        <div id="modelNameError" class="invalid-feedback" style="display: none;"></div>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="btnCreateEco" onclick="handleCreateEco(this); return false;">Create ECO</button>
+                <button type="button" class="btn btn-primary" id="btnCreateModel" onclick="handleCreateModel(this); return false;">Create Model</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-function handleCreateEco(btn) {
-    var ecoNumber = document.getElementById('id_eco_number').value.trim();
+function handleCreateModel(btn) {
+    var modelName = document.getElementById('id_model_name').value.trim();
     var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    var errorDiv = document.getElementById('ecoNumberError');
-    var inputField = document.getElementById('id_eco_number');
+    var errorDiv = document.getElementById('modelNameError');
+    var inputField = document.getElementById('id_model_name');
     
     // Reset error
     errorDiv.style.display = 'none';
     inputField.classList.remove('is-invalid');
     
-    if (!ecoNumber) {
-        errorDiv.textContent = 'ECO number is required';
+    if (!modelName) {
+        errorDiv.textContent = 'Model name is required';
         errorDiv.style.display = 'block';
         inputField.classList.add('is-invalid');
         return false;
@@ -328,19 +317,13 @@ function handleCreateEco(btn) {
     btn.disabled = true;
     btn.textContent = 'Creating...';
     
-    {% if product_type == 'pcie' %}
-    var uploadUrl = "{% url 'firmware_inventory_pcie_eco_create' model %}";
-    {% else %}
-    var uploadUrl = "{% url 'firmware_inventory_eco_create' product_type %}";
-    {% endif %}
-    
-    fetch(uploadUrl, {
+    fetch("{% url 'firmware_inventory_model_create' %}", {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-CSRFToken': csrfToken
         },
-        body: 'eco_number=' + encodeURIComponent(ecoNumber)
+        body: 'model_name=' + encodeURIComponent(modelName)
     })
     .then(function(response) {
         return response.json();
@@ -349,11 +332,11 @@ function handleCreateEco(btn) {
         if (data.success) {
             window.location.reload();
         } else {
-            errorDiv.textContent = data.error || 'Failed to create ECO folder';
+            errorDiv.textContent = data.error || 'Failed to create model folder';
             errorDiv.style.display = 'block';
             inputField.classList.add('is-invalid');
             btn.disabled = false;
-            btn.textContent = 'Create ECO';
+            btn.textContent = 'Create Model';
         }
     })
     .catch(function(error) {
@@ -361,32 +344,26 @@ function handleCreateEco(btn) {
         errorDiv.style.display = 'block';
         inputField.classList.add('is-invalid');
         btn.disabled = false;
-        btn.textContent = 'Create ECO';
+        btn.textContent = 'Create Model';
     });
     
     return false;
 }
 
-function confirmDeleteEco(ecoNumber, fileCount) {
-    const message = fileCount > 0 
-        ? `Are you sure you want to delete ECO folder "${ecoNumber}" and all ${fileCount} file(s) in it?\n\nThis will:\n- Delete the ECO folder from filesystem\n- Remove all ${fileCount} firmware file records from database\n\nThis action cannot be undone!`
-        : `Are you sure you want to delete ECO folder "${ecoNumber}"?`;
+function confirmDeleteModel(modelName, ecoCount) {
+    const message = ecoCount > 0 
+        ? `Are you sure you want to delete model folder "${modelName}" and all its ${ecoCount} ECO folder(s)?\n\nThis will:\n- Delete the model folder from filesystem\n- Remove all related firmware file records from database\n\nThis action cannot be undone!`
+        : `Are you sure you want to delete model folder "${modelName}"?`;
     
     if (confirm(message)) {
-        deleteEco(ecoNumber);
+        deleteModel(modelName);
     }
 }
 
-function deleteEco(ecoNumber) {
+function deleteModel(modelName) {
     var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     
-    {% if product_type == 'pcie' %}
-    var deleteUrl = "{% url 'firmware_inventory_pcie_eco_delete' model 'ECO_NUMBER_PLACEHOLDER' %}".replace('ECO_NUMBER_PLACEHOLDER', ecoNumber);
-    {% else %}
-    var deleteUrl = "{% url 'firmware_inventory_eco_delete' product_type 'ECO_NUMBER_PLACEHOLDER' %}".replace('ECO_NUMBER_PLACEHOLDER', ecoNumber);
-    {% endif %}
-    
-    fetch(deleteUrl, {
+    fetch("{% url 'firmware_inventory_model_delete' 'MODEL_NAME_PLACEHOLDER' %}".replace('MODEL_NAME_PLACEHOLDER', modelName), {
         method: 'POST',
         headers: {
             'X-CSRFToken': csrfToken,
@@ -398,10 +375,10 @@ function deleteEco(ecoNumber) {
     })
     .then(function(data) {
         if (data.success) {
-            alert('ECO folder "' + ecoNumber + '" deleted successfully');
+            alert('Model folder "' + modelName + '" deleted successfully');
             window.location.reload();
         } else {
-            alert('Error deleting ECO folder: ' + (data.error || 'Unknown error'));
+            alert('Error deleting model folder: ' + (data.error || 'Unknown error'));
         }
     })
     .catch(function(error) {
@@ -411,3 +388,4 @@ function deleteEco(ecoNumber) {
 </script>
 
 {% endblock %}
+

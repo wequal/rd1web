@@ -9,7 +9,7 @@ import logging
 import time
 
 from ..models import FirmwareFile
-from ..form import EcoFolderForm, FirmwareInventoryUploadForm
+from ..form import EcoFolderForm, ModelFolderForm, FirmwareInventoryUploadForm
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +82,14 @@ PRODUCT_TYPES = [
         'icon': 'fas fa-server',
         'color': 'primary'
     },
+    {
+        'code': 'pcie',
+        'name': 'PCIe Devices',
+        'description': 'PCIe Device Firmware (organized by model)',
+        'has_retimers': False,
+        'icon': 'fas fa-plug',
+        'color': 'dark'
+    },
 ]
 
 
@@ -91,6 +99,163 @@ def get_product_info(product_code):
         if product['code'] == product_code:
             return product
     return None
+
+
+@login_required
+@permission_required('pxe.can_access_firmware_inventory', raise_exception=True)
+def firmware_inventory_model_list(request):
+    """List all models under pcie product type"""
+    
+    product_type = 'pcie'
+    product_info = get_product_info(product_type)
+    
+    # Get model folders from filesystem
+    pcie_dir = os.path.join(FIRMWARE_BASE_DIR, product_type)
+    models = []
+    
+    if os.path.exists(pcie_dir):
+        try:
+            from django.db.models import Count
+            from datetime import datetime
+            
+            # Get all ECO counts per model in ONE query
+            eco_counts = dict(
+                FirmwareFile.objects.filter(product_type=product_type)
+                .values('model')
+                .annotate(count=Count('eco_number', distinct=True))
+                .values_list('model', 'count')
+            )
+            
+            for item in os.listdir(pcie_dir):
+                item_path = os.path.join(pcie_dir, item)
+                if os.path.isdir(item_path):
+                    # Get ECO count from dictionary
+                    eco_count = eco_counts.get(item, 0)
+                    
+                    # Get last modified time
+                    mtime = os.path.getmtime(item_path)
+                    last_modified = datetime.fromtimestamp(mtime)
+                    
+                    models.append({
+                        'model_name': item,
+                        'eco_count': eco_count,
+                        'last_modified': last_modified,
+                    })
+            
+            # Sort by model name
+            models.sort(key=lambda x: x['model_name'])
+            
+            logger.info(f"Listed {len(models)} PCIe models")
+            
+        except Exception as e:
+            logger.error(f"Error listing PCIe models: {e}")
+            messages.error(request, f'Error listing PCIe models: {str(e)}')
+            connection.close()
+    
+    context = {
+        'product_type': product_type,
+        'product_info': product_info,
+        'models': models,
+        'model_form': ModelFolderForm(),
+    }
+    
+    return render(request, 'features/firmware_inventory_model_list.html', context)
+
+
+@login_required
+@permission_required('pxe.can_access_firmware_inventory', raise_exception=True)
+@require_http_methods(["POST"])
+def firmware_inventory_model_create(request):
+    """Create a new model folder under pcie (AJAX endpoint)"""
+    
+    product_type = 'pcie'
+    form = ModelFolderForm(request.POST)
+    
+    if form.is_valid():
+        model_name = form.cleaned_data['model_name']
+        
+        # Create directory
+        model_dir = os.path.join(FIRMWARE_BASE_DIR, product_type, model_name)
+        
+        try:
+            if os.path.exists(model_dir):
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Model folder "{model_name}" already exists'
+                }, status=400)
+            
+            os.makedirs(model_dir, exist_ok=True)
+            logger.info(f"Created PCIe model folder: {model_dir} by user {request.user.username}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Model folder "{model_name}" created successfully',
+                'model_name': model_name
+            })
+            
+        except Exception as e:
+            logger.error(f"Error creating model folder {model_dir}: {e}")
+            return JsonResponse({
+                'success': False,
+                'error': f'Failed to create model folder: {str(e)}'
+            }, status=500)
+    else:
+        errors = form.errors.as_json()
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid form data',
+            'errors': errors
+        }, status=400)
+
+
+@login_required
+@permission_required('pxe.can_access_firmware_inventory', raise_exception=True)
+@require_http_methods(["POST"])
+def firmware_inventory_model_delete(request, model_name):
+    """Delete an entire model folder and all its ECOs (AJAX endpoint)"""
+    
+    product_type = 'pcie'
+    try:
+        import shutil
+        
+        # Get the model directory path
+        model_dir = os.path.join(FIRMWARE_BASE_DIR, product_type, model_name)
+        
+        if not os.path.exists(model_dir):
+            return JsonResponse({
+                'success': False,
+                'error': f'Model folder "{model_name}" does not exist'
+            }, status=404)
+        
+        # Delete all database records for this model
+        deleted_count = FirmwareFile.objects.filter(
+            product_type=product_type,
+            model=model_name
+        ).delete()[0]
+        
+        # Delete the model folder from filesystem
+        try:
+            shutil.rmtree(model_dir)
+            logger.info(f"Deleted PCIe model folder: {model_dir} ({deleted_count} DB records) by user {request.user.username}")
+        except Exception as e:
+            logger.error(f"Error deleting model folder {model_dir}: {e}")
+            return JsonResponse({
+                'success': False,
+                'error': f'Failed to delete model folder from filesystem: {str(e)}'
+            }, status=500)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Model folder "{model_name}" and all its contents deleted successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error deleting PCIe model folder {model_name}: {e}")
+        connection.close()
+        return JsonResponse({
+            'success': False,
+            'error': f'Failed to delete model folder: {str(e)}'
+        }, status=500)
 
 
 @login_required
@@ -107,8 +272,8 @@ def firmware_inventory_main(request):
 
 @login_required
 @permission_required('pxe.can_access_firmware_inventory', raise_exception=True)
-def firmware_inventory_eco_list(request, product_type):
-    """List all ECO folders for a specific product type"""
+def firmware_inventory_eco_list(request, product_type, model=None):
+    """List all ECO folders for a specific product type (and model if pcie)"""
     
     # Validate product type
     product_info = get_product_info(product_type)
@@ -116,8 +281,16 @@ def firmware_inventory_eco_list(request, product_type):
         messages.error(request, f'Invalid product type: {product_type}')
         return redirect('firmware_inventory')
     
+    # If pcie but no model specified, redirect to model list
+    if product_type == 'pcie' and not model:
+        return redirect('firmware_inventory_model_list')
+    
     # Get ECO folders from filesystem
-    product_dir = os.path.join(FIRMWARE_BASE_DIR, product_type)
+    if product_type == 'pcie':
+        product_dir = os.path.join(FIRMWARE_BASE_DIR, product_type, model)
+    else:
+        product_dir = os.path.join(FIRMWARE_BASE_DIR, product_type)
+        
     eco_folders = []
     
     if os.path.exists(product_dir):
@@ -126,8 +299,12 @@ def firmware_inventory_eco_list(request, product_type):
             from datetime import datetime
             
             # Get all file counts in ONE query (fixes N+1 problem)
+            query_params = {'product_type': product_type}
+            if product_type == 'pcie':
+                query_params['model'] = model
+                
             file_counts = dict(
-                FirmwareFile.objects.filter(product_type=product_type)
+                FirmwareFile.objects.filter(**query_params)
                 .values('eco_number')
                 .annotate(count=Count('id'))
                 .values_list('eco_number', 'count')
@@ -152,7 +329,7 @@ def firmware_inventory_eco_list(request, product_type):
             # Sort by ECO number
             eco_folders.sort(key=lambda x: x['eco_number'])
             
-            logger.info(f"Listed {len(eco_folders)} ECO folders for {product_type} with {len(file_counts)} DB entries (1 query)")
+            logger.info(f"Listed {len(eco_folders)} ECO folders for {product_type}{'/' + model if model else ''}")
             
         except Exception as e:
             logger.error(f"Error listing ECO folders for {product_type}: {e}")
@@ -162,6 +339,7 @@ def firmware_inventory_eco_list(request, product_type):
     context = {
         'product_type': product_type,
         'product_info': product_info,
+        'model': model,
         'eco_folders': eco_folders,
         'eco_form': EcoFolderForm(),
     }
@@ -172,7 +350,7 @@ def firmware_inventory_eco_list(request, product_type):
 @login_required
 @permission_required('pxe.can_access_firmware_inventory', raise_exception=True)
 @require_http_methods(["POST"])
-def firmware_inventory_eco_create(request, product_type):
+def firmware_inventory_eco_create(request, product_type, model=None):
     """Create a new ECO folder (AJAX endpoint)"""
     
     # Validate product type
@@ -183,13 +361,23 @@ def firmware_inventory_eco_create(request, product_type):
             'error': f'Invalid product type: {product_type}'
         }, status=400)
     
+    # If pcie but no model specified
+    if product_type == 'pcie' and not model:
+        return JsonResponse({
+            'success': False,
+            'error': 'Model must be specified for PCIe product type'
+        }, status=400)
+    
     form = EcoFolderForm(request.POST)
     
     if form.is_valid():
         eco_number = form.cleaned_data['eco_number']
         
         # Create directory
-        eco_dir = os.path.join(FIRMWARE_BASE_DIR, product_type, eco_number)
+        if product_type == 'pcie':
+            eco_dir = os.path.join(FIRMWARE_BASE_DIR, product_type, model, eco_number)
+        else:
+            eco_dir = os.path.join(FIRMWARE_BASE_DIR, product_type, eco_number)
         
         try:
             if os.path.exists(eco_dir):
@@ -224,7 +412,7 @@ def firmware_inventory_eco_create(request, product_type):
 
 @login_required
 @permission_required('pxe.can_access_firmware_inventory', raise_exception=True)
-def firmware_inventory_eco_detail(request, product_type, eco_number):
+def firmware_inventory_eco_detail(request, product_type, eco_number, model=None):
     """Manage firmware files in an ECO folder"""
     
     # Validate product type
@@ -233,17 +421,32 @@ def firmware_inventory_eco_detail(request, product_type, eco_number):
         messages.error(request, f'Invalid product type: {product_type}')
         return redirect('firmware_inventory')
     
+    # If pcie but no model specified
+    if product_type == 'pcie' and not model:
+        return redirect('firmware_inventory_model_list')
+    
     # Verify ECO folder exists
-    eco_dir = os.path.join(FIRMWARE_BASE_DIR, product_type, eco_number)
+    if product_type == 'pcie':
+        eco_dir = os.path.join(FIRMWARE_BASE_DIR, product_type, model, eco_number)
+    else:
+        eco_dir = os.path.join(FIRMWARE_BASE_DIR, product_type, eco_number)
+        
     if not os.path.exists(eco_dir):
         messages.error(request, f'ECO folder "{eco_number}" does not exist')
-        return redirect('firmware_inventory_eco_list', product_type=product_type)
+        if product_type == 'pcie':
+            return redirect('firmware_inventory_eco_list', product_type=product_type, model=model)
+        else:
+            return redirect('firmware_inventory_eco_list', product_type=product_type)
     
     # Get existing firmware files from database
-    firmware_files = FirmwareFile.objects.filter(
-        product_type=product_type,
-        eco_number=eco_number
-    ).select_related('uploaded_by').order_by('file_type')
+    query_params = {
+        'product_type': product_type,
+        'eco_number': eco_number
+    }
+    if product_type == 'pcie':
+        query_params['model'] = model
+        
+    firmware_files = FirmwareFile.objects.filter(**query_params).select_related('uploaded_by').order_by('file_type')
     
     # Create upload form
     upload_form = FirmwareInventoryUploadForm(product_type=product_type)
@@ -251,6 +454,7 @@ def firmware_inventory_eco_detail(request, product_type, eco_number):
     context = {
         'product_type': product_type,
         'product_info': product_info,
+        'model': model,
         'eco_number': eco_number,
         'firmware_files': firmware_files,
         'upload_form': upload_form,
@@ -262,7 +466,7 @@ def firmware_inventory_eco_detail(request, product_type, eco_number):
 @login_required
 @permission_required('pxe.can_access_firmware_inventory', raise_exception=True)
 @require_http_methods(["POST"])
-def firmware_inventory_file_upload(request, product_type, eco_number):
+def firmware_inventory_file_upload(request, product_type, eco_number, model=None):
     """Handle firmware file uploads"""
     
     # Validate product type
@@ -270,12 +474,24 @@ def firmware_inventory_file_upload(request, product_type, eco_number):
     if not product_info:
         messages.error(request, f'Invalid product type: {product_type}')
         return redirect('firmware_inventory')
+        
+    # If pcie but no model specified
+    if product_type == 'pcie' and not model:
+        messages.error(request, 'Model must be specified for PCIe upload')
+        return redirect('firmware_inventory_model_list')
     
     # Verify ECO folder exists
-    eco_dir = os.path.join(FIRMWARE_BASE_DIR, product_type, eco_number)
+    if product_type == 'pcie':
+        eco_dir = os.path.join(FIRMWARE_BASE_DIR, product_type, model, eco_number)
+    else:
+        eco_dir = os.path.join(FIRMWARE_BASE_DIR, product_type, eco_number)
+        
     if not os.path.exists(eco_dir):
         messages.error(request, f'ECO folder "{eco_number}" does not exist')
-        return redirect('firmware_inventory_eco_list', product_type=product_type)
+        if product_type == 'pcie':
+            return redirect('firmware_inventory_eco_list', product_type=product_type, model=model)
+        else:
+            return redirect('firmware_inventory_eco_list', product_type=product_type)
     
     form = FirmwareInventoryUploadForm(request.POST, request.FILES, product_type=product_type)
     
@@ -290,8 +506,7 @@ def firmware_inventory_file_upload(request, product_type, eco_number):
             'retimer_5_file': ['retimer_5'],
         }
         
-        # PHASE 1: Save files to disk (OUTSIDE transaction - can take time)
-        # Handle regular files (GPU, retimer_5)
+        # PHASE 1: Save files to disk
         for field_name, file_types in file_type_mapping.items():
             if field_name not in form.cleaned_data:
                 continue
@@ -307,11 +522,15 @@ def firmware_inventory_file_upload(request, product_type, eco_number):
                 original_filename = uploaded_file.name
                 _, file_extension = os.path.splitext(original_filename)
                 
-                # Generate new filename: {PRODUCT}_{ECO}_{TYPE}.ext
-                new_filename = f"{product_type}_{eco_number}_{file_type}{file_extension}"
+                # Generate new filename
+                if product_type == 'pcie':
+                    new_filename = f"pcie_{model}_{eco_number}_{file_type}{file_extension}"
+                else:
+                    new_filename = f"{product_type}_{eco_number}_{file_type}{file_extension}"
+                    
                 file_path = os.path.join(eco_dir, new_filename)
                 
-                # Save file to disk (outside transaction)
+                # Save file to disk
                 with open(file_path, 'wb+') as destination:
                     for chunk in uploaded_file.chunks():
                         destination.write(chunk)
@@ -347,11 +566,15 @@ def firmware_inventory_file_upload(request, product_type, eco_number):
                     _, file_extension = os.path.splitext(original_filename)
                     
                     # Generate new filename
-                    new_filename = f"{product_type}_{eco_number}_{file_type}{file_extension}"
+                    if product_type == 'pcie':
+                        new_filename = f"pcie_{model}_{eco_number}_{file_type}{file_extension}"
+                    else:
+                        new_filename = f"{product_type}_{eco_number}_{file_type}{file_extension}"
+                        
                     file_path = os.path.join(eco_dir, new_filename)
                     
-                    # Save file to disk (copy the same file for each retimer)
-                    combined_file.seek(0)  # Reset file pointer
+                    # Save file to disk
+                    combined_file.seek(0)
                     with open(file_path, 'wb+') as destination:
                         for chunk in combined_file.chunks():
                             destination.write(chunk)
@@ -375,23 +598,29 @@ def firmware_inventory_file_upload(request, product_type, eco_number):
                     errors.append(error_msg)
                     logger.error(error_msg)
         
-        # PHASE 2: Update database (OPTIMIZED with bulk operations - minimal lock time)
+        # PHASE 2: Update database
         if saved_files_info:
             db_start_time = time.time()
             
             try:
                 with transaction.atomic():
-                    user = request.user  # Cache user object
+                    user = request.user
                     
-                    # Single query to find existing files (with row locks)
+                    # Single query to find existing files
                     file_types = [f['file_type'] for f in saved_files_info]
+                    db_filter = {
+                        'product_type': product_type,
+                        'eco_number': eco_number,
+                        'file_type__in': file_types
+                    }
+                    if product_type == 'pcie':
+                        db_filter['model'] = model
+                    else:
+                        db_filter['model__isnull'] = True
+                        
                     existing_files = {
-                        (f.product_type, f.eco_number, f.file_type): f
-                        for f in FirmwareFile.objects.filter(
-                            product_type=product_type,
-                            eco_number=eco_number,
-                            file_type__in=file_types
-                        ).select_for_update()
+                        (f.product_type, f.model, f.eco_number, f.file_type): f
+                        for f in FirmwareFile.objects.filter(**db_filter).select_for_update()
                     }
                     
                     # Separate updates and creates
@@ -399,7 +628,7 @@ def firmware_inventory_file_upload(request, product_type, eco_number):
                     to_create = []
                     
                     for file_info in saved_files_info:
-                        key = (product_type, eco_number, file_info['file_type'])
+                        key = (product_type, model, eco_number, file_info['file_type'])
                         
                         if key in existing_files:
                             # Update existing record
@@ -414,6 +643,7 @@ def firmware_inventory_file_upload(request, product_type, eco_number):
                             # Create new record
                             to_create.append(FirmwareFile(
                                 product_type=product_type,
+                                model=model,
                                 eco_number=eco_number,
                                 file_type=file_info['file_type'],
                                 filename=file_info['filename'],
@@ -423,7 +653,7 @@ def firmware_inventory_file_upload(request, product_type, eco_number):
                                 uploaded_by=user,
                             ))
                     
-                    # Bulk operations (FAST - 2 queries max instead of 16!)
+                    # Bulk operations
                     if to_update:
                         FirmwareFile.objects.bulk_update(
                             to_update,
@@ -435,24 +665,14 @@ def firmware_inventory_file_upload(request, product_type, eco_number):
                     
                     uploaded_count = len(to_update) + len(to_create)
                 
-                # Log OUTSIDE transaction (no I/O blocking)
                 db_duration = time.time() - db_start_time
-                
-                if db_duration > 0.5:
-                    logger.warning(f"Slow firmware DB transaction: {db_duration*1000:.0f}ms for {uploaded_count} files - may cause lock contention")
-                else:
-                    logger.info(f"Firmware DB update: {db_duration*1000:.0f}ms for {uploaded_count} files by {user.username}")
-                
-                if to_update:
-                    logger.info(f"Updated {len(to_update)} existing firmware file(s)")
-                if to_create:
-                    logger.info(f"Created {len(to_create)} new firmware file(s)")
+                logger.info(f"Firmware DB update: {db_duration*1000:.0f}ms for {uploaded_count} files by {user.username}")
                     
             except Exception as e:
                 error_msg = f"Error updating database records: {str(e)}"
                 errors.append(error_msg)
                 logger.error(error_msg)
-                connection.close()  # Ensure connection is released on error
+                connection.close()
         
         if uploaded_count > 0:
             messages.success(request, f'Successfully uploaded {uploaded_count} firmware file(s)')
@@ -465,7 +685,10 @@ def firmware_inventory_file_upload(request, product_type, eco_number):
         for error in form.errors.values():
             messages.error(request, error)
     
-    return redirect('firmware_inventory_eco_detail', product_type=product_type, eco_number=eco_number)
+    if product_type == 'pcie':
+        return redirect('firmware_inventory_eco_detail', product_type=product_type, model=model, eco_number=eco_number)
+    else:
+        return redirect('firmware_inventory_eco_detail', product_type=product_type, eco_number=eco_number)
 
 
 @login_required
@@ -510,7 +733,7 @@ def firmware_inventory_file_delete(request, file_id):
 @login_required
 @permission_required('pxe.can_access_firmware_inventory', raise_exception=True)
 @require_http_methods(["POST"])
-def firmware_inventory_eco_delete(request, product_type, eco_number):
+def firmware_inventory_eco_delete(request, product_type, eco_number, model=None):
     """Delete an entire ECO folder and all its firmware files (AJAX endpoint)"""
     
     try:
@@ -525,7 +748,15 @@ def firmware_inventory_eco_delete(request, product_type, eco_number):
             }, status=400)
         
         # Get the ECO directory path
-        eco_dir = os.path.join(FIRMWARE_BASE_DIR, product_type, eco_number)
+        if product_type == 'pcie':
+            if not model:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Model must be specified for PCIe ECO deletion'
+                }, status=400)
+            eco_dir = os.path.join(FIRMWARE_BASE_DIR, product_type, model, eco_number)
+        else:
+            eco_dir = os.path.join(FIRMWARE_BASE_DIR, product_type, eco_number)
         
         if not os.path.exists(eco_dir):
             return JsonResponse({
@@ -534,10 +765,14 @@ def firmware_inventory_eco_delete(request, product_type, eco_number):
             }, status=404)
         
         # Delete all database records for this ECO
-        deleted_count = FirmwareFile.objects.filter(
-            product_type=product_type,
-            eco_number=eco_number
-        ).delete()[0]
+        db_filter = {
+            'product_type': product_type,
+            'eco_number': eco_number
+        }
+        if product_type == 'pcie':
+            db_filter['model'] = model
+            
+        deleted_count = FirmwareFile.objects.filter(**db_filter).delete()[0]
         
         # Delete the ECO folder from filesystem
         try:
@@ -556,7 +791,7 @@ def firmware_inventory_eco_delete(request, product_type, eco_number):
         })
         
     except Exception as e:
-        logger.error(f"Error deleting ECO folder {product_type}/{eco_number}: {e}")
+        logger.error(f"Error deleting ECO folder {product_type}/{model+'/' if model else ''}{eco_number}: {e}")
         connection.close()  # Ensure connection is released on error
         return JsonResponse({
             'success': False,
