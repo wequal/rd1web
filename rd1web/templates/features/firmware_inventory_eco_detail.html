@@ -253,7 +253,7 @@
             <li class="breadcrumb-item"><a href="{% url 'index' %}">Dashboard</a></li>
             <li class="breadcrumb-item"><a href="{% url 'firmware_inventory' %}">Firmware Inventory</a></li>
             {% if product_type == 'pcie' %}
-            <li class="breadcrumb-item"><a href="{% url 'firmware_inventory_model_list' %}">PCIe Devices</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'firmware_inventory_model_list' %}">PCIe GPU</a></li>
             <li class="breadcrumb-item"><a href="{% url 'firmware_inventory_pcie_eco_list' model %}">{{ model }}</a></li>
             {% else %}
             <li class="breadcrumb-item"><a href="{% url 'firmware_inventory_eco_list' product_type %}">{{ product_info.name }}</a></li>

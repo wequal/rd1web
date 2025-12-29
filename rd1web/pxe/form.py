@@ -541,7 +541,7 @@ class ModelFolderForm(forms.Form):
         max_length=100,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Enter model name (e.g., ConnectX-6)',
+            'placeholder': '',
         }),
         label='Model Name',
         help_text='Enter the model name for the new folder'

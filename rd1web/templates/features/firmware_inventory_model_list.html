@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}PCIe Devices - Models{% endblock %}
+{% block title %}PCIe GPU - Models{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -210,7 +210,7 @@
         <ol class="breadcrumb breadcrumb-custom">
             <li class="breadcrumb-item"><a href="{% url 'index' %}">Dashboard</a></li>
             <li class="breadcrumb-item"><a href="{% url 'firmware_inventory' %}">Firmware Inventory</a></li>
-            <li class="breadcrumb-item active">PCIe Devices</li>
+            <li class="breadcrumb-item active">PCIe GPU</li>
         </ol>
     </nav>
     
@@ -220,7 +220,7 @@
         <div class="firmware-header">
             <div class="page-header">
                 <div class="header-left">
-                    <h1>PCIe Device Models</h1>
+                    <h1>PCIe GPU Models</h1>
                 </div>
                 <button type="button" class="btn btn-create-model" data-bs-toggle="modal" data-bs-target="#createModelModal">
                     Create New Model

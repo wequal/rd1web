@@ -84,8 +84,8 @@ PRODUCT_TYPES = [
     },
     {
         'code': 'pcie',
-        'name': 'PCIe Devices',
-        'description': 'PCIe Device Firmware (organized by model)',
+        'name': 'PCIe GPU',
+        'description': 'PCIe GPU Firmware (organized by model)',
         'has_retimers': False,
         'icon': 'fas fa-plug',
         'color': 'dark'
