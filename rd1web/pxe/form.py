@@ -391,24 +391,24 @@ class PcieGpuForm(forms.Form):
     rma_number=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='RMA Number',required=False)
     
     # GPU1-8 SN
-    gpu1_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='GPU1 SN',required=False)
-    gpu2_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='GPU2 SN',required=False)
-    gpu3_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='GPU3 SN',required=False)
-    gpu4_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='GPU4 SN',required=False)
-    gpu5_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='GPU5 SN',required=False)
-    gpu6_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='GPU6 SN',required=False)
-    gpu7_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='GPU7 SN',required=False)
-    gpu8_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='GPU8 SN',required=False)
+    gpu1_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='GPU1(BMC GPU12) SN',required=False)
+    gpu2_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='GPU2(BMC GPU11) SN',required=False)
+    gpu3_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='GPU3(BMC GPU10) SN',required=False)
+    gpu4_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='GPU4(BMC GPU9) SN',required=False)
+    gpu5_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='GPU5(BMC GPU4) SN',required=False)
+    gpu6_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='GPU6(BMC GPU3) SN',required=False)
+    gpu7_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='GPU7(BMC GPU2) SN',required=False)
+    gpu8_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='GPU8(BMC GPU1) SN',required=False)
 
     # Replacement GPU1-8 SN
-    rg1_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='Replacement GPU1 SN',required=False)
-    rg2_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='Replacement GPU2 SN',required=False)
-    rg3_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='Replacement GPU3 SN',required=False)
-    rg4_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='Replacement GPU4 SN',required=False)
-    rg5_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='Replacement GPU5 SN',required=False)
-    rg6_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='Replacement GPU6 SN',required=False)
-    rg7_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='Replacement GPU7 SN',required=False)
-    rg8_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='Replacement GPU8 SN',required=False)
+    rg1_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='Replacement GPU1(BMC GPU12) SN',required=False)
+    rg2_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='Replacement GPU2(BMC GPU11) SN',required=False)
+    rg3_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='Replacement GPU3(BMC GPU10) SN',required=False)
+    rg4_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='Replacement GPU4(BMC GPU9) SN',required=False)
+    rg5_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='Replacement GPU5(BMC GPU4) SN',required=False)
+    rg6_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='Replacement GPU6(BMC GPU3) SN',required=False)
+    rg7_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='Replacement GPU7(BMC GPU2) SN',required=False)
+    rg8_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}),label='Replacement GPU8(BMC GPU1) SN',required=False)
 
     show_replacement=forms.BooleanField(required=False,label="Replacement GPU SN",initial=False)
     bmc_ip=forms.ChoiceField(choices=[], widget=forms.Select(attrs={'class':'form-control','style': 'width: 500px;',}),label='BMC IP')
@@ -422,7 +422,7 @@ class PcieGpuForm(forms.Form):
         choices=[
             ('default', 'Default'),
             ('pre_gpu_test', 'Pre GPU Test'),
-            ('fd2', 'FD2'),
+            ('fd2', 'FD'),
         ],
         widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
         label='Tests',

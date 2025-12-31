@@ -403,6 +403,8 @@ def rma_pxe(request):
                     params_storage[f'rg{i}_sn'] = sn
                 
                 tests_list = list(tests) if tests else []
+                # Add 'pcie' to test parameters for PCIE GPU test
+                tests_list.append('pcie')
                 if fw_update:
                     tests_list.append('fw_update')
                     if pcie_model: tests_list.append(f'pcie_model={pcie_model}')
