@@ -400,6 +400,132 @@ def rma_download_folder_status(request, task_id):
         logger.error(f"Error checking task status {task_id}: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
+def _is_safe_gpu_sn_query(query: str) -> bool:
+    """
+    Basic guardrails: GPU SN is treated as a plain substring for filename/path matching.
+    """
+    if not query:
+        return False
+    # Avoid unbounded/abusive scans
+    return len(query) <= 64
+
+
+def find_rma_dirs_by_gpu_sn(gpu_sn_query: str):
+    """
+    Find top-level RMA directories whose descendant filenames contain the provided GPU SN substring.
+
+    Returns:
+        set[str]: set of top-level directory names (e.g. {"RR35B_RR35B"})
+    """
+    if not _is_safe_gpu_sn_query(gpu_sn_query):
+        return set()
+
+    query = gpu_sn_query.strip()
+    if not query:
+        return set()
+
+    cache_key = f"rma_gpu_sn_match_{query}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        # Stored as list for cache safety
+        return set(cached)
+
+    def _escape_find_name_fragment(text: str) -> str:
+        """
+        Escape special glob chars for GNU find -name pattern matching.
+        (find -name uses shell-style patterns, not regex)
+        """
+        return re.sub(r'([\\*\?\[\]])', r'\\\1', text)
+
+    def _dir_has_filename_match(full_path: str, dir_name: str) -> bool:
+        """
+        Fast path: use system `find` to locate any filename containing query, early-exit on first match.
+        Falls back to os.walk if `find` isn't available or errors.
+        """
+        try:
+            import subprocess
+
+            # Ex: *1324323021977*  (escaped for find's glob matching)
+            pattern = f"*{_escape_find_name_fragment(query)}*"
+
+            # Skip .TempZips subtree, then look for any file with name match and stop at first hit.
+            # Note: `find` exits 0 even if no match; we rely on stdout content.
+            cmd = [
+                "find",
+                full_path,
+                "(",
+                "-path",
+                "*/.TempZips/*",
+                "-o",
+                "-name",
+                ".TempZips",
+                ")",
+                "-prune",
+                "-o",
+                "-type",
+                "f",
+                "-name",
+                pattern,
+                "-print",
+                "-quit",
+            ]
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=15,
+                check=False,
+            )
+            return bool(result.stdout and result.stdout.strip())
+        except Exception:
+            # Fallback: pure Python walk (slower)
+            try:
+                for root, dirs, files in os.walk(full_path):
+                    dirs[:] = [d for d in dirs if d not in {'.TempZips'}]
+                    for filename in files:
+                        if query in filename:
+                            return True
+            except Exception as e:
+                logger.warning(f"GPU SN scan error for {dir_name}: {e}")
+            return False
+
+    all_rma_directories = get_rma_directories_basic()
+
+    # Parallelize by top-level directory (IO-bound); keep concurrency modest to avoid disk thrash.
+    try:
+        import concurrent.futures
+
+        max_workers = 8
+
+        def _scan_one(rma_dir):
+            dir_name = rma_dir.get('name')
+            full_path = rma_dir.get('full_path')
+            if not dir_name or not full_path or not os.path.isdir(full_path):
+                return None
+            return dir_name if _dir_has_filename_match(full_path, dir_name) else None
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            results = executor.map(_scan_one, all_rma_directories)
+            matched_dirs = {r for r in results if r}
+    except Exception as e:
+        # Safety fallback: serial scan
+        logger.warning(f"GPU SN parallel scan fallback to serial: {e}")
+        matched_dirs = set()
+        for rma_dir in all_rma_directories:
+            dir_name = rma_dir.get('name')
+            full_path = rma_dir.get('full_path')
+            if not dir_name or not full_path or not os.path.isdir(full_path):
+                continue
+            if _dir_has_filename_match(full_path, dir_name):
+                matched_dirs.add(dir_name)
+
+    # Cache for 5 minutes to reduce filesystem load
+    cache.set(cache_key, list(matched_dirs), 300)
+    return matched_dirs
+
+
 @login_required  
 def rma_log(request, path=""):
     """
@@ -416,6 +542,7 @@ def rma_log(request, path=""):
     
     # Get search query from request
     search_query = request.GET.get('search', '').strip()
+    search_mode = request.GET.get('search_mode', 'basic').strip() or 'basic'
     page_number = request.GET.get('page', 1)
     
     # Check if cache refresh is requested
@@ -428,11 +555,14 @@ def rma_log(request, path=""):
     all_rma_directories = get_rma_directories_basic()
     
     # Filter directories based on search query
-    if search_query:
+    if search_query and search_mode == 'gpu_sn':
+        matched = find_rma_dirs_by_gpu_sn(search_query)
+        rma_directories = [d for d in all_rma_directories if d.get('name') in matched]
+    elif search_query:
         filtered_directories = []
         for rma_dir in all_rma_directories:
             # Search in base_sn or rma_number
-            if (search_query.lower() in rma_dir['base_sn'].lower() or 
+            if (search_query.lower() in rma_dir['base_sn'].lower() or
                 search_query in rma_dir['rma_number']):
                 filtered_directories.append(rma_dir)
         rma_directories = filtered_directories
@@ -470,6 +600,7 @@ def rma_log(request, path=""):
         'page_obj': page_obj,
         'rma_directories': page_directories_with_stats,
         'search_query': search_query,
+        'search_mode': search_mode,
         'total_directories': len(all_rma_directories),
         'filtered_count': len(rma_directories),
         'paginator': paginator,
@@ -485,6 +616,7 @@ def rma_log_ajax(request):
     """
     try:
         search_query = request.GET.get('search', '').strip()
+        search_mode = request.GET.get('search_mode', 'basic').strip() or 'basic'
         page_number = request.GET.get('page', 1)
         
         # Check if cache refresh is requested
@@ -497,11 +629,14 @@ def rma_log_ajax(request):
         all_rma_directories = get_rma_directories_basic()
         
         # Filter directories based on search query
-        if search_query:
+        if search_query and search_mode == 'gpu_sn':
+            matched = find_rma_dirs_by_gpu_sn(search_query)
+            rma_directories = [d for d in all_rma_directories if d.get('name') in matched]
+        elif search_query:
             filtered_directories = []
             for rma_dir in all_rma_directories:
                 # Search in base_sn or rma_number
-                if (search_query.lower() in rma_dir['base_sn'].lower() or 
+                if (search_query.lower() in rma_dir['base_sn'].lower() or
                     search_query in rma_dir['rma_number']):
                     filtered_directories.append(rma_dir)
             rma_directories = filtered_directories
@@ -552,6 +687,7 @@ def rma_log_ajax(request):
         response_data = {
             'success': True,
             'directories': directories_data,
+            'search_mode': search_mode,
             'has_next': page_obj.has_next(),
             'has_previous': page_obj.has_previous(),
             'current_page': page_obj.number,
