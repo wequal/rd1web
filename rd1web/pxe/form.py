@@ -415,8 +415,6 @@ class PcieGpuForm(forms.Form):
     image=forms.ChoiceField(choices=[('','-- Select Image --'),('ubuntu2204-x86-rma','Ubuntu2204')],label='Image')
     
     fw_update=forms.BooleanField(required=False,label="Firmware Update",initial=False)
-    pcie_model=forms.CharField(required=False,label='PCIE Model',widget=forms.Select(attrs={'class':'form-control pcie-model-select','style': 'width: 500px;'}))
-    pcie_eco_number=forms.CharField(required=False,label='PCIE ECO Number',widget=forms.Select(attrs={'class':'form-control pcie-eco-select','style': 'width: 500px;'}))
     
     tests = forms.MultipleChoiceField(
         choices=[

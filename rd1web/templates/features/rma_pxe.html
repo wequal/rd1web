@@ -485,18 +485,6 @@
                             </div>
                         </div>
 
-                        <!-- PCIE Model/ECO (Conditional) -->
-                        <div id="pcie-fw-section" style="display: none;">
-                            <div id="pcie-model-section" class="mb-4" style="display: none;">
-                                <label for="{{ pcie_form.pcie_model.id_for_label }}" class="form-label fw-bold">PCIE Model</label>
-                                {{ pcie_form.pcie_model }}
-                            </div>
-                            <div id="pcie-eco-section" class="mb-4" style="display: none;">
-                                <label for="{{ pcie_form.pcie_eco_number.id_for_label }}" class="form-label fw-bold">PCIE ECO Number</label>
-                                {{ pcie_form.pcie_eco_number }}
-                            </div>
-                        </div>
-
                         <!-- Actions -->
                         <div class="mb-4">
                             <label class="form-label fw-bold">Actions</label>
@@ -1834,105 +1822,6 @@
             });
             // Initial state
             replacementContainer.style.display = showReplacementToggle.checked ? 'block' : 'none';
-        }
-
-        // PCIE Firmware Update section toggle
-        const pcieFwUpdate = document.getElementById('id_pcie-fw_update');
-        const pcieFwSection = document.getElementById('pcie-fw-section');
-        const pcieModelSection = document.getElementById('pcie-model-section');
-        const pcieEcoSection = document.getElementById('pcie-eco-section');
-        if (pcieFwUpdate && pcieFwSection) {
-            pcieFwUpdate.addEventListener('change', function() {
-                pcieFwSection.style.display = this.checked ? 'block' : 'none';
-                if (this.checked) {
-                    // Show model section, hide ECO section until model is selected
-                    if (pcieModelSection) pcieModelSection.style.display = 'block';
-                    if (pcieEcoSection) pcieEcoSection.style.display = 'none';
-                    loadPcieModels();
-                } else {
-                    // Hide both sections when firmware update is unchecked
-                    if (pcieModelSection) pcieModelSection.style.display = 'none';
-                    if (pcieEcoSection) pcieEcoSection.style.display = 'none';
-                    // Clear selections
-                    const modelSelect = document.getElementById('id_pcie-pcie_model');
-                    const ecoSelect = document.getElementById('id_pcie-pcie_eco_number');
-                    if (modelSelect) modelSelect.value = '';
-                    if (ecoSelect) {
-                        ecoSelect.innerHTML = '<option value="">-- Select ECO --</option>';
-                        ecoSelect.value = '';
-                    }
-                }
-            });
-            // Initial state
-            pcieFwSection.style.display = pcieFwUpdate.checked ? 'block' : 'none';
-            if (pcieFwUpdate.checked) {
-                if (pcieModelSection) pcieModelSection.style.display = 'block';
-                if (pcieEcoSection) pcieEcoSection.style.display = 'none';
-                loadPcieModels();
-            }
-        }
-
-        async function loadPcieModels() {
-            const modelSelect = document.getElementById('id_pcie-pcie_model');
-            if (!modelSelect) return;
-            try {
-                const response = await fetch('/api/rma/pcie/models/');
-                const data = await response.json();
-                if (data.success) {
-                    const currentVal = modelSelect.value;
-                    modelSelect.innerHTML = '<option value="">-- Select Model --</option>';
-                    data.models.forEach(m => {
-                        const opt = document.createElement('option');
-                        opt.value = m;
-                        opt.textContent = m;
-                        modelSelect.appendChild(opt);
-                    });
-                    if (currentVal) modelSelect.value = currentVal;
-                }
-            } catch (e) { console.error('Error loading PCIE models:', e); }
-        }
-
-        const pcieModelSelect = document.getElementById('id_pcie-pcie_model');
-        if (pcieModelSelect) {
-            pcieModelSelect.addEventListener('change', function() {
-                const selectedModel = this.value;
-                const pcieEcoSection = document.getElementById('pcie-eco-section');
-                const ecoSelect = document.getElementById('id_pcie-pcie_eco_number');
-                
-                if (selectedModel) {
-                    // Show ECO section when model is selected
-                    if (pcieEcoSection) pcieEcoSection.style.display = 'block';
-                    // Load ECO numbers for the selected model
-                    loadPcieEcoNumbers(selectedModel);
-                } else {
-                    // Hide ECO section when model is cleared
-                    if (pcieEcoSection) pcieEcoSection.style.display = 'none';
-                    if (ecoSelect) {
-                        ecoSelect.innerHTML = '<option value="">-- Select ECO --</option>';
-                        ecoSelect.value = '';
-                    }
-                }
-            });
-        }
-
-        async function loadPcieEcoNumbers(model) {
-            const ecoSelect = document.getElementById('id_pcie-pcie_eco_number');
-            if (!ecoSelect || !model) return;
-            try {
-                const response = await fetch(`/api/rma/pcie/eco-numbers/${model}/`);
-                const data = await response.json();
-                if (data.success) {
-                    const currentVal = ecoSelect.value;
-                    ecoSelect.innerHTML = '<option value="">-- Select ECO --</option>';
-                    data.eco_numbers.forEach(e => {
-                        const opt = document.createElement('option');
-                        opt.value = e;
-                        opt.textContent = e;
-                        ecoSelect.appendChild(opt);
-                    });
-                    if (currentVal) ecoSelect.value = currentVal;
-                }
-            } catch (e) { console.error('Error loading PCIE ECOs:', e); }
         }
 
         // Auto-fill for PCIE form

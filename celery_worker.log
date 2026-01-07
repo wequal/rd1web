@@ -22504,3 +22504,317 @@ the celery worker `-n` option.
 [2026-01-06 23:37:48,337: INFO/ForkPoolWorker-2] RMA details cache pre-warmed successfully: 40 directories
 [2026-01-06 23:37:48,338: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_details_cache[50183337-3951-431e-af8b-7f866549c5e4] succeeded in 55.56143632531166s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 505}
 [2026-01-06 23:37:48,338: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_details_cache[9ab0f200-02be-41b1-a51a-ea82f5be5467] succeeded in 1.388684008270502s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 505}
+[2026-01-06 23:37:52,782: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[d4809b28-bcaf-485b-ab8c-dd25740b304e] received
+[2026-01-06 23:37:52,783: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:37:52,784: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:37:52,785: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[d4809b28-bcaf-485b-ab8c-dd25740b304e] succeeded in 0.002219991758465767s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:38:22,782: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[49a3515c-5a01-4eb0-8466-75f5de4f2adf] received
+[2026-01-06 23:38:22,783: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:38:22,784: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:38:22,785: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[49a3515c-5a01-4eb0-8466-75f5de4f2adf] succeeded in 0.002010531723499298s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:38:46,948: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[68f214e6-797d-46e2-99f6-2bff7a3ececc] received
+[2026-01-06 23:38:46,949: INFO/ForkPoolWorker-1] Starting RMA details cache pre-warming...
+[2026-01-06 23:38:46,951: INFO/ForkPoolWorker-1] Pre-warming details for 40 recent directories...
+[2026-01-06 23:38:52,776: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[39cb74d0-143d-4ee1-908a-3d3a18df4cc5] received
+[2026-01-06 23:38:52,777: INFO/ForkPoolWorker-2] Starting RMA details cache pre-warming...
+[2026-01-06 23:39:00,889: INFO/ForkPoolWorker-2] Pre-warming details for 40 recent directories...
+[2026-01-06 23:41:13,109: INFO/ForkPoolWorker-1] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-06 23:41:13,109: INFO/ForkPoolWorker-2] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-06 23:41:13,109: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_details_cache[39cb74d0-143d-4ee1-908a-3d3a18df4cc5] succeeded in 140.3327799923718s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 505}
+[2026-01-06 23:41:13,109: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_details_cache[68f214e6-797d-46e2-99f6-2bff7a3ececc] succeeded in 146.16039176657796s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 505}
+[2026-01-06 23:41:22,782: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[d9557fc6-67cf-4953-982e-6865b02995e1] received
+[2026-01-06 23:41:22,783: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:41:22,785: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:41:22,785: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[d9557fc6-67cf-4953-982e-6865b02995e1] succeeded in 0.0019607432186603546s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:41:46,948: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[07f9181b-27cc-4136-8940-625c8e4fc931] received
+[2026-01-06 23:41:46,949: INFO/ForkPoolWorker-1] Starting RMA details cache pre-warming...
+[2026-01-06 23:41:46,951: INFO/ForkPoolWorker-1] Pre-warming details for 40 recent directories...
+[2026-01-06 23:41:52,776: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[4c8b793b-6f74-4f85-9190-417adbbef88d] received
+[2026-01-06 23:41:52,777: INFO/ForkPoolWorker-2] Starting RMA details cache pre-warming...
+[2026-01-06 23:41:52,778: INFO/ForkPoolWorker-2] Pre-warming details for 40 recent directories...
+[2026-01-06 23:41:54,216: INFO/ForkPoolWorker-1] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-06 23:41:54,216: INFO/ForkPoolWorker-2] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-06 23:41:54,217: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_details_cache[07f9181b-27cc-4136-8940-625c8e4fc931] succeeded in 7.267595442011952s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 505}
+[2026-01-06 23:41:54,217: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_details_cache[4c8b793b-6f74-4f85-9190-417adbbef88d] succeeded in 1.4406714085489511s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 505}
+[2026-01-06 23:42:03,239: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[a0784898-2223-447a-9632-a7f8ad8397d7] received
+[2026-01-06 23:42:03,240: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:42:03,241: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:42:03,242: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[a0784898-2223-447a-9632-a7f8ad8397d7] succeeded in 0.001973511651158333s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:42:33,239: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[a9e7ac71-60d2-4474-83b7-82ac00f6bd27] received
+[2026-01-06 23:42:33,240: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:42:33,242: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:42:33,242: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[a9e7ac71-60d2-4474-83b7-82ac00f6bd27] succeeded in 0.001993810757994652s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:42:46,948: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[37c9ca9b-155d-49c9-b12d-873e11292aea] received
+[2026-01-06 23:42:46,949: INFO/ForkPoolWorker-1] Starting RMA details cache pre-warming...
+[2026-01-06 23:42:46,951: INFO/ForkPoolWorker-1] Pre-warming details for 40 recent directories...
+[2026-01-06 23:42:52,782: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[54e190a9-9222-4ddb-a2ac-fd6172a39a77] received
+[2026-01-06 23:42:52,783: INFO/ForkPoolWorker-2] Starting RMA directory cache pre-warming...
+[2026-01-06 23:42:59,809: INFO/ForkPoolWorker-2] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:42:59,809: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_directory_cache[54e190a9-9222-4ddb-a2ac-fd6172a39a77] succeeded in 7.026728803291917s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:43:22,783: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[9fca2cd9-9431-4d5c-8b9d-33f91d967cef] received
+[2026-01-06 23:43:22,784: INFO/ForkPoolWorker-2] Starting RMA directory cache pre-warming...
+[2026-01-06 23:43:22,785: INFO/ForkPoolWorker-2] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:43:22,786: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_directory_cache[9fca2cd9-9431-4d5c-8b9d-33f91d967cef] succeeded in 0.0022309422492980957s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:43:52,776: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[261fa263-2471-4d23-9dd9-a09d258d9ae2] received
+[2026-01-06 23:43:52,777: INFO/ForkPoolWorker-2] Starting RMA details cache pre-warming...
+[2026-01-06 23:43:52,779: INFO/ForkPoolWorker-2] Pre-warming details for 40 recent directories...
+[2026-01-06 23:44:31,711: INFO/ForkPoolWorker-1] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-06 23:44:31,711: INFO/ForkPoolWorker-2] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-06 23:44:31,711: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_details_cache[37c9ca9b-155d-49c9-b12d-873e11292aea] succeeded in 104.76215202175081s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 505}
+[2026-01-06 23:44:31,711: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_details_cache[261fa263-2471-4d23-9dd9-a09d258d9ae2] succeeded in 38.934396060183644s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 505}
+[2026-01-06 23:44:47,532: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[5d417d81-4f9b-4690-98e0-99bfaca643e3] received
+[2026-01-06 23:44:47,534: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:44:47,535: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:44:47,535: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[5d417d81-4f9b-4690-98e0-99bfaca643e3] succeeded in 0.001999223604798317s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:45:03,239: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[03bbc2b0-37a8-4d43-9653-cca88766f664] received
+[2026-01-06 23:45:03,240: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:45:03,241: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:45:03,242: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[03bbc2b0-37a8-4d43-9653-cca88766f664] succeeded in 0.001912493258714676s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:45:33,239: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[eade0959-fcf1-494d-94b5-24852989d255] received
+[2026-01-06 23:45:33,240: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:45:40,391: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:45:40,391: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[eade0959-fcf1-494d-94b5-24852989d255] succeeded in 7.151187574490905s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:45:52,782: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[eb540d0e-27ca-4ad2-a9f3-c1fc8ee4390d] received
+[2026-01-06 23:45:52,783: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:45:52,784: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:45:52,785: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[eb540d0e-27ca-4ad2-a9f3-c1fc8ee4390d] succeeded in 0.0020237527787685394s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:46:17,533: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[e525ea81-8b84-4fa2-b1a2-5eb0061a7688] received
+[2026-01-06 23:46:17,534: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:46:18,947: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:46:18,947: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[e525ea81-8b84-4fa2-b1a2-5eb0061a7688] succeeded in 1.4137249235063791s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:46:33,239: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[efbedb94-106c-452c-88dc-e47c082c6849] received
+[2026-01-06 23:46:33,240: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:46:33,241: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:46:33,241: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[efbedb94-106c-452c-88dc-e47c082c6849] succeeded in 0.0012405216693878174s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:46:52,782: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[d6849b85-f0c7-49e4-8c87-ce10f9141253] received
+[2026-01-06 23:46:52,783: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:46:59,701: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:46:59,702: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[d6849b85-f0c7-49e4-8c87-ce10f9141253] succeeded in 6.919275313615799s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:47:00,676: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[9a06bd3f-5c9c-46c7-a4ac-8a365e91ef61] received
+[2026-01-06 23:47:00,677: INFO/ForkPoolWorker-1] Starting RMA details cache pre-warming...
+[2026-01-06 23:47:00,679: INFO/ForkPoolWorker-1] Pre-warming details for 40 recent directories...
+[2026-01-06 23:47:17,533: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[9d522b69-f40b-4dfe-b1f6-305e9bcfbf21] received
+[2026-01-06 23:47:17,534: INFO/ForkPoolWorker-2] Starting RMA directory cache pre-warming...
+[2026-01-06 23:47:17,535: INFO/ForkPoolWorker-2] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:47:17,536: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_directory_cache[9d522b69-f40b-4dfe-b1f6-305e9bcfbf21] succeeded in 0.0019470322877168655s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:47:33,239: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[e6213d73-9281-4a52-a1a2-465e7d4e6716] received
+[2026-01-06 23:47:33,240: INFO/ForkPoolWorker-2] Starting RMA directory cache pre-warming...
+[2026-01-06 23:47:34,595: INFO/ForkPoolWorker-2] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:47:34,596: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_directory_cache[e6213d73-9281-4a52-a1a2-465e7d4e6716] succeeded in 1.3556558843702078s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:47:47,533: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[2521f5eb-e648-4eee-95a7-7010e88147ad] received
+[2026-01-06 23:47:47,534: INFO/ForkPoolWorker-2] Starting RMA directory cache pre-warming...
+[2026-01-06 23:47:47,535: INFO/ForkPoolWorker-2] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:47:47,536: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_directory_cache[2521f5eb-e648-4eee-95a7-7010e88147ad] succeeded in 0.002003312110900879s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:47:52,782: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[8b6ade08-19e0-4971-a508-6d2e04bddcaf] received
+[2026-01-06 23:47:52,783: INFO/ForkPoolWorker-2] Starting RMA directory cache pre-warming...
+[2026-01-06 23:47:52,785: INFO/ForkPoolWorker-2] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:47:52,785: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_directory_cache[8b6ade08-19e0-4971-a508-6d2e04bddcaf] succeeded in 0.0019556116312742233s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:48:17,533: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[9bd4d883-fc92-4a4f-93e5-69f01e6c370c] received
+[2026-01-06 23:48:17,534: INFO/ForkPoolWorker-2] Starting RMA directory cache pre-warming...
+[2026-01-06 23:48:24,201: INFO/ForkPoolWorker-2] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:48:24,201: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_directory_cache[9bd4d883-fc92-4a4f-93e5-69f01e6c370c] succeeded in 6.667534617707133s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:48:33,239: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[4e50267e-41f8-49a5-a35d-d8456779df31] received
+[2026-01-06 23:48:33,240: INFO/ForkPoolWorker-2] Starting RMA directory cache pre-warming...
+[2026-01-06 23:48:33,242: INFO/ForkPoolWorker-2] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:48:33,242: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_directory_cache[4e50267e-41f8-49a5-a35d-d8456779df31] succeeded in 0.002065042033791542s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:48:52,776: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[46f546b6-c7c2-47ee-9241-e8bb9bce1ad8] received
+[2026-01-06 23:48:52,777: INFO/ForkPoolWorker-2] Starting RMA details cache pre-warming...
+[2026-01-06 23:48:52,778: INFO/ForkPoolWorker-2] Pre-warming details for 40 recent directories...
+[2026-01-06 23:50:06,281: INFO/ForkPoolWorker-1] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-06 23:50:06,281: INFO/ForkPoolWorker-2] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-06 23:50:06,282: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_details_cache[46f546b6-c7c2-47ee-9241-e8bb9bce1ad8] succeeded in 73.50540895201266s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 505}
+[2026-01-06 23:50:06,282: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_details_cache[9a06bd3f-5c9c-46c7-a4ac-8a365e91ef61] succeeded in 185.6050755828619s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 505}
+[2026-01-06 23:50:52,783: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[c4b673bd-9055-4d31-8000-989b072d1b08] received
+[2026-01-06 23:50:52,783: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:50:59,828: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:50:59,829: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[c4b673bd-9055-4d31-8000-989b072d1b08] succeeded in 7.045446811243892s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:51:22,783: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[71d44775-ef15-446e-b728-860b7a3a9fd1] received
+[2026-01-06 23:51:22,784: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:51:22,786: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:51:22,786: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[71d44775-ef15-446e-b728-860b7a3a9fd1] succeeded in 0.0020339712500572205s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:51:46,949: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[b1d32e44-d50f-46fb-b856-a36c5d15c07a] received
+[2026-01-06 23:51:46,950: INFO/ForkPoolWorker-1] Starting RMA details cache pre-warming...
+[2026-01-06 23:51:46,951: INFO/ForkPoolWorker-1] Pre-warming details for 40 recent directories...
+[2026-01-06 23:51:52,777: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[7257efae-66c3-4e71-99b0-8859f2ce20c2] received
+[2026-01-06 23:51:52,778: INFO/ForkPoolWorker-2] Starting RMA details cache pre-warming...
+[2026-01-06 23:51:52,779: INFO/ForkPoolWorker-2] Pre-warming details for 40 recent directories...
+[2026-01-06 23:53:10,497: INFO/ForkPoolWorker-1] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-06 23:53:10,497: INFO/ForkPoolWorker-2] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-06 23:53:10,498: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_details_cache[b1d32e44-d50f-46fb-b856-a36c5d15c07a] succeeded in 83.54841113463044s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 505}
+[2026-01-06 23:53:10,498: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_details_cache[7257efae-66c3-4e71-99b0-8859f2ce20c2] succeeded in 77.72062956728041s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 505}
+[2026-01-06 23:53:47,534: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[56cad7c5-6181-4552-8c75-2e3dc290d61a] received
+[2026-01-06 23:53:47,534: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:53:47,536: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:53:47,536: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[56cad7c5-6181-4552-8c75-2e3dc290d61a] succeeded in 0.001964721828699112s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:54:03,240: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[6e81a904-0abc-4ae9-b063-b3ee52e205ea] received
+[2026-01-06 23:54:03,241: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:54:03,242: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:54:03,243: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[6e81a904-0abc-4ae9-b063-b3ee52e205ea] succeeded in 0.0019695721566677094s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:54:33,240: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[13acc14a-f1e5-4b2f-a75f-729617a7a926] received
+[2026-01-06 23:54:33,241: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:54:33,242: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:54:33,243: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[13acc14a-f1e5-4b2f-a75f-729617a7a926] succeeded in 0.00200493261218071s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:54:52,783: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[745e8ae3-2f1d-44c6-adbf-1dc7c0717574] received
+[2026-01-06 23:54:52,784: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:55:00,479: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:55:00,480: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[745e8ae3-2f1d-44c6-adbf-1dc7c0717574] succeeded in 7.695755451917648s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:55:00,676: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[2a163e38-83f3-4b7d-995b-e58a2fcf16c0] received
+[2026-01-06 23:55:00,677: INFO/ForkPoolWorker-1] Starting RMA details cache pre-warming...
+[2026-01-06 23:55:00,679: INFO/ForkPoolWorker-1] Pre-warming details for 40 recent directories...
+[2026-01-06 23:55:17,534: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[7f370254-fbb9-4289-b75e-2f5ffe2ae94b] received
+[2026-01-06 23:55:17,534: INFO/ForkPoolWorker-2] Starting RMA directory cache pre-warming...
+[2026-01-06 23:55:17,536: INFO/ForkPoolWorker-2] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:55:17,536: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_directory_cache[7f370254-fbb9-4289-b75e-2f5ffe2ae94b] succeeded in 0.001975869759917259s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:55:47,534: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[30ea5f74-3d76-4f8f-a2c8-c1d30cb7510a] received
+[2026-01-06 23:55:47,534: INFO/ForkPoolWorker-2] Starting RMA directory cache pre-warming...
+[2026-01-06 23:55:47,536: INFO/ForkPoolWorker-2] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:55:47,536: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_directory_cache[30ea5f74-3d76-4f8f-a2c8-c1d30cb7510a] succeeded in 0.0020235124975442886s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:56:03,240: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[922546fa-bab6-4c55-aae6-6dbef6c17a8f] received
+[2026-01-06 23:56:03,241: INFO/ForkPoolWorker-2] Starting RMA directory cache pre-warming...
+[2026-01-06 23:56:03,243: INFO/ForkPoolWorker-2] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:56:03,243: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_directory_cache[922546fa-bab6-4c55-aae6-6dbef6c17a8f] succeeded in 0.002068661153316498s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:56:33,240: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[9b3d3b7c-f895-446e-aed6-55370a27f907] received
+[2026-01-06 23:56:33,241: INFO/ForkPoolWorker-2] Starting RMA directory cache pre-warming...
+[2026-01-06 23:56:33,243: INFO/ForkPoolWorker-2] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:56:33,243: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_directory_cache[9b3d3b7c-f895-446e-aed6-55370a27f907] succeeded in 0.0019829124212265015s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:56:48,591: INFO/ForkPoolWorker-1] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-06 23:56:48,591: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_details_cache[2a163e38-83f3-4b7d-995b-e58a2fcf16c0] succeeded in 107.91441311314702s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 505}
+[2026-01-06 23:56:52,783: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[86566597-8dae-4f5a-b2a6-b33d8f5de1ea] received
+[2026-01-06 23:56:52,784: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:56:52,786: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:56:52,786: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[86566597-8dae-4f5a-b2a6-b33d8f5de1ea] succeeded in 0.0019847918301820755s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:57:17,534: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[d103a64d-0ea7-4849-b3b5-91fd862d766b] received
+[2026-01-06 23:57:17,535: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:57:17,536: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:57:17,537: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[d103a64d-0ea7-4849-b3b5-91fd862d766b] succeeded in 0.00199764221906662s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:57:33,240: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[8f4800e2-d385-4b50-85c4-146b4ace5fd4] received
+[2026-01-06 23:57:33,241: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:57:39,667: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:57:39,667: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[8f4800e2-d385-4b50-85c4-146b4ace5fd4] succeeded in 6.426259633153677s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:57:52,776: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[77d38c8f-b4f7-404b-95f1-0179dcf27e81] received
+[2026-01-06 23:57:52,777: INFO/ForkPoolWorker-1] Starting RMA details cache pre-warming...
+[2026-01-06 23:57:52,779: INFO/ForkPoolWorker-1] Pre-warming details for 40 recent directories...
+[2026-01-06 23:58:02,118: INFO/ForkPoolWorker-1] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-06 23:58:02,119: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_details_cache[77d38c8f-b4f7-404b-95f1-0179dcf27e81] succeeded in 9.341971680521965s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 505}
+[2026-01-06 23:58:17,534: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[36ee5440-4ee5-498f-a8c0-226586eff775] received
+[2026-01-06 23:58:17,535: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:58:19,023: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:58:19,024: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[36ee5440-4ee5-498f-a8c0-226586eff775] succeeded in 1.4890929739922285s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:58:47,534: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[35ae9c2d-8125-4ff6-ad62-48b1068f32b4] received
+[2026-01-06 23:58:47,535: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:58:47,536: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:58:47,537: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[35ae9c2d-8125-4ff6-ad62-48b1068f32b4] succeeded in 0.002053370699286461s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:59:03,240: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[f59ffb61-e7e9-4fac-83bf-0222fc1a75fc] received
+[2026-01-06 23:59:03,241: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:59:03,243: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:59:03,243: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[f59ffb61-e7e9-4fac-83bf-0222fc1a75fc] succeeded in 0.0020919516682624817s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:59:22,784: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[6936711d-a3fb-47a1-b0b8-15a0b3772b2e] received
+[2026-01-06 23:59:22,785: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-06 23:59:22,787: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:59:22,787: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[6936711d-a3fb-47a1-b0b8-15a0b3772b2e] succeeded in 0.00198565237224102s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:59:46,949: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[7ac23c72-911d-467e-9dea-f775e53679a7] received
+[2026-01-06 23:59:46,950: INFO/ForkPoolWorker-1] Starting RMA details cache pre-warming...
+[2026-01-06 23:59:46,952: INFO/ForkPoolWorker-1] Pre-warming details for 40 recent directories...
+[2026-01-06 23:59:47,534: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[5a47f3ba-0c1f-454d-ac80-c9855a97b9f7] received
+[2026-01-06 23:59:47,535: INFO/ForkPoolWorker-2] Starting RMA directory cache pre-warming...
+[2026-01-06 23:59:47,536: INFO/ForkPoolWorker-2] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:59:47,537: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_directory_cache[5a47f3ba-0c1f-454d-ac80-c9855a97b9f7] succeeded in 0.002007579430937767s: {'status': 'success', 'directory_count': 505}
+[2026-01-06 23:59:52,783: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[565857cc-0961-4d47-85c7-9acd81192027] received
+[2026-01-06 23:59:52,784: INFO/ForkPoolWorker-2] Starting RMA directory cache pre-warming...
+[2026-01-06 23:59:52,786: INFO/ForkPoolWorker-2] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-06 23:59:52,786: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_directory_cache[565857cc-0961-4d47-85c7-9acd81192027] succeeded in 0.0020163636654615402s: {'status': 'success', 'directory_count': 505}
+[2026-01-07 00:00:16,638: INFO/ForkPoolWorker-1] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-07 00:00:16,638: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_details_cache[7ac23c72-911d-467e-9dea-f775e53679a7] succeeded in 29.688273064792156s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 505}
+[2026-01-07 00:00:22,784: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[7e46bd1b-7e9d-472f-b74d-bf2abef81015] received
+[2026-01-07 00:00:22,785: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-07 00:00:25,761: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-07 00:00:25,762: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[7e46bd1b-7e9d-472f-b74d-bf2abef81015] succeeded in 2.976607421413064s: {'status': 'success', 'directory_count': 505}
+[2026-01-07 00:00:46,949: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[f1ca72af-8259-4b19-895c-eb9169b7ffcc] received
+[2026-01-07 00:00:46,950: INFO/ForkPoolWorker-1] Starting RMA details cache pre-warming...
+[2026-01-07 00:00:46,952: INFO/ForkPoolWorker-1] Pre-warming details for 40 recent directories...
+[2026-01-07 00:00:52,777: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[7f3b9bf2-7aa2-47a6-9fcd-2c726333072b] received
+[2026-01-07 00:00:52,778: INFO/ForkPoolWorker-2] Starting RMA details cache pre-warming...
+[2026-01-07 00:00:52,779: INFO/ForkPoolWorker-2] Pre-warming details for 40 recent directories...
+[2026-01-07 00:02:03,405: INFO/ForkPoolWorker-2] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-07 00:02:03,405: INFO/ForkPoolWorker-1] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-07 00:02:03,406: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_details_cache[7f3b9bf2-7aa2-47a6-9fcd-2c726333072b] succeeded in 70.62816003151238s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 505}
+[2026-01-07 00:02:03,406: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_details_cache[f1ca72af-8259-4b19-895c-eb9169b7ffcc] succeeded in 76.45578620396554s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 505}
+[2026-01-07 00:02:33,241: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[04b73246-fe06-435b-a84b-4fbfb3416663] received
+[2026-01-07 00:02:33,242: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-07 00:02:33,243: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-07 00:02:33,244: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[04b73246-fe06-435b-a84b-4fbfb3416663] succeeded in 0.001986682415008545s: {'status': 'success', 'directory_count': 505}
+[2026-01-07 00:02:52,784: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[809d4533-ff33-43a8-be3c-c7789817a4c0] received
+[2026-01-07 00:02:52,785: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-07 00:03:00,480: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-07 00:03:00,481: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[809d4533-ff33-43a8-be3c-c7789817a4c0] succeeded in 7.696190919727087s: {'status': 'success', 'directory_count': 505}
+[2026-01-07 00:03:00,677: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[2ff6aef4-aa2d-4191-bf1b-82773ce772b6] received
+[2026-01-07 00:03:00,678: INFO/ForkPoolWorker-1] Starting RMA details cache pre-warming...
+[2026-01-07 00:03:00,679: INFO/ForkPoolWorker-1] Pre-warming details for 40 recent directories...
+[2026-01-07 00:03:17,534: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[8047f97a-dd53-4d7e-9fd6-818af2427239] received
+[2026-01-07 00:03:17,535: INFO/ForkPoolWorker-2] Starting RMA directory cache pre-warming...
+[2026-01-07 00:03:17,537: INFO/ForkPoolWorker-2] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-07 00:03:17,537: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_directory_cache[8047f97a-dd53-4d7e-9fd6-818af2427239] succeeded in 0.001995321363210678s: {'status': 'success', 'directory_count': 505}
+[2026-01-07 00:03:33,241: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[e6ff146a-e8b0-48f5-9e73-1e5100aa5133] received
+[2026-01-07 00:03:33,242: INFO/ForkPoolWorker-2] Starting RMA directory cache pre-warming...
+[2026-01-07 00:03:35,479: INFO/ForkPoolWorker-2] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-07 00:03:35,479: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_directory_cache[e6ff146a-e8b0-48f5-9e73-1e5100aa5133] succeeded in 2.2374782878905535s: {'status': 'success', 'directory_count': 505}
+[2026-01-07 00:03:46,949: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[63235b25-c7f9-4570-b344-1e746bef75bb] received
+[2026-01-07 00:03:46,950: INFO/ForkPoolWorker-2] Starting RMA details cache pre-warming...
+[2026-01-07 00:03:46,952: INFO/ForkPoolWorker-2] Pre-warming details for 40 recent directories...
+[2026-01-07 00:04:37,491: INFO/ForkPoolWorker-1] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-07 00:04:37,491: INFO/ForkPoolWorker-2] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-07 00:04:37,492: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_details_cache[63235b25-c7f9-4570-b344-1e746bef75bb] succeeded in 50.54162264429033s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 505}
+[2026-01-07 00:04:37,492: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_details_cache[2ff6aef4-aa2d-4191-bf1b-82773ce772b6] succeeded in 96.81432146020234s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 505}
+[2026-01-07 00:05:00,677: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[64c9bcbb-2759-4e4b-a7c4-bfc12fe9f7a5] received
+[2026-01-07 00:05:00,678: INFO/ForkPoolWorker-1] Starting RMA details cache pre-warming...
+[2026-01-07 00:05:02,010: INFO/ForkPoolWorker-1] Pre-warming details for 40 recent directories...
+[2026-01-07 00:05:03,241: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[82233639-32d0-44f4-8aa9-94e7ce00f98f] received
+[2026-01-07 00:05:03,242: INFO/ForkPoolWorker-2] Starting RMA directory cache pre-warming...
+[2026-01-07 00:05:03,243: INFO/ForkPoolWorker-2] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-07 00:05:03,244: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_directory_cache[82233639-32d0-44f4-8aa9-94e7ce00f98f] succeeded in 0.0020264331251382828s: {'status': 'success', 'directory_count': 505}
+[2026-01-07 00:05:33,241: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[061cf2d9-0829-481e-8099-146ca7cd40a3] received
+[2026-01-07 00:05:33,242: INFO/ForkPoolWorker-2] Starting RMA directory cache pre-warming...
+[2026-01-07 00:05:42,283: INFO/ForkPoolWorker-2] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-07 00:05:42,283: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_directory_cache[061cf2d9-0829-481e-8099-146ca7cd40a3] succeeded in 9.04121463932097s: {'status': 'success', 'directory_count': 505}
+[2026-01-07 00:05:46,949: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[a54fee88-626c-4410-908c-1e521ba8a534] received
+[2026-01-07 00:05:46,950: INFO/ForkPoolWorker-2] Starting RMA details cache pre-warming...
+[2026-01-07 00:05:46,952: INFO/ForkPoolWorker-2] Pre-warming details for 40 recent directories...
+[2026-01-07 00:06:01,222: INFO/ForkPoolWorker-1] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-07 00:06:01,222: INFO/ForkPoolWorker-2] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-07 00:06:01,223: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_details_cache[64c9bcbb-2759-4e4b-a7c4-bfc12fe9f7a5] succeeded in 60.54494019597769s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 505}
+[2026-01-07 00:06:01,223: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_details_cache[a54fee88-626c-4410-908c-1e521ba8a534] succeeded in 14.272460104897618s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 505}
+[2026-01-07 00:06:03,241: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[67002ce4-4443-4f9f-a353-1b022c175fb0] received
+[2026-01-07 00:06:03,242: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-07 00:06:03,244: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 505 directories
+[2026-01-07 00:06:03,244: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[67002ce4-4443-4f9f-a353-1b022c175fb0] succeeded in 0.002068040892481804s: {'status': 'success', 'directory_count': 505}
+[2026-01-07 14:42:17,878: INFO/MainProcess] Connected to redis://localhost:6379/0
+[2026-01-07 14:42:17,880: INFO/MainProcess] mingle: searching for neighbors
+[2026-01-07 14:42:18,889: WARNING/MainProcess] /home/devin/rd1web/venv/lib/python3.12/site-packages/celery/app/control.py:56: DuplicateNodenameWarning: Received multiple replies from node name: celery@fishsrv.
+Please make sure you give each node a unique nodename using
+the celery worker `-n` option.
+  warnings.warn(DuplicateNodenameWarning(
+
+[2026-01-07 14:42:18,889: INFO/MainProcess] mingle: all alone
+[2026-01-07 14:42:18,901: INFO/MainProcess] celery@fishsrv ready.
+[2026-01-07 14:42:46,989: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[1effae80-3800-495d-b261-6aa87c978403] received
+[2026-01-07 14:42:46,990: INFO/ForkPoolWorker-1] Starting RMA details cache pre-warming...
+[2026-01-07 14:42:46,992: INFO/ForkPoolWorker-1] Pre-warming details for 40 recent directories...
+[2026-01-07 14:42:47,000: INFO/ForkPoolWorker-1] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-07 14:42:47,000: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_details_cache[1effae80-3800-495d-b261-6aa87c978403] succeeded in 0.010751083493232727s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 509}
+[2026-01-07 14:42:48,776: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[a8e7bae1-d1c5-4b75-9972-1eb319f6f754] received
+[2026-01-07 14:42:48,777: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-07 14:42:52,655: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 509 directories
+[2026-01-07 14:42:52,655: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[a8e7bae1-d1c5-4b75-9972-1eb319f6f754] succeeded in 3.87813931889832s: {'status': 'success', 'directory_count': 509}
+[2026-01-07 14:43:00,715: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[c747288a-de94-4586-9594-ff3f8fb31f83] received
+[2026-01-07 14:43:00,716: INFO/ForkPoolWorker-1] Starting RMA details cache pre-warming...
+[2026-01-07 14:43:00,718: INFO/ForkPoolWorker-1] Pre-warming details for 40 recent directories...
+[2026-01-07 14:43:18,770: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[5c51cbc2-9011-4d6f-ba69-69733f847696] received
+[2026-01-07 14:43:18,772: INFO/ForkPoolWorker-2] Starting RMA details cache pre-warming...
+[2026-01-07 14:43:18,774: INFO/ForkPoolWorker-2] Pre-warming details for 40 recent directories...
+[2026-01-07 14:45:02,899: INFO/ForkPoolWorker-1] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-07 14:45:02,899: INFO/ForkPoolWorker-2] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-07 14:45:02,900: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_details_cache[c747288a-de94-4586-9594-ff3f8fb31f83] succeeded in 122.18401840142906s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 509}
+[2026-01-07 14:45:02,900: INFO/ForkPoolWorker-2] Task pxe.tasks.prewarm_rma_details_cache[5c51cbc2-9011-4d6f-ba69-69733f847696] succeeded in 104.12914448790252s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 509}
+[2026-01-07 14:45:18,771: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[5e3e3586-7980-4011-8e98-fe57f84d37ff] received
+[2026-01-07 14:45:18,772: INFO/ForkPoolWorker-1] Starting RMA details cache pre-warming...
+[2026-01-07 14:45:18,773: INFO/ForkPoolWorker-1] Pre-warming details for 40 recent directories...

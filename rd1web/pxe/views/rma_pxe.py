@@ -385,8 +385,6 @@ def rma_pxe(request):
                 remove = bound_form.cleaned_data.get('remove', False)
                 check = bound_form.cleaned_data.get('check', False)
                 fw_update = bound_form.cleaned_data.get('fw_update', False)
-                pcie_model = bound_form.cleaned_data.get('pcie_model', '')
-                pcie_eco_number = bound_form.cleaned_data.get('pcie_eco_number', '')
                 
                 # GPU SNs
                 gpu_params = []
@@ -407,12 +405,11 @@ def rma_pxe(request):
                 tests_list.append('pcie')
                 if fw_update:
                     tests_list.append('fw_update')
-                    if pcie_model: tests_list.append(f'pcie_model={pcie_model}')
-                    if pcie_eco_number: tests_list.append(f'pcie_eco_number={pcie_eco_number}')
                 
                 tests_list.extend(gpu_params)
                 tests_param = " ".join(tests_list)
                 params_storage['tests'] = tests_param
+                params_storage['fw_update'] = fw_update
                 
                 macs = get_lan_macs(bmc_ip)
                 macs = [normalize_mac_for_pxe(x) for x in macs if x]
