@@ -176,13 +176,26 @@
                                                 </a>
                                             </div>
                                         {% else %}
-                                            <div class="btn-group" role="group">
-                                                <a href="{% url 'rma_view_file' path=item.path %}" class="btn btn-sm btn-outline-success" target="_blank">
-                                                    <i class="fas fa-eye me-1"></i>View
-                                                </a>
-                                                <a href="{% url 'rma_view_file' path=item.path %}?download=true" class="btn btn-sm btn-primary" target="_blank">
-                                                    <i class="fas fa-download me-1"></i>Download
-                                                </a>
+                                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                <div class="btn-group" role="group">
+                                                    <a href="{% url 'rma_view_file' path=item.path %}" class="btn btn-sm btn-outline-success" target="_blank">
+                                                        <i class="fas fa-eye me-1"></i>View
+                                                    </a>
+                                                    <a href="{% url 'rma_view_file' path=item.path %}?download=true" class="btn btn-sm btn-primary" target="_blank">
+                                                        <i class="fas fa-download me-1"></i>Download
+                                                    </a>
+                                                </div>
+                                                {% if item.name == "nvidia_fw_update" %}
+                                                    <form method="post"
+                                                          action="{% url 'rma_delete_file' path=item.path %}"
+                                                          class="d-inline"
+                                                          onsubmit="return confirm('Delete nvidia_fw_update?');">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-sm btn-danger">
+                                                            <i class="fas fa-trash me-1"></i>Delete
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
                                             </div>
                                         {% endif %}
                                     </td>

@@ -31,6 +31,7 @@ from .views.rma_general_test import rma_general_test
 from .views.rma_logs import (
     rma_log,
     rma_view_file,
+    rma_delete_file,
     rma_download_folder,
     rma_download_folder_async,
     rma_download_folder_status,
@@ -106,6 +107,7 @@ urlpatterns = [
     path('rma/general-test/', rma_general_test, name='rma_general_test'),
     path('rma/logs/', rma_log, name='rma_log'),
     path('rma/logs/<path:path>/', rma_log, name='rma_log_browse'),
+    path('rma/delete/<path:path>/', rma_delete_file, name='rma_delete_file'),
     path('rma/view/<path:path>/', rma_view_file, name='rma_view_file'),
     path('rma/general-logs/', rma_general_log, name='rma_general_log'),
     path('rma/general-logs/<path:path>/', rma_general_log, name='rma_general_log_browse'),

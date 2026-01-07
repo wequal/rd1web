@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.template import Template, Context
 from django.core.cache import cache
+from django.views.decorators.http import require_POST
 from urllib.parse import unquote
 from datetime import datetime
 import mimetypes
@@ -2215,6 +2216,48 @@ def is_text_file(file_path):
             return False
     except:
         return False
+
+
+@login_required
+@require_POST
+def rma_delete_file(request, path):
+    """
+    Delete a specific RMA file from local disk.
+
+    Security rules:
+    - target must resolve within RMA_BASE_DIR
+    - only allow deleting the exact filename: nvidia_fw_update
+    """
+    decoded_path = unquote(path).lstrip("/")
+    target_path = os.path.normpath(os.path.join(RMA_BASE_DIR, decoded_path))
+
+    # Security check - ensure path stays within RMA_BASE_DIR
+    if not target_path.startswith(RMA_BASE_DIR):
+        raise Http404("Access denied")
+
+    # Only allow deleting the exact target filename
+    if os.path.basename(target_path) != "nvidia_fw_update":
+        raise Http404("File not allowed")
+
+    try:
+        if not os.path.exists(target_path):
+            raise Http404("File does not exist")
+        if not os.path.isfile(target_path):
+            raise Http404("Path is not a file")
+
+        os.remove(target_path)
+        logger.info(f"Deleted RMA file: {target_path} (user={request.user})")
+    except Http404:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting RMA file {target_path}: {e}")
+        raise Http404("Cannot delete file")
+
+    # Redirect back to the parent folder listing
+    parent_rel = os.path.dirname(decoded_path.strip("/"))
+    if parent_rel:
+        return redirect("rma_log_browse", path=parent_rel)
+    return redirect("rma_log")
 
 def monitor_remote_progress(task_id, progress_file, rma_remote, stop_event):
     """
