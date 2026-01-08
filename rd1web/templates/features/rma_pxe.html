@@ -226,6 +226,16 @@
                                             <i class="fas me-1 text-danger"></i>All Log
                                         </label>
                                     </div>
+                                    <!-- MI3XX All Log optional notice (used in filename) -->
+                                    <div id="mi3xxNoticeContainer" class="mt-2" style="display: none;">
+                                        <label for="mi3xxNotice" class="form-label mb-1">
+                                            Notice <span class="text-muted">(optional)</span>
+                                        </label>
+                                        <input type="text"
+                                               id="mi3xxNotice"
+                                               class="form-control form-control-sm"
+                                               autocomplete="off">
+                                    </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
@@ -816,6 +826,21 @@
         const gpudiagCheckbox = document.getElementById('id_rma-tests_4');
         const level3Checkbox = document.getElementById('id_rma-tests_5');
         const allLogCheckbox = document.getElementById('id_rma-tests_6');
+        const mi3xxNoticeContainer = document.getElementById('mi3xxNoticeContainer');
+        const mi3xxNoticeInput = document.getElementById('mi3xxNotice');
+
+        function updateMi3xxNoticeVisibility() {
+            if (!mi3xxNoticeContainer) return;
+            const show = !!(allLogCheckbox && allLogCheckbox.checked);
+            mi3xxNoticeContainer.style.display = show ? '' : 'none';
+            if (!show && mi3xxNoticeInput) {
+                mi3xxNoticeInput.value = '';
+            }
+        }
+
+        if (allLogCheckbox) {
+            allLogCheckbox.addEventListener('change', updateMi3xxNoticeVisibility);
+        }
         
         function handleImageSelection() {
             const selectedImage = rmaImageSelectForTests ? rmaImageSelectForTests.value : '';
@@ -891,6 +916,9 @@
                     remoteFwCheckbox.checked = false;
                 }
             }
+
+            // Ensure Notice UI stays in sync if All Log gets toggled off programmatically
+            updateMi3xxNoticeVisibility();
         }
         
         if (rmaImageSelectForTests) {
@@ -898,6 +926,8 @@
             // Initialize on page load
             handleImageSelection();
         }
+        // Initialize Notice visibility on page load
+        updateMi3xxNoticeVisibility();
         
         // Tests selection validation logic
         const testsContainer = document.getElementById('tests-container');
@@ -1015,6 +1045,7 @@
                 }
 
                 validateTestSelections();
+                updateMi3xxNoticeVisibility();
             }
             
             // Add event listeners to all test checkboxes
@@ -1068,11 +1099,14 @@
                     return;
                 }
 
+                const notice = mi3xxNoticeInput ? mi3xxNoticeInput.value.trim() : '';
+
                 const payload = {
                     base_sn: baseSn,
                     rma_number: rmaNumber,
                     bmc_ip: bmcIp,
-                    image: image
+                    image: image,
+                    notice: notice
                 };
 
                 fetch('/rma/collect-mi3xx-alllog-from-form/', {

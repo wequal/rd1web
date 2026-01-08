@@ -2309,7 +2309,24 @@ def get_gpu_model_from_image(image_value):
     }
     return image_to_gpu_map.get(image_value)
 
-def collect_mi3xx_alllog_task(task_id, dir_name, base_sn, rma_number, bmc_ip, image=None):
+def sanitize_notice_for_filename(notice):
+    """
+    Sanitize a user-provided notice string so it's safe to embed in filenames.
+
+    Rules:
+    - Convert whitespace to underscores
+    - Keep only A-Z a-z 0-9 _ -
+    - Strip leading/trailing underscores
+    """
+    if not notice:
+        return ''
+    notice = re.sub(r'\s+', '_', str(notice).strip())
+    notice = re.sub(r'[^A-Za-z0-9_-]', '', notice)
+    notice = notice.strip('_')
+    return notice
+
+
+def collect_mi3xx_alllog_task(task_id, dir_name, base_sn, rma_number, bmc_ip, image=None, notice=None):
     """
     Background task to collect MI3XX ALL LOG on remote RMA server
     """
@@ -2331,6 +2348,7 @@ def collect_mi3xx_alllog_task(task_id, dir_name, base_sn, rma_number, bmc_ip, im
         gpu_model = None
         if image:
             gpu_model = get_gpu_model_from_image(image)
+        sanitized_notice = sanitize_notice_for_filename(notice)
         
         # Create Python script with progress reporting
         remote_script = f'''#!/usr/bin/env python3
@@ -2351,6 +2369,7 @@ user = "ADMIN"
 pwd = "Golden@1234"
 log_path = "/srv/rma"
 gpu_model = {repr(gpu_model)}
+notice = {repr(sanitized_notice)}
 
 # Progress file for tracking
 progress_file = f"/tmp/mi3xx_progress_{{task_id}}.json"
@@ -2456,7 +2475,8 @@ if not download_uri:
     sys.exit(1)
 
 # Step 5: Download the log file
-alllog_file_name = f"{{base_sn}}_ALLLOG_{{timestamp}}.tar.gz"
+notice_part = "_" + notice if notice else ""
+alllog_file_name = f"{{base_sn}}{{notice_part}}_ALLLOG_{{timestamp}}.tar.gz"
 alllog_file_path = f"{{log_path}}/{{base_sn}}_{{rma_number}}/{{alllog_file_name}}"
 
 try:
@@ -2636,7 +2656,7 @@ def rma_collect_mi3xx_alllog(request, path):
         # Start background thread
         thread = threading.Thread(
             target=collect_mi3xx_alllog_task,
-            args=(task_id, dir_name, base_sn, rma_number, bmc_ip, None),
+            args=(task_id, dir_name, base_sn, rma_number, bmc_ip, None, None),
             daemon=True
         )
         thread.start()
@@ -2677,6 +2697,7 @@ def rma_collect_mi3xx_alllog_from_form(request):
         rma_number = (payload.get('rma_number') or '').strip()
         bmc_ip = (payload.get('bmc_ip') or '').strip()
         image = (payload.get('image') or '').strip()
+        notice = (payload.get('notice') or '').strip()
 
         if not base_sn or not rma_number or not bmc_ip:
             return JsonResponse(
@@ -2723,7 +2744,7 @@ def rma_collect_mi3xx_alllog_from_form(request):
         # Start background thread using the existing collection task
         thread = threading.Thread(
             target=collect_mi3xx_alllog_task,
-            args=(task_id, dir_name, base_sn, rma_number, bmc_ip, image),
+            args=(task_id, dir_name, base_sn, rma_number, bmc_ip, image, notice),
             daemon=True,
         )
         thread.start()
