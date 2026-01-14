@@ -421,6 +421,7 @@ class PcieGpuForm(forms.Form):
             ('default', 'Default'),
             ('pre_gpu_test', 'Pre GPU Test'),
             ('fd2', 'FD'),
+            ('dcgm_r4', 'DCGM R4'),
         ],
         widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
         label='Tests',
