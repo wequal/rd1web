@@ -310,7 +310,7 @@ class RmaForm(forms.Form):
     replacement_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='GPUBOARD/UBB8 replacement SN',required=False)
     rma_number=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='RMA Number',required=False)
     bmc_ip=forms.ChoiceField(choices=[], widget=forms.Select(attrs={'class':'form-control','style': 'width: 500px;',}),label='BMC IP')
-    image=forms.ChoiceField(choices=[('','-- Select Image --'),('ubuntu2204-x86-rma','H100/200'),('ubuntu2204-b200-rma','B200'),('ubuntu2204-gb200','GB200'),('ubuntu2204-mi300x','MI300X'),('ubuntu2204-mi325x','MI325X'),('ubuntu2204-mi355x','MI355X')],label='Image')
+    image=forms.ChoiceField(choices=[('','-- Select Image --'),('ubuntu2204-x86-rma','H100/200'),('ubuntu2204-b200-rma','B200'),('ubuntu2204-gb200','GB200'),('ubuntu2204-gb200','GH200'),('ubuntu2204-mi300x','MI300X'),('ubuntu2204-mi325x','MI325X'),('ubuntu2204-mi355x','MI355X')],label='Image')
     remove=forms.BooleanField(required=False,label="Remove",initial=False)
     check=forms.BooleanField(required=False,label="Check",initial=False)
     fw_update=forms.BooleanField(required=False,label="Firmware Update",initial=False)

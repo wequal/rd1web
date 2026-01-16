@@ -850,11 +850,14 @@
         
         function handleImageSelection() {
             const selectedImage = rmaImageSelectForTests ? rmaImageSelectForTests.value : '';
+            const selectedText = rmaImageSelectForTests && rmaImageSelectForTests.selectedIndex >= 0 ? rmaImageSelectForTests.options[rmaImageSelectForTests.selectedIndex].text : '';
+            
             const isMi3xxImage = (
                 selectedImage === 'ubuntu2204-mi300x' ||
                 selectedImage === 'ubuntu2204-mi325x' ||
                 selectedImage === 'ubuntu2204-mi355x'
             );
+            const isGh200 = selectedText === 'GH200';
 
             // Get the parent divs that contain the checkboxes
             const dcgmContainer = dcgmCheckbox ? dcgmCheckbox.closest('.col-md-3') : null;
@@ -866,6 +869,9 @@
             
             const remoteFwCheckbox = document.getElementById('id_rma-tests_remote_fw');
             const remoteFwContainer = remoteFwCheckbox ? remoteFwCheckbox.closest('.col-md-3') : null;
+            
+            const fwUpdateCheckbox = document.getElementById('id_rma-fw_update');
+            const fwUpdateContainer = fwUpdateCheckbox ? fwUpdateCheckbox.closest('.col-md-3') : null;
 
             if (isMi3xxImage) {
                 // Hide DCGM, DCGM R4, FD2, and GPU Field Diag for MI3XX images
@@ -886,7 +892,7 @@
                     gpudiagCheckbox.checked = false;
                 }
 
-                // Show AGHFC Level 3 and All Log for MI3XX images
+                // Show AGHFC Level 3, All Log, Firmware Update for MI3XX images
                 if (level3Container) {
                     level3Container.style.display = '';
                 }
@@ -896,17 +902,59 @@
                 if (remoteFwContainer) {
                     remoteFwContainer.style.display = '';
                 }
+                if (fwUpdateContainer) {
+                    fwUpdateContainer.style.display = '';
+                }
 
                 // Auto-check Default test for MI3XX images
                 if (defaultCheckbox) {
                     defaultCheckbox.checked = true;
                 }
+            } else if (isGh200) {
+                // GH200: Only Default, Pre GPU Test, FD2
+                // Hide DCGM, DCGM R4, GPU Field Diag
+                if (dcgmContainer) {
+                    dcgmContainer.style.display = 'none';
+                    dcgmCheckbox.checked = false;
+                }
+                if (dcgmR4Container) {
+                    dcgmR4Container.style.display = 'none';
+                    dcgmR4Checkbox.checked = false;
+                }
+                if (gpudiagContainer) {
+                    gpudiagContainer.style.display = 'none';
+                    gpudiagCheckbox.checked = false;
+                }
+
+                // Show FD2
+                if (fd2Container) {
+                    fd2Container.style.display = '';
+                }
+
+                // Hide AGHFC Level 3, All Log, Remote FW
+                if (level3Container) {
+                    level3Container.style.display = 'none';
+                    level3Checkbox.checked = false;
+                }
+                if (allLogContainer) {
+                    allLogContainer.style.display = 'none';
+                    allLogCheckbox.checked = false;
+                }
+                if (remoteFwContainer) {
+                    remoteFwContainer.style.display = 'none';
+                    remoteFwCheckbox.checked = false;
+                }
+                // Hide Firmware Update for GH200
+                if (fwUpdateContainer) {
+                    fwUpdateContainer.style.display = 'none';
+                }
             } else {
-                // Show DCGM, DCGM R4, FD2, GPU Field Diag for other images
+                // Show DCGM, DCGM R4, FD2, GPU Field Diag, Firmware Update for other images
                 if (dcgmContainer) dcgmContainer.style.display = '';
                 if (dcgmR4Container) dcgmR4Container.style.display = '';
                 if (fd2Container) fd2Container.style.display = '';
                 if (gpudiagContainer) gpudiagContainer.style.display = '';
+                if (fwUpdateContainer) fwUpdateContainer.style.display = '';
 
                 // Hide AGHFC Level 3 and All Log for non-MI3XX images
                 if (level3Container) {
