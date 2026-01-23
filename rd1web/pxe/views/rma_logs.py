@@ -2395,6 +2395,7 @@ def _mi3xx_postprocess_alllog_cper(
         tuple[str, str]: (output_log_filename, summary_message)
     """
     import tarfile
+    import zipfile
     import glob
     import shutil
     import subprocess
@@ -2436,11 +2437,26 @@ def _mi3xx_postprocess_alllog_cper(
             out.write(f"Also checked: {os.path.join('/srv/rma', dir_name, tar_filename)}\n")
             return output_log_filename, "CPER analysis failed: tarball not found locally"
 
+        def _extract_archive(archive_path: str, dest_dir: str) -> None:
+            """
+            Extract ALLLOG archive to dest_dir.
+            Supports: zip, tar (compressed or uncompressed).
+            """
+            if zipfile.is_zipfile(archive_path):
+                with zipfile.ZipFile(archive_path, "r") as zf:
+                    zf.extractall(dest_dir)
+                return
+            if tarfile.is_tarfile(archive_path):
+                # Use r:* to auto-detect compression (or none)
+                with tarfile.open(archive_path, mode="r:*") as tf:
+                    _safe_extract_all(tf, dest_dir)
+                return
+            raise ValueError("Unsupported archive format (not zip/tar)")
+
         try:
-            _mi3xx_update_task_cache(task_id, 90, "Uncompressing ALLLOG tarball...")
+            _mi3xx_update_task_cache(task_id, 90, "Uncompressing ALLLOG archive...")
             os.makedirs(extract_root, exist_ok=True)
-            with tarfile.open(tar_path, mode="r:gz") as tf:
-                _safe_extract_all(tf, extract_root)
+            _extract_archive(tar_path, extract_root)
             # Store full folder name(s) matching obmcdump*
             obmcdump_glob = glob.glob(
                 os.path.join(extract_root, "**", "obmcdump*"), recursive=True
