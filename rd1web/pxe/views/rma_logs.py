@@ -2326,6 +2326,203 @@ def sanitize_notice_for_filename(notice):
     return notice
 
 
+def _mi3xx_update_task_cache(task_id, progress=None, message=None):
+    """
+    Best-effort helper to update the MI3XX task cache during post-processing.
+    """
+    try:
+        task_data = cache.get(f'mi3xx_task_{task_id}')
+        if not task_data:
+            return
+        if progress is not None:
+            task_data['progress'] = progress
+        if message:
+            task_data['message'] = message
+        cache.set(f'mi3xx_task_{task_id}', task_data, 1800)
+    except Exception:
+        # Cache updates are non-critical
+        pass
+
+
+def _mi3xx_locate_local_alllog_tar(dir_name, tar_filename):
+    """
+    Try to locate the downloaded ALLLOG tarball on the local filesystem.
+    """
+    import glob
+
+    candidates = [
+        os.path.join(RMA_BASE_DIR, dir_name, tar_filename),
+        os.path.join("/srv/rma", dir_name, tar_filename),
+    ]
+    for p in candidates:
+        try:
+            if os.path.exists(p) and os.path.isfile(p):
+                return p
+        except Exception:
+            continue
+
+    # Fallback: search by name under the expected directory
+    try:
+        pattern = os.path.join(RMA_BASE_DIR, dir_name, tar_filename)
+        matches = glob.glob(pattern)
+        for p in matches:
+            if os.path.exists(p) and os.path.isfile(p):
+                return p
+    except Exception:
+        pass
+
+    return None
+
+
+def _mi3xx_postprocess_alllog_cper(
+    task_id,
+    dir_name,
+    base_sn,
+    timestamp,
+    sanitized_notice,
+    tar_filename,
+):
+    """
+    Local post-processing for MI3XX ALL LOG:
+    - untar the ALLLOG tarball into a temp folder
+    - glob for extracted folder(s) starting with 'obmcdump'
+    - collect all '*.cper' files into a list
+    - run /root/addc_cdump_analyzer/cdump_analyzer.py for each cper
+    - write one consolidated *_CPER_output.log next to the tar.gz
+    - delete the extracted folder(s)
+
+    Returns:
+        tuple[str, str]: (output_log_filename, summary_message)
+    """
+    import tarfile
+    import glob
+    import shutil
+    import subprocess
+    from datetime import datetime
+
+    notice_part = f"_{sanitized_notice}" if sanitized_notice else ""
+    output_log_filename = f"{base_sn}{notice_part}_ALLLOG_{timestamp}_CPER_output.log"
+
+    tar_path = _mi3xx_locate_local_alllog_tar(dir_name, tar_filename)
+    output_dir = os.path.dirname(tar_path) if tar_path else os.path.join(RMA_BASE_DIR, dir_name)
+    os.makedirs(output_dir, exist_ok=True)
+    output_log_path = os.path.join(output_dir, output_log_filename)
+
+    def _safe_extract_all(tar, path):
+        """
+        Prevent path traversal during tar extraction.
+        """
+        abs_base = os.path.abspath(path)
+        members = tar.getmembers()
+        for m in members:
+            member_path = os.path.abspath(os.path.join(path, m.name))
+            if not member_path.startswith(abs_base + os.sep) and member_path != abs_base:
+                raise ValueError(f"Unsafe tar member path: {m.name}")
+        tar.extractall(path=path)
+
+    extract_root = os.path.join(output_dir, f".mi3xx_alllog_extract_{timestamp}_{task_id[:8]}")
+    error_count = 0
+
+    with open(output_log_path, "w") as out:
+        out.write("MI3XX ALL LOG CPER analyzer output\n")
+        out.write(f"Generated: {datetime.now().isoformat()}\n")
+        out.write(f"RMA Dir: {dir_name}\n")
+        out.write(f"Tarball: {tar_filename}\n")
+        out.write("\n")
+
+        if not tar_path:
+            out.write("ERROR: ALLLOG tarball not found on local filesystem.\n")
+            out.write(f"Looked for: {os.path.join(RMA_BASE_DIR, dir_name, tar_filename)}\n")
+            out.write(f"Also checked: {os.path.join('/srv/rma', dir_name, tar_filename)}\n")
+            return output_log_filename, "CPER analysis failed: tarball not found locally"
+
+        try:
+            _mi3xx_update_task_cache(task_id, 90, "Uncompressing ALLLOG tarball...")
+            os.makedirs(extract_root, exist_ok=True)
+            with tarfile.open(tar_path, mode="r:gz") as tf:
+                _safe_extract_all(tf, extract_root)
+            # Store full folder name(s) matching obmcdump*
+            obmcdump_glob = glob.glob(
+                os.path.join(extract_root, "**", "obmcdump*"), recursive=True
+            )
+            obmcdump_dirs = [p for p in obmcdump_glob if os.path.isdir(p)]
+
+            out.write("Extracted obmcdump folders:\n")
+            for p in obmcdump_dirs:
+                out.write(f"- {p}\n")
+            out.write("\n")
+
+            cper_files = []
+            for d in obmcdump_dirs:
+                cper_files.extend(glob.glob(os.path.join(d, "**", "*.cper"), recursive=True))
+            cper_files = sorted(set(cper_files))
+
+            out.write("CPER files discovered:\n")
+            for p in cper_files:
+                out.write(f"- {p}\n")
+            out.write("\n")
+
+            if not cper_files:
+                out.write("WARNING: No .cper files found under obmcdump* folders.\n")
+                _mi3xx_update_task_cache(task_id, 99, "No CPER files found; cleanup in progress...")
+                return output_log_filename, "No CPER files found; wrote CPER output log"
+
+            analyzer_dir = "/root/addc_cdump_analyzer"
+            analyzer_cmd = ["python3", "cdump_analyzer.py", "-i"]
+
+            for idx, cper_path in enumerate(cper_files, start=1):
+                prog = 90 + int((idx / max(1, len(cper_files))) * 9)
+                _mi3xx_update_task_cache(
+                    task_id,
+                    prog,
+                    f"Analyzing CPER ({idx}/{len(cper_files)}): {os.path.basename(cper_path)}",
+                )
+
+                out.write("=" * 80 + "\n")
+                out.write(f"CPER: {cper_path}\n")
+                out.write("=" * 80 + "\n")
+                try:
+                    result = subprocess.run(
+                        analyzer_cmd + [cper_path],
+                        cwd=analyzer_dir,
+                        capture_output=True,
+                        text=True,
+                        timeout=600,
+                    )
+                    out.write(f"Return code: {result.returncode}\n")
+                    if result.stdout:
+                        out.write("--- STDOUT ---\n")
+                        out.write(result.stdout.rstrip() + "\n")
+                    if result.stderr:
+                        out.write("--- STDERR ---\n")
+                        out.write(result.stderr.rstrip() + "\n")
+                    if result.returncode != 0:
+                        error_count += 1
+                        out.write("ERROR: Analyzer returned non-zero exit code.\n")
+                except Exception as e:
+                    error_count += 1
+                    out.write(f"ERROR: Analyzer execution failed: {e}\n")
+                out.write("\n")
+
+            out.write("Summary:\n")
+            out.write(f"- CPER files analyzed: {len(cper_files)}\n")
+            out.write(f"- Analyzer errors: {error_count}\n")
+
+        except Exception as e:
+            out.write(f"ERROR: CPER post-processing failed: {e}\n")
+            return output_log_filename, f"CPER analysis failed: {e}"
+        finally:
+            _mi3xx_update_task_cache(task_id, 99, "Removing extracted ALLLOG folder(s)...")
+            try:
+                shutil.rmtree(extract_root, ignore_errors=True)
+            except Exception as e:
+                out.write(f"WARNING: Cleanup failed: {e}\n")
+
+    if error_count:
+        return output_log_filename, f"CPER analysis completed with {error_count} error(s); see {output_log_filename}"
+    return output_log_filename, f"CPER analysis completed; wrote {output_log_filename}"
+
+
 def collect_mi3xx_alllog_task(task_id, dir_name, base_sn, rma_number, bmc_ip, image=None, notice=None):
     """
     Background task to collect MI3XX ALL LOG on remote RMA server
@@ -2555,20 +2752,36 @@ except Exception as e:
             
             # Check if successful
             if result.ok and "SUCCESS:" in result.stdout:
-                filename = None
+                tar_filename = None
                 for line in result.stdout.split('\n'):
                     if line.startswith('SUCCESS:'):
-                        filename = line.replace('SUCCESS:', '').strip()
+                        tar_filename = line.replace('SUCCESS:', '').strip()
                         break
-                
-                cache.set(f'mi3xx_task_{task_id}', {
-                    'status': 'completed',
-                    'progress': 100,
-                    'message': f'Successfully saved: {filename}',
-                    'filename': filename,
-                    'error': None
-                }, 1800)
-                logger.info(f"Successfully collected MI3XX ALL LOG: {filename}")
+
+                _mi3xx_update_task_cache(task_id, 90, "Starting CPER post-processing...")
+                output_log_filename, summary_msg = _mi3xx_postprocess_alllog_cper(
+                    task_id=task_id,
+                    dir_name=dir_name,
+                    base_sn=base_sn,
+                    timestamp=timestamp,
+                    sanitized_notice=sanitized_notice,
+                    tar_filename=tar_filename or "",
+                )
+
+                cache.set(
+                    f'mi3xx_task_{task_id}',
+                    {
+                        'status': 'completed',
+                        'progress': 100,
+                        'message': summary_msg,
+                        'filename': output_log_filename,
+                        'error': None,
+                    },
+                    1800,
+                )
+                logger.info(
+                    f"MI3XX ALL LOG collected: {tar_filename}; CPER output: {output_log_filename}"
+                )
             else:
                 error_msg = 'Unknown error'
                 for line in result.stdout.split('\n'):
