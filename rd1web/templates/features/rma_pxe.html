@@ -107,7 +107,7 @@
                             {% endif %}
                             <small class="form-text text-muted">
                                 <i class="fas me-1"></i>
-                                Optional: Extra note passed to PXE as <code>notice=...</code> (whitespace becomes underscores).
+                                Optional
                             </small>
                         </div>
 
@@ -1720,6 +1720,7 @@
         const baseSnInput = document.getElementById('id_rma-base_sn');
         const replacementSnInput = document.getElementById('id_rma-replacement_sn');
         const rmaNumberInput = document.getElementById('id_rma-rma_number');
+        const noticeInput = document.getElementById('id_rma-notice');
         
         if (bmcIpSelect && baseSnInput && rmaNumberInput) {
             // Function to fetch and fill RMA info
@@ -1728,6 +1729,7 @@
                     baseSnInput.value = '';
                     if (replacementSnInput) replacementSnInput.value = '';
                     rmaNumberInput.value = '';
+                    if (noticeInput) noticeInput.value = '';
                     return;
                 }
                 
@@ -1739,12 +1741,14 @@
                         baseSnInput.value = data.base_sn || '';
                         if (replacementSnInput) replacementSnInput.value = data.replacement_sn || '';
                         rmaNumberInput.value = data.rma_number || '';
+                        if (noticeInput) noticeInput.value = data.notice || '';
                     }
                 } catch (error) {
                     // Silently handle errors
                     baseSnInput.value = '';
                     if (replacementSnInput) replacementSnInput.value = '';
                     rmaNumberInput.value = '';
+                    if (noticeInput) noticeInput.value = '';
                 }
             }
             

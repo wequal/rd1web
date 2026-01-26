@@ -200,6 +200,7 @@ def get_rma_info_by_bmc(request, bmc_ip):
                 'base_sn': '',
                 'replacement_sn': '',
                 'rma_number': '',
+                'notice': '',
                 **empty_gpu_sns,
                 **empty_rgpu_sns
             })
@@ -226,6 +227,7 @@ def get_rma_info_by_bmc(request, bmc_ip):
         base_sn = params_dict.get('base_sn', '') if isinstance(params_dict, dict) else ''
         replacement_sn = params_dict.get('replacement_sn', '') if isinstance(params_dict, dict) else ''
         rma_number = params_dict.get('rma_number', '') if isinstance(params_dict, dict) else ''
+        notice = params_dict.get('notice', '') if isinstance(params_dict, dict) else ''
         
         # Extract GPU SNs and Replacement GPU SNs for PCIE page
         gpu_sns = {}
@@ -240,6 +242,7 @@ def get_rma_info_by_bmc(request, bmc_ip):
             'base_sn': base_sn,
             'replacement_sn': replacement_sn,
             'rma_number': rma_number,
+            'notice': notice,
             **gpu_sns,  # Include GPU SNs directly in response
             **rgpu_sns  # Include Replacement GPU SNs directly in response
         })
@@ -457,11 +460,12 @@ def rma_pxe(request):
                 eco_number = bound_form.cleaned_data.get('eco_number', '')
                 gpu_model = bound_form.cleaned_data.get('gpu_model', '')
                 cooling = bound_form.cleaned_data.get('cooling', '')
+                notice = bound_form.cleaned_data.get('notice', '').strip()
                 
                 # Debug logging
                 logger.info(f"RMA PXE form submitted: base_sn={base_sn}, replacement_sn={replacement_sn}, rma_number={rma_number}, bmc_ip={bmc_ip}, tests={tests}, fw_update={fw_update}, eco_number={eco_number}, gpu_model={gpu_model}, cooling={cooling}, remove={remove}, check={check}")
                 
-                # Build tests parameter including fw_update, eco_number, gpu_model, and cooling
+                # Build tests parameter including fw_update, eco_number, gpu_model, cooling, and notice
                 tests_list = list(tests) if tests else []
                 if fw_update:
                     tests_list.append('fw_update')
@@ -471,6 +475,8 @@ def rma_pxe(request):
                         tests_list.append(f'gpu_model={gpu_model}')
                     if cooling and cooling.strip():
                         tests_list.append(f'cooling={cooling}')
+                if notice:
+                    tests_list.append(f'notice={notice}')
                 tests_param = " ".join(tests_list) if tests_list else " "
                 
                 macs = get_lan_macs(bmc_ip)
@@ -520,6 +526,7 @@ def rma_pxe(request):
                             'eco_number': eco_number,
                             'gpu_model': gpu_model,
                             'cooling': cooling,
+                            'notice': notice,
                             'form_type': 'sxm'
                         }
                         PxeEntry.objects.update_or_create(
