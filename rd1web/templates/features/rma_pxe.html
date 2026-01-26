@@ -205,6 +205,20 @@
                                             <i class="fas  me-1 text-info"></i>DCGM R4
                                         </label>
                                     </div>
+                                    <!-- DCGM R4 Loop -->
+                                    <div id="dcgmR4LoopContainer" class="mt-2" style="display: none;">
+                                        <label for="{{ form.dcgmr4_loop.id_for_label }}" class="form-label mb-1">
+                                            DCGM R4 Loop <span class="text-muted">(optional)</span>
+                                        </label>
+                                        {{ form.dcgmr4_loop }}
+                                        {% if form.dcgmr4_loop.errors %}
+                                            <div class="text-danger mt-1">
+                                                {% for error in form.dcgmr4_loop.errors %}
+                                                    <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
@@ -509,6 +523,20 @@
                                     <div class="form-check">
                                         <input type="checkbox" class="form-check-input pcie-test-checkbox" name="pcie-tests" value="dcgm_r4" id="id_pcie-tests_3" {% if 'dcgm_r4' in pcie_form.tests.value %}checked{% endif %}>
                                         <label class="form-check-label" for="id_pcie-tests_3">DCGM R4</label>
+                                    </div>
+                                    <!-- DCGM R4 Loop -->
+                                    <div id="pcieDcgmR4LoopContainer" class="mt-2" style="display: none;">
+                                        <label for="{{ pcie_form.dcgmr4_loop.id_for_label }}" class="form-label mb-1">
+                                            DCGM R4 Loop <span class="text-muted">(optional)</span>
+                                        </label>
+                                        {{ pcie_form.dcgmr4_loop }}
+                                        {% if pcie_form.dcgmr4_loop.errors %}
+                                            <div class="text-danger mt-1">
+                                                {% for error in pcie_form.dcgmr4_loop.errors %}
+                                                    <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
                                     </div>
                                 </div>
                                 <div class="col-md-3">
@@ -853,6 +881,8 @@
         const allLogCheckbox = document.getElementById('id_rma-tests_6');
         const mi3xxNoticeContainer = document.getElementById('mi3xxNoticeContainer');
         const mi3xxNoticeInput = document.getElementById('mi3xxNotice');
+        const dcgmR4LoopContainer = document.getElementById('dcgmR4LoopContainer');
+        const dcgmR4LoopInput = document.getElementById('id_rma-dcgmr4_loop');
 
         function updateMi3xxNoticeVisibility() {
             if (!mi3xxNoticeContainer) return;
@@ -863,8 +893,25 @@
             }
         }
 
+        function updateDcgmR4LoopVisibility() {
+            if (!dcgmR4LoopContainer) return;
+            const show = !!(dcgmR4Checkbox && dcgmR4Checkbox.checked);
+            dcgmR4LoopContainer.style.display = show ? '' : 'none';
+            if (show && dcgmR4LoopInput) {
+                if (!dcgmR4LoopInput.value || !dcgmR4LoopInput.value.trim()) {
+                    dcgmR4LoopInput.value = '1';
+                }
+            }
+            if (!show && dcgmR4LoopInput) {
+                dcgmR4LoopInput.value = '';
+            }
+        }
+
         if (allLogCheckbox) {
             allLogCheckbox.addEventListener('change', updateMi3xxNoticeVisibility);
+        }
+        if (dcgmR4Checkbox) {
+            dcgmR4Checkbox.addEventListener('change', updateDcgmR4LoopVisibility);
         }
         
         function handleImageSelection() {
@@ -992,6 +1039,7 @@
 
             // Ensure Notice UI stays in sync if All Log gets toggled off programmatically
             updateMi3xxNoticeVisibility();
+            updateDcgmR4LoopVisibility();
         }
         
         if (rmaImageSelectForTests) {
@@ -1001,6 +1049,7 @@
         }
         // Initialize Notice visibility on page load
         updateMi3xxNoticeVisibility();
+        updateDcgmR4LoopVisibility();
         
         // Tests selection validation logic
         const testsContainer = document.getElementById('tests-container');
@@ -1119,6 +1168,7 @@
 
                 validateTestSelections();
                 updateMi3xxNoticeVisibility();
+                updateDcgmR4LoopVisibility();
             }
             
             // Add event listeners to all test checkboxes
@@ -1986,6 +2036,23 @@
         const pcieDefaultCb = document.getElementById('id_pcie-tests_0');
         const pcieOtherCbs = Array.from(pcieTestCheckboxes).filter(cb => cb !== pcieDefaultCb);
         const pcieFwUpdateCb = document.getElementById('id_pcie-fw_update');
+        const pcieDcgmR4Cb = document.getElementById('id_pcie-tests_3');
+        const pcieDcgmR4LoopContainer = document.getElementById('pcieDcgmR4LoopContainer');
+        const pcieDcgmR4LoopInput = document.getElementById('id_pcie-dcgmr4_loop');
+
+        function updatePcieDcgmR4LoopVisibility() {
+            if (!pcieDcgmR4LoopContainer) return;
+            const show = !!(pcieDcgmR4Cb && pcieDcgmR4Cb.checked);
+            pcieDcgmR4LoopContainer.style.display = show ? '' : 'none';
+            if (show && pcieDcgmR4LoopInput) {
+                if (!pcieDcgmR4LoopInput.value || !pcieDcgmR4LoopInput.value.trim()) {
+                    pcieDcgmR4LoopInput.value = '1';
+                }
+            }
+            if (!show && pcieDcgmR4LoopInput) {
+                pcieDcgmR4LoopInput.value = '';
+            }
+        }
 
         pcieTestCheckboxes.forEach(cb => {
             cb.addEventListener('change', function() {
@@ -1998,8 +2065,10 @@
                 } else if (this.checked) {
                     if (pcieDefaultCb) pcieDefaultCb.checked = false;
                 }
+                updatePcieDcgmR4LoopVisibility();
             });
         });
+        updatePcieDcgmR4LoopVisibility();
         
         // PCIE form validation
         const pciePxeForm = document.getElementById('pciePxeForm');

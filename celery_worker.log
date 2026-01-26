@@ -23199,3 +23199,92 @@ the celery worker `-n` option.
 [2026-01-15 16:27:03,010: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
 [2026-01-15 16:27:03,012: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 570 directories
 [2026-01-15 16:27:03,012: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[283f863c-e7ab-4ea6-a553-60befe3b2b33] succeeded in 0.002699514850974083s: {'status': 'success', 'directory_count': 570}
+[2026-01-26 14:44:51,314: INFO/MainProcess] Connected to redis://localhost:6379/0
+[2026-01-26 14:44:51,316: INFO/MainProcess] mingle: searching for neighbors
+[2026-01-26 14:44:52,324: WARNING/MainProcess] /home/devin/rd1web/venv/lib/python3.12/site-packages/celery/app/control.py:56: DuplicateNodenameWarning: Received multiple replies from node name: celery@fishsrv.
+Please make sure you give each node a unique nodename using
+the celery worker `-n` option.
+  warnings.warn(DuplicateNodenameWarning(
+
+[2026-01-26 14:44:52,324: INFO/MainProcess] mingle: all alone
+[2026-01-26 14:44:52,334: INFO/MainProcess] celery@fishsrv ready.
+[2026-01-26 14:45:04,413: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[1ce7a7cc-b184-4236-be3c-4a6470c9bef6] received
+[2026-01-26 14:45:04,415: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-26 14:45:04,417: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 618 directories
+[2026-01-26 14:45:04,417: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[1ce7a7cc-b184-4236-be3c-4a6470c9bef6] succeeded in 0.0029441844671964645s: {'status': 'success', 'directory_count': 618}
+[2026-01-26 14:45:05,738: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[e99c1e57-0378-445c-ba2f-39a239710a01] received
+[2026-01-26 14:45:05,740: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-26 14:45:05,741: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 618 directories
+[2026-01-26 14:45:05,742: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[e99c1e57-0378-445c-ba2f-39a239710a01] succeeded in 0.002160102128982544s: {'status': 'success', 'directory_count': 618}
+[2026-01-26 14:45:34,413: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[b09b9e4d-4726-41b3-8e76-d5e750cc0692] received
+[2026-01-26 14:45:34,414: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-26 14:45:34,415: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 618 directories
+[2026-01-26 14:45:34,416: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[b09b9e4d-4726-41b3-8e76-d5e750cc0692] succeeded in 0.002041652798652649s: {'status': 'success', 'directory_count': 618}
+[2026-01-26 14:45:52,186: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[dcb73576-efb5-4056-a81b-67f74a8c5bb8] received
+[2026-01-26 14:45:52,187: INFO/ForkPoolWorker-1] Starting RMA details cache pre-warming...
+[2026-01-26 14:45:52,189: INFO/ForkPoolWorker-1] Pre-warming details for 40 recent directories...
+[2026-01-26 14:45:54,969: INFO/MainProcess] Task pxe.tasks.scan_rma_statistics[e82fce8e-5e8f-43ad-9781-dd73f3525548] received
+[2026-01-26 14:45:54,970: INFO/ForkPoolWorker-2] Starting RMA statistics scan...
+[2026-01-26 14:45:58,461: ERROR/ForkPoolWorker-2] Error scanning directory 1662124651479_XD251104129: get() returned more than one RmaTestStatistic -- it returned 10!
+[2026-01-26 14:45:58,462: WARNING/ForkPoolWorker-2] Scan error: Error: get() returned more than one RmaTestStatistic -- it returned 10!
+[2026-01-26 14:46:21,945: INFO/ForkPoolWorker-1] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-26 14:46:21,946: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_details_cache[dcb73576-efb5-4056-a81b-67f74a8c5bb8] succeeded in 29.758444732055068s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 618}
+[2026-01-26 14:46:35,739: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[76bc3a64-017f-43cb-8d5e-244afff015a4] received
+[2026-01-26 14:46:35,740: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-26 14:46:35,741: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 618 directories
+[2026-01-26 14:46:35,742: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[76bc3a64-017f-43cb-8d5e-244afff015a4] succeeded in 0.0021411925554275513s: {'status': 'success', 'directory_count': 618}
+[2026-01-26 14:47:01,925: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[5a47cd1b-562c-49d2-ae16-f88160728018] received
+[2026-01-26 14:47:01,926: INFO/ForkPoolWorker-1] Starting RMA details cache pre-warming...
+[2026-01-26 14:47:01,928: INFO/ForkPoolWorker-1] Pre-warming details for 40 recent directories...
+[2026-01-26 14:47:03,542: INFO/ForkPoolWorker-1] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-26 14:47:03,542: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_details_cache[5a47cd1b-562c-49d2-ae16-f88160728018] succeeded in 1.6160528641194105s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 618}
+[2026-01-26 14:47:04,413: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[746629bd-8a55-45e6-bbee-8a5570c6a65a] received
+[2026-01-26 14:47:04,414: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-26 14:47:04,415: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 618 directories
+[2026-01-26 14:47:04,415: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[746629bd-8a55-45e6-bbee-8a5570c6a65a] succeeded in 0.0020645521581172943s: {'status': 'success', 'directory_count': 618}
+[2026-01-26 14:47:22,192: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[aefd77e2-f482-48f0-aee5-ae33359dc235] received
+[2026-01-26 14:47:22,193: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-26 14:47:22,195: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 618 directories
+[2026-01-26 14:47:22,195: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[aefd77e2-f482-48f0-aee5-ae33359dc235] succeeded in 0.0020862240344285965s: {'status': 'success', 'directory_count': 618}
+[2026-01-26 14:47:52,187: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[3685ad31-7482-4907-9e79-1e9e6737ada1] received
+[2026-01-26 14:47:52,188: INFO/ForkPoolWorker-1] Starting RMA details cache pre-warming...
+[2026-01-26 14:47:52,189: INFO/ForkPoolWorker-1] Pre-warming details for 40 recent directories...
+[2026-01-26 14:48:25,406: WARNING/ForkPoolWorker-2] Scan error: test_results.log not found in 1662324652988-1_RR47B
+[2026-01-26 14:49:54,971: WARNING/MainProcess] Soft time limit (240.0s) exceeded for pxe.tasks.scan_rma_statistics[e82fce8e-5e8f-43ad-9781-dd73f3525548]
+[2026-01-26 14:49:55,137: WARNING/ForkPoolWorker-2] Scan error: Cannot read test_results.log: SoftTimeLimitExceeded()
+[2026-01-26 14:50:07,174: ERROR/ForkPoolWorker-2] Error scanning directory 1664724642382_XD251105165: get() returned more than one RmaTestStatistic -- it returned 5!
+[2026-01-26 14:50:07,175: WARNING/ForkPoolWorker-2] Scan error: Error: get() returned more than one RmaTestStatistic -- it returned 5!
+[2026-01-26 14:50:29,117: WARNING/ForkPoolWorker-2] Scan error: test_results.log not found in 1661824650751-3_RR47B
+[2026-01-26 14:50:54,974: ERROR/MainProcess] Task handler raised error: TimeLimitExceeded(300.0)
+Traceback (most recent call last):
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/billiard/pool.py", line 684, in on_hard_timeout
+    raise TimeLimitExceeded(job._timeout)
+billiard.einfo.ExceptionWithTraceback: 
+"""
+Traceback (most recent call last):
+  File "/home/devin/rd1web/venv/lib/python3.12/site-packages/billiard/pool.py", line 684, in on_hard_timeout
+    raise TimeLimitExceeded(job._timeout)
+billiard.exceptions.TimeLimitExceeded: TimeLimitExceeded(300.0,)
+"""
+[2026-01-26 14:50:54,974: ERROR/MainProcess] Hard time limit (300.0s) exceeded for pxe.tasks.scan_rma_statistics[e82fce8e-5e8f-43ad-9781-dd73f3525548]
+[2026-01-26 14:50:55,081: ERROR/MainProcess] Process 'ForkPoolWorker-2' pid:345523 exited with 'signal 9 (SIGKILL)'
+[2026-01-26 14:50:56,412: INFO/ForkPoolWorker-1] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-26 14:50:56,413: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_details_cache[3685ad31-7482-4907-9e79-1e9e6737ada1] succeeded in 184.2256753332913s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 618}
+[2026-01-26 14:51:05,739: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[16b74fe7-eea7-4a5c-9663-518cd1f411cf] received
+[2026-01-26 14:51:05,741: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-26 14:51:05,742: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 618 directories
+[2026-01-26 14:51:05,743: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[16b74fe7-eea7-4a5c-9663-518cd1f411cf] succeeded in 0.002234291285276413s: {'status': 'success', 'directory_count': 618}
+[2026-01-26 14:51:35,739: INFO/MainProcess] Task pxe.tasks.prewarm_rma_directory_cache[aec633d4-9e77-4dd9-9ccb-178013b04196] received
+[2026-01-26 14:51:35,740: INFO/ForkPoolWorker-1] Starting RMA directory cache pre-warming...
+[2026-01-26 14:51:35,741: INFO/ForkPoolWorker-1] RMA directory cache pre-warmed successfully: 618 directories
+[2026-01-26 14:51:35,742: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_directory_cache[aec633d4-9e77-4dd9-9ccb-178013b04196] succeeded in 0.0020560510456562042s: {'status': 'success', 'directory_count': 618}
+[2026-01-26 14:52:01,925: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[ad29a172-536f-4300-bb9d-1830266b7457] received
+[2026-01-26 14:52:01,926: INFO/ForkPoolWorker-1] Starting RMA details cache pre-warming...
+[2026-01-26 14:52:03,490: INFO/MainProcess] Task pxe.tasks.prewarm_rma_details_cache[343278b5-b222-4a27-bb41-66152c6dda3d] received
+[2026-01-26 14:52:03,491: INFO/ForkPoolWorker-3] Starting RMA details cache pre-warming...
+[2026-01-26 14:52:07,716: INFO/ForkPoolWorker-3] Pre-warming details for 40 recent directories...
+[2026-01-26 14:52:07,722: INFO/ForkPoolWorker-1] Pre-warming details for 40 recent directories...
+[2026-01-26 14:52:09,463: INFO/ForkPoolWorker-1] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-26 14:52:09,463: INFO/ForkPoolWorker-3] RMA details cache pre-warmed successfully: 40 directories
+[2026-01-26 14:52:09,463: INFO/ForkPoolWorker-1] Task pxe.tasks.prewarm_rma_details_cache[ad29a172-536f-4300-bb9d-1830266b7457] succeeded in 7.537159517407417s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 618}
+[2026-01-26 14:52:09,464: INFO/ForkPoolWorker-3] Task pxe.tasks.prewarm_rma_details_cache[343278b5-b222-4a27-bb41-66152c6dda3d] succeeded in 5.9728659596294165s: {'status': 'success', 'prewarmed_count': 40, 'total_directories': 618}

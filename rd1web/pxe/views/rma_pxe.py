@@ -388,6 +388,7 @@ def rma_pxe(request):
                 remove = bound_form.cleaned_data.get('remove', False)
                 check = bound_form.cleaned_data.get('check', False)
                 fw_update = bound_form.cleaned_data.get('fw_update', False)
+                dcgmr4_loop = bound_form.cleaned_data.get('dcgmr4_loop')
                 
                 # GPU SNs
                 gpu_params = []
@@ -408,11 +409,15 @@ def rma_pxe(request):
                 tests_list.append('pcie')
                 if fw_update:
                     tests_list.append('fw_update')
+                if 'dcgm_r4' in tests:
+                    tests_list.append(f"dcgmr4_loop={dcgmr4_loop or 1}")
                 
                 tests_list.extend(gpu_params)
                 tests_param = " ".join(tests_list)
                 params_storage['tests'] = tests_param
                 params_storage['fw_update'] = fw_update
+                if 'dcgm_r4' in tests:
+                    params_storage['dcgmr4_loop'] = dcgmr4_loop or 1
                 
                 macs = get_lan_macs(bmc_ip)
                 macs = [normalize_mac_for_pxe(x) for x in macs if x]
@@ -461,6 +466,7 @@ def rma_pxe(request):
                 gpu_model = bound_form.cleaned_data.get('gpu_model', '')
                 cooling = bound_form.cleaned_data.get('cooling', '')
                 notice = bound_form.cleaned_data.get('notice', '').strip()
+                dcgmr4_loop = bound_form.cleaned_data.get('dcgmr4_loop')
                 
                 # Debug logging
                 logger.info(f"RMA PXE form submitted: base_sn={base_sn}, replacement_sn={replacement_sn}, rma_number={rma_number}, bmc_ip={bmc_ip}, tests={tests}, fw_update={fw_update}, eco_number={eco_number}, gpu_model={gpu_model}, cooling={cooling}, remove={remove}, check={check}")
@@ -475,6 +481,8 @@ def rma_pxe(request):
                         tests_list.append(f'gpu_model={gpu_model}')
                     if cooling and cooling.strip():
                         tests_list.append(f'cooling={cooling}')
+                if 'dcgm_r4' in tests:
+                    tests_list.append(f"dcgmr4_loop={dcgmr4_loop or 1}")
                 if notice:
                     tests_list.append(f'notice={notice}')
                 tests_param = " ".join(tests_list) if tests_list else " "
@@ -527,6 +535,7 @@ def rma_pxe(request):
                             'gpu_model': gpu_model,
                             'cooling': cooling,
                             'notice': notice,
+                            'dcgmr4_loop': dcgmr4_loop or 1 if 'dcgm_r4' in tests else None,
                             'form_type': 'sxm'
                         }
                         PxeEntry.objects.update_or_create(
