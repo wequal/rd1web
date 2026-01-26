@@ -308,6 +308,7 @@ class UniquePasswordForm(forms.Form):
 class RmaForm(forms.Form):
     base_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Base SN',required=True)
     replacement_sn=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='GPUBOARD/UBB8 replacement SN',required=False)
+    notice=forms.CharField(max_length=200, widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Notice',required=False)
     rma_number=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='RMA Number',required=False)
     bmc_ip=forms.ChoiceField(choices=[], widget=forms.Select(attrs={'class':'form-control','style': 'width: 500px;',}),label='BMC IP')
     image=forms.ChoiceField(choices=[('','-- Select Image --'),('ubuntu2204-x86-rma','H100/200'),('ubuntu2204-b200-rma','B200'),('ubuntu2204-gb200','GB200'),('ubuntu2204-gb200','GH200'),('ubuntu2204-mi300x','MI300X'),('ubuntu2204-mi325x','MI325X'),('ubuntu2204-mi355x','MI355X')],label='Image')
@@ -385,6 +386,16 @@ class RmaForm(forms.Form):
                 )
         
         return replacement_sn
+
+    def clean_notice(self):
+        """Keep Notice safe for shell + tests_param tokenization."""
+        notice = self.cleaned_data.get('notice', '').strip()
+        if notice:
+            if any(ch in notice for ch in ("'", '"')):
+                raise ValidationError("Notice cannot contain quotes.")
+            if "\n" in notice or "\r" in notice:
+                raise ValidationError("Notice must be a single line.")
+        return notice
 
 
 class PcieGpuForm(forms.Form):
