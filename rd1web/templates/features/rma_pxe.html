@@ -73,25 +73,6 @@
                             </small>
                         </div>
 
-                        <!-- GPUBOARD/UBB8 replacement SN -->
-                        <div class="mb-4">
-                            <label for="{{ form.replacement_sn.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas me-2 text-primary"></i>{{ form.replacement_sn.label }}
-                            </label>
-                            {{ form.replacement_sn }}
-                            {% if form.replacement_sn.errors %}
-                                <div class="text-danger mt-1">
-                                    {% for error in form.replacement_sn.errors %}
-                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                            <small class="form-text text-muted">
-                                <i class="fas me-1"></i>
-                                Optional: Enter the GPUBOARD/UBB8 replacement serial number. (Optional)
-                            </small>
-                        </div>
-
                         <!-- Notice (passed to PXE script as notice=...) -->
                         <div class="mb-4">
                             <label for="{{ form.notice.id_for_label }}" class="form-label fw-bold">
@@ -108,6 +89,25 @@
                             <small class="form-text text-muted">
                                 <i class="fas me-1"></i>
                                 Optional
+                            </small>
+                        </div>
+
+                        <!-- GPUBOARD/UBB8 replacement SN -->
+                        <div class="mb-4">
+                            <label for="{{ form.replacement_sn.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas me-2 text-primary"></i>{{ form.replacement_sn.label }}
+                            </label>
+                            {{ form.replacement_sn }}
+                            {% if form.replacement_sn.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.replacement_sn.errors %}
+                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                <i class="fas me-1"></i>
+                                Optional: Enter the GPUBOARD/UBB8 replacement serial number. (Optional)
                             </small>
                         </div>
 
