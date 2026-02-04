@@ -48,7 +48,7 @@
             </a>
             {% endif %}
 
-            {% if perms.pxe.can_view_rma_general_logs %}
+            {% if False and perms.pxe.can_view_rma_general_logs %}
             <a class="nav-link" href="{% url 'rma_general_log' %}">
                 RMA General Logs
             </a>
@@ -60,7 +60,7 @@
             </a>
             {% endif %}
 
-            {% if perms.pxe.can_access_rma_general_test %}
+            {% if False and perms.pxe.can_access_rma_general_test %}
             <a class="nav-link" href="{% url 'rma_general_test' %}">
                 RMA General TEST
             </a>

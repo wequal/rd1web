@@ -32,11 +32,14 @@ def cmdline(cmd):
 async def run_ipmitool(ip,user,pwd,command):
     cmd_1 = f"ipmitool -I lanplus -C 3 -H {ip} -U {user} -P {pwd} {command}"
     cmd_2 = f"ipmitool -H {ip} -U {user} -P {pwd} {command}"
+    cmd_3 = f"ipmitool -I lan -C 17 -H {ip} -U {user} -P {pwd} {command}"
     
     output = await asyncio.to_thread(cmdline, cmd_1)
 
     if "Unable to establish IPMI v2" in output:
         output = await asyncio.to_thread(cmdline, cmd_2)
+    elif "Unable to establish IPMI v1.5" in output:
+        output = await asyncio.to_thread(cmdline, cmd_3)
     return ip, output
 
 async def run_all_ipmitool(bmc_ip,user,pwd,command):

@@ -487,6 +487,107 @@ class PcieGpuForm(forms.Form):
         return tests
 
 
+class GbGpuForm(forms.Form):
+    """
+    Form for GB GPU Test (GB200/GB300) - restricted image + tests.
+    Uses the same BMC IP choice population as other RMA forms.
+    """
+    base_sn = forms.CharField(
+        widget=forms.TextInput(attrs={'class': 'form-control', 'style': 'width: 500px;'}),
+        label='Base SN',
+        required=True,
+    )
+    notice = forms.CharField(
+        max_length=200,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'style': 'width: 500px;'}),
+        label='Notice',
+        required=False,
+    )
+    rma_number = forms.CharField(
+        widget=forms.TextInput(attrs={'class': 'form-control', 'style': 'width: 500px;'}),
+        label='RMA Number',
+        required=False,
+    )
+    dcgmr4_loop = forms.IntegerField(
+        required=False,
+        min_value=1,
+        label='DCGM R4 Loop',
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control form-control-sm',
+            'autocomplete': 'off',
+            'min': '1',
+            'step': '1',
+        }),
+    )
+    bmc_ip = forms.ChoiceField(
+        choices=[],
+        widget=forms.Select(attrs={'class': 'form-control', 'style': 'width: 500px;'}),
+        label='BMC IP',
+    )
+    image = forms.ChoiceField(
+        choices=[
+            ('', '-- Select Image --'),
+            ('ubuntu2204-gb200', 'GB200'),
+            ('ubuntu2204-gb300', 'GB300'),
+        ],
+        label='Image',
+    )
+    tests = forms.MultipleChoiceField(
+        choices=[
+            ('default', 'Default'),
+            ('pre_gpu_test', 'Pre GPU Test'),
+            ('dcgm_r4', 'DCGM R4'),
+            ('fd2', 'FD2'),
+            ('hmc_log', 'HMC Log'),
+        ],
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
+        label='Tests',
+        required=False,
+    )
+    remove = forms.BooleanField(required=False, label="Remove", initial=False)
+    check = forms.BooleanField(required=False, label="Check", initial=False)
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        # Populate BMC IP choices based on user's linked golden numbers
+        if user:
+            linked_entries = RmaTestingDb.objects.filter(linked_user=user).order_by('bmc_ip')
+            self.fields['bmc_ip'].choices = [
+                (entry.bmc_ip, f"{entry.bmc_ip} - {entry.golden_number}") for entry in linked_entries
+            ]
+        else:
+            self.fields['bmc_ip'].choices = []
+
+    def clean_tests(self):
+        """Validate that Default and HMC Log are exclusive selections."""
+        tests = self.cleaned_data.get('tests', [])
+
+        if 'default' in tests and len(tests) > 1:
+            raise ValidationError(
+                "Default test cannot be combined with other tests. "
+                "Please select either Default OR any combination of the specific tests."
+            )
+
+        if 'hmc_log' in tests and len(tests) > 1:
+            raise ValidationError(
+                "HMC Log cannot be combined with other tests. Please select only the HMC Log option."
+            )
+
+        return tests
+
+    def clean_notice(self):
+        """Keep Notice safe for shell + tests_param tokenization."""
+        notice = self.cleaned_data.get('notice', '').strip()
+        if notice:
+            if any(ch in notice for ch in ("'", '"')):
+                raise ValidationError("Notice cannot contain quotes.")
+            if "\n" in notice or "\r" in notice:
+                raise ValidationError("Notice must be a single line.")
+        return notice
+
+
 class RmaGeneralForm(forms.Form):
     """Form for RMA General TEST - simplified version without golden number dependencies"""
     system_sn = forms.CharField(
