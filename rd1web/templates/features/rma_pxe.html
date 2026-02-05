@@ -23,9 +23,15 @@
             <div class="card shadow">
                 <div class="card-body">
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input operation-type-radio" type="radio" name="operationType" id="rmaTest" value="rma" {% if operation_type != 'pcie' %}checked{% endif %}>
+                        <input class="form-check-input operation-type-radio" type="radio" name="operationType" id="rmaTest" value="rma" {% if operation_type != 'pcie' and operation_type != 'gb' %}checked{% endif %}>
                         <label class="form-check-label" for="rmaTest">
                             RMA GPU TEST
+                        </label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input operation-type-radio" type="radio" name="operationType" id="gbTest" value="gb" {% if operation_type == 'gb' %}checked{% endif %}>
+                        <label class="form-check-label" for="gbTest">
+                            GB GPU TEST
                         </label>
                     </div>
                     <div class="form-check form-check-inline">
@@ -43,7 +49,7 @@
     <div class="row">
         <div class="col-lg-8">
             <!-- RMA GPU TEST Form Card -->
-            <div class="card shadow mb-4" id="rmaFormCard" style="display: {% if operation_type != 'pcie' %}block{% else %}none{% endif %};">
+            <div class="card shadow mb-4" id="rmaFormCard" style="display: {% if operation_type != 'pcie' and operation_type != 'gb' %}block{% else %}none{% endif %};">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                     <h6 class="m-0 font-weight-bold text-primary">
                         <i class="fas me-2"></i>RMA GPU TEST Configuration
@@ -352,6 +358,191 @@
                         </div>
 
                         <!-- Submit Button -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="reset" class="btn btn-outline-secondary me-md-2">
+                                <i class="fas fa-undo me-1"></i>Reset
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-1"></i>Execute
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- GB GPU TEST Form Card -->
+            <div class="card shadow mb-4" id="gbFormCard" style="display: {% if operation_type == 'gb' %}block{% else %}none{% endif %};">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas me-2"></i>GB GPU TEST Configuration
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="gbPxeForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="operation_type" value="gb">
+
+                        <!-- Base Serial Number -->
+                        <div class="mb-4">
+                            <label for="{{ gb_form.base_sn.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas me-2 text-primary"></i>{{ gb_form.base_sn.label }}
+                            </label>
+                            {{ gb_form.base_sn }}
+                            {% if gb_form.base_sn.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in gb_form.base_sn.errors %}
+                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Notice -->
+                        <div class="mb-4">
+                            <label for="{{ gb_form.notice.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas me-2 text-info"></i>{{ gb_form.notice.label }}
+                            </label>
+                            {{ gb_form.notice }}
+                            {% if gb_form.notice.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in gb_form.notice.errors %}
+                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- RMA Number -->
+                        <div class="mb-4">
+                            <label for="{{ gb_form.rma_number.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas me-2 text-warning"></i>{{ gb_form.rma_number.label }}
+                            </label>
+                            {{ gb_form.rma_number }}
+                            {% if gb_form.rma_number.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in gb_form.rma_number.errors %}
+                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- BMC IP -->
+                        <div class="mb-4">
+                            <label for="{{ gb_form.bmc_ip.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas me-2 text-success"></i>{{ gb_form.bmc_ip.label }}
+                            </label>
+                            {{ gb_form.bmc_ip }}
+                            {% if gb_form.bmc_ip.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in gb_form.bmc_ip.errors %}
+                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Image -->
+                        <div class="mb-4">
+                            <label for="{{ gb_form.image.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas me-2 text-info"></i>{{ gb_form.image.label }}
+                            </label>
+                            {{ gb_form.image }}
+                            {% if gb_form.image.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in gb_form.image.errors %}
+                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Tests -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="fas me-2 text-danger"></i>{{ gb_form.tests.label }}
+                            </label>
+                            <div id="gb-tests-container" class="row">
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input gb-test-checkbox" name="gb-tests" value="default" id="id_gb-tests_0" {% if 'default' in gb_form.tests.value %}checked{% endif %}>
+                                        <label class="form-check-label" for="id_gb-tests_0">Default</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input gb-test-checkbox" name="gb-tests" value="pre_gpu_test" id="id_gb-tests_1" {% if 'pre_gpu_test' in gb_form.tests.value %}checked{% endif %}>
+                                        <label class="form-check-label" for="id_gb-tests_1">PRE GPU TEST</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input gb-test-checkbox" name="gb-tests" value="dcgm_r4" id="id_gb-tests_2" {% if 'dcgm_r4' in gb_form.tests.value %}checked{% endif %}>
+                                        <label class="form-check-label" for="id_gb-tests_2">DCGM R4</label>
+                                    </div>
+                                    <!-- DCGM R4 Loop -->
+                                    <div id="gbDcgmR4LoopContainer" class="mt-2" style="display: none;">
+                                        <label for="{{ gb_form.dcgmr4_loop.id_for_label }}" class="form-label mb-1">
+                                            DCGM R4 Loop <span class="text-muted">(optional)</span>
+                                        </label>
+                                        {{ gb_form.dcgmr4_loop }}
+                                        {% if gb_form.dcgmr4_loop.errors %}
+                                            <div class="text-danger mt-1">
+                                                {% for error in gb_form.dcgmr4_loop.errors %}
+                                                    <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input gb-test-checkbox" name="gb-tests" value="fd2" id="id_gb-tests_3" {% if 'fd2' in gb_form.tests.value %}checked{% endif %}>
+                                        <label class="form-check-label" for="id_gb-tests_3">FD2</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input gb-test-checkbox" name="gb-tests" value="hmc_log" id="id_gb-tests_4" {% if 'hmc_log' in gb_form.tests.value %}checked{% endif %}>
+                                        <label class="form-check-label" for="id_gb-tests_4">HMC Log</label>
+                                    </div>
+                                </div>
+                            </div>
+                            {% if gb_form.tests.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in gb_form.tests.errors %}
+                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="fas me-2 text-info"></i>Actions
+                            </label>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        {{ gb_form.check }}
+                                        <label class="form-check-label" for="{{ gb_form.check.id_for_label }}">
+                                            <i class="fas fa-search me-1"></i>{{ gb_form.check.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        {{ gb_form.remove }}
+                                        <label class="form-check-label" for="{{ gb_form.remove.id_for_label }}">
+                                            <i class="fas fa-trash me-1"></i>{{ gb_form.remove.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit -->
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                             <button type="reset" class="btn btn-outline-secondary me-md-2">
                                 <i class="fas fa-undo me-1"></i>Reset
@@ -1814,6 +2005,42 @@
             }
         }
 
+        // Auto-fill for GB form
+        const gbBmcIpSelect = document.getElementById('id_gb-bmc_ip');
+        const gbBaseSnInput = document.getElementById('id_gb-base_sn');
+        const gbRmaNumberInput = document.getElementById('id_gb-rma_number');
+        const gbNoticeInput = document.getElementById('id_gb-notice');
+        if (gbBmcIpSelect && gbBaseSnInput && gbRmaNumberInput) {
+            async function fetchAndFillGbInfo(bmcIp) {
+                if (!bmcIp) {
+                    gbBaseSnInput.value = '';
+                    gbRmaNumberInput.value = '';
+                    if (gbNoticeInput) gbNoticeInput.value = '';
+                    return;
+                }
+                try {
+                    const response = await fetch(`/api/rma/get-rma-info/${bmcIp}/?operation_type=gb`);
+                    const data = await response.json();
+                    if (data.success) {
+                        gbBaseSnInput.value = data.base_sn || '';
+                        gbRmaNumberInput.value = data.rma_number || '';
+                        if (gbNoticeInput) gbNoticeInput.value = data.notice || '';
+                    }
+                } catch (e) {
+                    gbBaseSnInput.value = '';
+                    gbRmaNumberInput.value = '';
+                    if (gbNoticeInput) gbNoticeInput.value = '';
+                }
+            }
+
+            gbBmcIpSelect.addEventListener('change', function() {
+                fetchAndFillGbInfo(this.value);
+            });
+            if (gbBmcIpSelect.value) {
+                fetchAndFillGbInfo(gbBmcIpSelect.value);
+            }
+        }
+
         // Popup logic for Default Test
         const testDetailsModalElement = document.getElementById('testDetailsModal');
         let testDetailsModal = null;
@@ -1834,6 +2061,8 @@
             // Re-select elements to be safe
             const rmaImgSel = document.getElementById('id_rma-image');
             const rmaDefCb = document.getElementById('id_rma-tests_0');
+            const gbImgSel = document.getElementById('id_gb-image');
+            const gbDefCb = document.getElementById('id_gb-tests_0');
             const pcieImgSel = document.getElementById('id_pcie-image');
             const pcieDefCb = document.getElementById('id_pcie-tests_0');
 
@@ -1844,9 +2073,13 @@
 
             // Check which form is currently visible
             const rmaFormCard = document.getElementById('rmaFormCard');
+            const gbFormCard = document.getElementById('gbFormCard');
             if (rmaFormCard && rmaFormCard.style.display !== 'none') {
                 selectedImage = rmaImgSel ? rmaImgSel.value : '';
                 isDefaultChecked = rmaDefCb ? rmaDefCb.checked : false;
+            } else if (gbFormCard && gbFormCard.style.display !== 'none') {
+                selectedImage = gbImgSel ? gbImgSel.value : '';
+                isDefaultChecked = gbDefCb ? gbDefCb.checked : false;
             } else {
                 selectedImage = pcieImgSel ? pcieImgSel.value : '';
                 isDefaultChecked = pcieDefCb ? pcieDefCb.checked : false;
@@ -1881,6 +2114,18 @@
 
         // Attach listeners for popup - PCIE form (popup disabled for PCIE)
         // No popup needed for PCIE default test selection
+
+        // Attach listeners for popup - GB form (best-effort; may not show if mapping isn't defined)
+        const gbImgSelForPopup = document.getElementById('id_gb-image');
+        const gbDefCbForPopup = document.getElementById('id_gb-tests_0');
+        if (gbImgSelForPopup && gbDefCbForPopup) {
+            gbImgSelForPopup.addEventListener('change', function() {
+                if (gbDefCbForPopup.checked) showDefaultTestPopup();
+            });
+            gbDefCbForPopup.addEventListener('change', function() {
+                if (this.checked) showDefaultTestPopup();
+            });
+        }
 
         // Remote FW Update Polling Logic
         {% if result.remote_fw_update_started %}
@@ -1937,9 +2182,10 @@
         }
         {% endif %}
 
-        // PCIE Form Switching logic
+        // Operation switching logic (RMA / GB / PCIE)
         const opRadios = document.querySelectorAll('.operation-type-radio');
         const rmaFormCard = document.getElementById('rmaFormCard');
+        const gbFormCard = document.getElementById('gbFormCard');
         const pcieFormCard = document.getElementById('pcieFormCard');
 
         // Mutual exclusion for PCIE check/remove
@@ -1958,13 +2204,22 @@
             radio.addEventListener('change', function() {
                 if (this.value === 'pcie') {
                     rmaFormCard.style.display = 'none';
+                    if (gbFormCard) gbFormCard.style.display = 'none';
                     pcieFormCard.style.display = 'block';
                     // Update URL to preserve state
                     const url = new URL(window.location);
                     url.searchParams.set('operation_type', 'pcie');
                     window.history.pushState({}, '', url);
+                } else if (this.value === 'gb') {
+                    if (rmaFormCard) rmaFormCard.style.display = 'none';
+                    if (pcieFormCard) pcieFormCard.style.display = 'none';
+                    if (gbFormCard) gbFormCard.style.display = 'block';
+                    const url = new URL(window.location);
+                    url.searchParams.set('operation_type', 'gb');
+                    window.history.pushState({}, '', url);
                 } else {
                     rmaFormCard.style.display = 'block';
+                    if (gbFormCard) gbFormCard.style.display = 'none';
                     pcieFormCard.style.display = 'none';
                     // Update URL to preserve state (remove parameter for RMA)
                     const url = new URL(window.location);
@@ -2070,6 +2325,43 @@
         });
         updatePcieDcgmR4LoopVisibility();
         
+        // GB test selection logic (Default and HMC Log must be exclusive)
+        const gbTestCheckboxes = document.querySelectorAll('.gb-test-checkbox');
+        const gbDefaultCb = document.getElementById('id_gb-tests_0');
+        const gbHmcCb = document.getElementById('id_gb-tests_4');
+        const gbDcgmR4Cb = document.getElementById('id_gb-tests_2');
+        const gbDcgmR4LoopContainer = document.getElementById('gbDcgmR4LoopContainer');
+        const gbDcgmR4LoopInput = document.getElementById('id_gb-dcgmr4_loop');
+
+        function updateGbDcgmR4LoopVisibility() {
+            if (!gbDcgmR4LoopContainer) return;
+            const show = !!(gbDcgmR4Cb && gbDcgmR4Cb.checked);
+            gbDcgmR4LoopContainer.style.display = show ? '' : 'none';
+            if (show && gbDcgmR4LoopInput) {
+                if (!gbDcgmR4LoopInput.value || !gbDcgmR4LoopInput.value.trim()) {
+                    gbDcgmR4LoopInput.value = '1';
+                }
+            }
+            if (!show && gbDcgmR4LoopInput) {
+                gbDcgmR4LoopInput.value = '';
+            }
+        }
+
+        gbTestCheckboxes.forEach(cb => {
+            cb.addEventListener('change', function() {
+                if (this === gbDefaultCb && this.checked) {
+                    gbTestCheckboxes.forEach(ocb => { if (ocb !== gbDefaultCb) ocb.checked = false; });
+                } else if (this === gbHmcCb && this.checked) {
+                    gbTestCheckboxes.forEach(ocb => { if (ocb !== gbHmcCb) ocb.checked = false; });
+                } else if (this.checked) {
+                    if (gbDefaultCb) gbDefaultCb.checked = false;
+                    if (gbHmcCb) gbHmcCb.checked = false;
+                }
+                updateGbDcgmR4LoopVisibility();
+            });
+        });
+        updateGbDcgmR4LoopVisibility();
+
         // PCIE form validation
         const pciePxeForm = document.getElementById('pciePxeForm');
         if (pciePxeForm) {
@@ -2092,6 +2384,47 @@
                     alert('Image selection is required.');
                     e.preventDefault();
                     return;
+                }
+            });
+        }
+
+        // GB form validation
+        const gbPxeForm = document.getElementById('gbPxeForm');
+        if (gbPxeForm) {
+            gbPxeForm.addEventListener('submit', function(e) {
+                const baseSn = document.getElementById('id_gb-base_sn');
+                const rmaNum = document.getElementById('id_gb-rma_number');
+                const bmcIp = document.getElementById('id_gb-bmc_ip');
+                const image = document.getElementById('id_gb-image');
+                const removeCb = document.getElementById('id_gb-remove');
+                const checkCb = document.getElementById('id_gb-check');
+                const hmcCb = document.getElementById('id_gb-tests_4');
+
+                const isRemove = !!(removeCb && removeCb.checked);
+                const isCheck = !!(checkCb && checkCb.checked);
+                const isHmc = !!(hmcCb && hmcCb.checked);
+
+                if (!isRemove && !isCheck) {
+                    if (!baseSn || !baseSn.value.trim()) {
+                        alert('Base SN is required for GB GPU Test.');
+                        e.preventDefault();
+                        return;
+                    }
+                    if (!rmaNum || !rmaNum.value.trim()) {
+                        alert('RMA Number is required for GB GPU Test.');
+                        e.preventDefault();
+                        return;
+                    }
+                    if (!bmcIp || !bmcIp.value) {
+                        alert('BMC IP is required.');
+                        e.preventDefault();
+                        return;
+                    }
+                    if (!isHmc && (!image || !image.value)) {
+                        alert('Image selection is required.');
+                        e.preventDefault();
+                        return;
+                    }
                 }
             });
         }

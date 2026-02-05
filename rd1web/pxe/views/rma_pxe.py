@@ -1,7 +1,8 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from ..form import RmaForm, PcieGpuForm
+from django.urls import reverse
+from ..form import RmaForm, PcieGpuForm, GbGpuForm
 from fabric import Connection
 from django.contrib.auth.decorators import login_required, permission_required
 from ..models import PxeEntry, RmaTestingDb, FirmwareFile
@@ -13,19 +14,110 @@ import logging
 import uuid
 import threading
 import os
+import subprocess
+import requests
+import re
+from datetime import datetime
 from .remote_fw_update import run_remote_fw_update_task
 
 logger = logging.getLogger(__name__)
 
 # Import configuration from local_config
 try:
-    from ..local_config import RMA_PXE_GENERATION_SCRIPT, PXE_BOOT_PATH
+    from ..local_config import RMA_PXE_GENERATION_SCRIPT, PXE_BOOT_PATH, RMA_BASE_DIR
     logger.info("RMA PXE using configuration from local_config.py")
 except ImportError:
     # Fallback to defaults if local_config doesn't exist
     logger.warning("local_config.py not found, using default RMA PXE paths")
     RMA_PXE_GENERATION_SCRIPT = '/srv/share/scripts/rma_pxe_generation'
     PXE_BOOT_PATH = '/var/www/pxe/boot/'
+    RMA_BASE_DIR = '/srv/rma'
+
+
+def _ipmitool_power_status_ok(bmc_ip: str, bmc_user: str, bmc_password: str) -> bool:
+    """Return True if ipmitool power status succeeds with provided credentials."""
+    cmd = [
+        "ipmitool", "-I", "lanplus", "-C", "17",
+        "-H", str(bmc_ip), "-U", str(bmc_user), "-P", str(bmc_password),
+        "power", "status",
+    ]
+    try:
+        completed = subprocess.run(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+            timeout=15,
+            text=True,
+        )
+        return completed.returncode == 0
+    except Exception:
+        return False
+
+
+def _get_bmc_mac_from_ipmitool() -> str:
+    """Parse `ipmitool lan print` output to find the BMC MAC Address."""
+    output = subprocess.check_output(["ipmitool", "lan", "print"], text=True, stderr=subprocess.STDOUT, timeout=15)
+    for line in output.splitlines():
+        m = re.match(r'^\s*MAC Address\s*:\s*(.+?)\s*$', line)
+        if m:
+            return m.group(1).strip()
+    raise ValueError("Could not parse MAC Address from `ipmitool lan print` output")
+
+
+def get_bmc_password_for_hmc_log(bmc_ip: str, bmc_user: str = "root") -> str:
+    """
+    Derive BMC password using probe logic:
+    - Try Golden@1234, 0penBmc, root via ipmitool power status
+    - Else fetch from password service using bmc_mac from `ipmitool lan print`
+    """
+    for candidate in ("Golden@1234", "0penBmc", "root"):
+        if _ipmitool_power_status_ok(bmc_ip=bmc_ip, bmc_user=bmc_user, bmc_password=candidate):
+            return candidate
+
+    bmc_mac = _get_bmc_mac_from_ipmitool()
+    resp = requests.get(
+        "http://10.51.251.30:8050/bmc_password",
+        params={"bmc_mac": bmc_mac},
+        timeout=10,
+    )
+    resp.raise_for_status()
+    return resp.text.strip().strip('"').strip("'")
+
+
+def collect_hmc_log_to_rma_folder(base_sn: str, rma_number: str, bmc_ip: str) -> str:
+    """
+    Collect HMC event log via SSH to BMC (root user) and save under:
+      {RMA_BASE_DIR}/{base_sn}_{rma_number}/HMC_logs/hmc_event_log_{timestamp}.log
+    Returns the relative browse path for redirect: "{dir}/HMC_logs"
+    """
+    dir_name = f"{base_sn}_{rma_number}"
+    target_dir = os.path.join(RMA_BASE_DIR, dir_name)
+    hmc_dir = os.path.join(target_dir, "HMC_logs")
+    os.makedirs(hmc_dir, exist_ok=True)
+
+    bmc_user = "root"
+    bmc_password = get_bmc_password_for_hmc_log(bmc_ip=bmc_ip, bmc_user=bmc_user)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    out_file = os.path.join(hmc_dir, f"hmc_event_log_{timestamp}.log")
+
+    remote_url = "http://172.31.13.251/redfish/v1/Systems/HGX_Baseboard_0/LogServices/EventLog/Entries"
+    cmd = [
+        "sshpass", "-p", bmc_password,
+        "ssh",
+        "-o", "StrictHostKeyChecking=no",
+        "-o", "UserKnownHostsFile=/dev/null",
+        f"{bmc_user}@{bmc_ip}",
+        "curl", "-k", "-X", "GET", remote_url,
+    ]
+
+    with open(out_file, "wb") as f:
+        completed = subprocess.run(cmd, stdout=f, stderr=subprocess.PIPE, check=False, timeout=120)
+    if completed.returncode != 0:
+        err = completed.stderr.decode(errors="ignore") if isinstance(completed.stderr, (bytes, bytearray)) else str(completed.stderr)
+        raise RuntimeError(f"HMC Log collection failed (exit {completed.returncode}): {err}")
+
+    return f"{dir_name}/HMC_logs"
 
 def normalize_mac_for_pxe(mac):
     """Normalize MAC to 12 hex chars (lowercase), or None if invalid/empty."""
@@ -110,8 +202,16 @@ def get_rma_info_by_bmc(request, bmc_ip):
     try:
         # Get operation_type from query parameter (default to 'rma' for backward compatibility)
         operation_type = request.GET.get('operation_type', 'rma')
-        # Map operation_type to form_type: 'rma' -> 'sxm', 'pcie' -> 'pcie'
-        expected_form_type = 'sxm' if operation_type == 'rma' else 'pcie'
+        # Map operation_type to form_type
+        # - rma -> sxm
+        # - pcie -> pcie
+        # - gb -> gb
+        if operation_type == 'rma':
+            expected_form_type = 'sxm'
+        elif operation_type == 'gb':
+            expected_form_type = 'gb'
+        else:
+            expected_form_type = 'pcie'
         
         # Step 1: Get RMA entry and check if it's actively linked
         try:
@@ -376,6 +476,8 @@ def rma_pxe(request):
     if request.method == "POST":
         if operation_type == 'pcie':
             bound_form = PcieGpuForm(request.POST, user=request.user, prefix='pcie')
+        elif operation_type == 'gb':
+            bound_form = GbGpuForm(request.POST, user=request.user, prefix='gb')
         else:
             bound_form = RmaForm(request.POST, user=request.user, prefix='rma')
             
@@ -449,8 +551,89 @@ def rma_pxe(request):
                         else:
                             result['actions'].append(f"Failed to generate PXE for {x}: {error}")
                 
-                form = RmaForm(user=request.user)
-                pcie_form = PcieGpuForm(user=request.user)
+                form = RmaForm(user=request.user, prefix='rma')
+                pcie_form = PcieGpuForm(user=request.user, prefix='pcie')
+                gb_form = GbGpuForm(user=request.user, prefix='gb')
+            elif operation_type == 'gb':
+                base_sn = bound_form.cleaned_data.get('base_sn', '').strip()
+                rma_number = bound_form.cleaned_data.get('rma_number', '')
+                bmc_ip = bound_form.cleaned_data.get('bmc_ip', '')
+                tests = bound_form.cleaned_data.get('tests', [])
+                image = bound_form.cleaned_data.get('image', '')
+                remove = bound_form.cleaned_data.get('remove', False)
+                check = bound_form.cleaned_data.get('check', False)
+                notice = bound_form.cleaned_data.get('notice', '').strip()
+                dcgmr4_loop = bound_form.cleaned_data.get('dcgmr4_loop')
+
+                macs = get_lan_macs(bmc_ip)
+                macs = [normalize_mac_for_pxe(x) for x in macs if x]
+                macs = [x for x in macs if x]
+
+                # HMC Log: special exclusive action, then redirect to logs browser
+                if 'hmc_log' in tests:
+                    if not base_sn:
+                        result['actions'] = ['Base SN is required for HMC Log.']
+                    elif not rma_number:
+                        result['actions'] = ['RMA Number is required for HMC Log.']
+                    elif not bmc_ip:
+                        result['actions'] = ['BMC IP is required for HMC Log.']
+                    else:
+                        try:
+                            browse_path = collect_hmc_log_to_rma_folder(
+                                base_sn=base_sn,
+                                rma_number=rma_number,
+                                bmc_ip=bmc_ip,
+                            )
+                            return redirect(reverse('rma_log_browse', kwargs={'path': browse_path}))
+                        except Exception as e:
+                            logger.error(f"HMC Log collection failed: {e}")
+                            result['actions'] = [f"HMC Log collection failed: {e}"]
+
+                elif remove:
+                    result['actions'] = remove_pxe_entries_and_boot_files(macs)
+                elif check:
+                    result['check'] = []
+                    for x in macs:
+                        try:
+                            entry = PxeEntry.objects.get(mac=x)
+                            result['check'].append(f"MAC: {entry.mac} | Image: {entry.image} | Parameters: {entry.parameters}")
+                        except PxeEntry.DoesNotExist:
+                            result['check'].append(f"MAC: {x} not found in database")
+                elif base_sn and rma_number and macs:
+                    # Build tests parameter for GB
+                    tests_list = list(tests) if tests else []
+                    if 'dcgm_r4' in tests:
+                        tests_list.append(f"dcgmr4_loop={dcgmr4_loop or 1}")
+                    if notice:
+                        tests_list.append(f'notice={notice}')
+                    tests_param = " ".join(tests_list) if tests_list else " "
+
+                    result['actions'] = []
+                    params = {
+                        'base_sn': base_sn,
+                        'rma_number': rma_number,
+                        'notice': notice,
+                        'tests': tests_param,
+                        'dcgmr4_loop': dcgmr4_loop or 1 if 'dcgm_r4' in tests else None,
+                        'form_type': 'gb',
+                    }
+                    for x in macs:
+                        PxeEntry.objects.update_or_create(
+                            mac=x,
+                            defaults={'parameters': params, 'image': image},
+                        )
+                        success, error = run_rma_command_sync(
+                            f"{RMA_PXE_GENERATION_SCRIPT} '{x}' '{image}' '{base_sn}' '{rma_number}' '' '{tests_param}'",
+                            timeout=60
+                        )
+                        if success:
+                            result['actions'].append(f"Generated PXE for MAC: {x}")
+                        else:
+                            result['actions'].append(f"Failed to generate PXE for {x}: {error}")
+
+                form = RmaForm(user=request.user, prefix='rma')
+                pcie_form = PcieGpuForm(user=request.user, prefix='pcie')
+                gb_form = GbGpuForm(user=request.user, prefix='gb')
             else:
                 # Original RMA logic
                 base_sn = bound_form.cleaned_data.get('base_sn', '')
@@ -503,12 +686,14 @@ def rma_pxe(request):
                     result['remote_fw_update_started'] = ['Remote FW update task started']
                     result['remote_fw_task_id'] = task_id
                     
-                    form = RmaForm(user=request.user)
-                    pcie_form = PcieGpuForm(user=request.user)
+                    form = RmaForm(user=request.user, prefix='rma')
+                    pcie_form = PcieGpuForm(user=request.user, prefix='pcie')
+                    gb_form = GbGpuForm(user=request.user, prefix='gb')
                     golden_entries = RmaTestingDb.objects.all().order_by('golden_number')
                     can_force_unlink = request.user.has_perm('pxe.can_force_unlink_golden')
                     return render(request,'features/rma_pxe.html',{
                         'form':form, 'pcie_form': pcie_form, 'operation_type': operation_type,
+                        'gb_form': gb_form,
                         'result':result, 'golden_entries': golden_entries, 'can_force_unlink': can_force_unlink
                     })
             
@@ -553,18 +738,23 @@ def rma_pxe(request):
                 
                 form = RmaForm(user=request.user, prefix='rma')
                 pcie_form = PcieGpuForm(user=request.user, prefix='pcie')
+                gb_form = GbGpuForm(user=request.user, prefix='gb')
         else:
             # Form validation failed
             logger.error(f"Form validation failed: {bound_form.errors}")
             form = RmaForm(user=request.user, prefix='rma')
             pcie_form = PcieGpuForm(user=request.user, prefix='pcie')
+            gb_form = GbGpuForm(user=request.user, prefix='gb')
             if operation_type == 'pcie':
                 pcie_form._errors = bound_form.errors
+            elif operation_type == 'gb':
+                gb_form._errors = bound_form.errors
             else:
                 form._errors = bound_form.errors
     else:
         form = RmaForm(user=request.user, prefix='rma')
         pcie_form = PcieGpuForm(user=request.user, prefix='pcie')
+        gb_form = GbGpuForm(user=request.user, prefix='gb')
     
     golden_entries = RmaTestingDb.objects.all().order_by('golden_number')
     can_force_unlink = request.user.has_perm('pxe.can_force_unlink_golden')
@@ -572,6 +762,7 @@ def rma_pxe(request):
     return render(request,'features/rma_pxe.html',{
         'form':form,
         'pcie_form': pcie_form,
+        'gb_form': gb_form,
         'operation_type': operation_type,
         'result':result,
         'golden_entries': golden_entries,
