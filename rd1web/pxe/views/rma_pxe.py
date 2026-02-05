@@ -15,8 +15,6 @@ import uuid
 import threading
 import os
 import subprocess
-import requests
-import re
 from datetime import datetime
 from .remote_fw_update import run_remote_fw_update_task
 
@@ -34,55 +32,21 @@ except ImportError:
     RMA_BASE_DIR = '/srv/rma'
 
 
-def _ipmitool_power_status_ok(bmc_ip: str, bmc_user: str, bmc_password: str) -> bool:
-    """Return True if ipmitool power status succeeds with provided credentials."""
-    cmd = [
-        "ipmitool", "-I", "lanplus", "-C", "17",
-        "-H", str(bmc_ip), "-U", str(bmc_user), "-P", str(bmc_password),
-        "power", "status",
-    ]
-    try:
-        completed = subprocess.run(
-            cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
-            timeout=15,
-            text=True,
-        )
-        return completed.returncode == 0
-    except Exception:
-        return False
-
-
-def _get_bmc_mac_from_ipmitool() -> str:
-    """Parse `ipmitool lan print` output to find the BMC MAC Address."""
-    output = subprocess.check_output(["ipmitool", "lan", "print"], text=True, stderr=subprocess.STDOUT, timeout=15)
-    for line in output.splitlines():
-        m = re.match(r'^\s*MAC Address\s*:\s*(.+?)\s*$', line)
-        if m:
-            return m.group(1).strip()
-    raise ValueError("Could not parse MAC Address from `ipmitool lan print` output")
-
-
 def get_bmc_password_for_hmc_log(bmc_ip: str, bmc_user: str = "root") -> str:
     """
-    Derive BMC password using probe logic:
-    - Try Golden@1234, 0penBmc, root via ipmitool power status
-    - Else fetch from password service using bmc_mac from `ipmitool lan print`
+    Get BMC password from RmaTestingDb by BMC IP.
+    Raises ValueError if not found or password is empty.
     """
-    for candidate in ("Golden@1234", "0penBmc", "root"):
-        if _ipmitool_power_status_ok(bmc_ip=bmc_ip, bmc_user=bmc_user, bmc_password=candidate):
-            return candidate
-
-    bmc_mac = _get_bmc_mac_from_ipmitool()
-    resp = requests.get(
-        "http://10.51.251.30:8050/bmc_password",
-        params={"bmc_mac": bmc_mac},
-        timeout=10,
-    )
-    resp.raise_for_status()
-    return resp.text.strip().strip('"').strip("'")
+    entry = RmaTestingDb.objects.filter(bmc_ip=bmc_ip).first()
+    if entry is None:
+        raise ValueError(
+            f"BMC IP {bmc_ip} not found in RMA Testing DB. Please add the entry first."
+        )
+    if not (entry.bmc_password or "").strip():
+        raise ValueError(
+            f"BMC IP {bmc_ip} has no password set in RMA Testing DB. Please update the entry."
+        )
+    return entry.bmc_password.strip()
 
 
 def collect_hmc_log_to_rma_folder(base_sn: str, rma_number: str, bmc_ip: str) -> str:
