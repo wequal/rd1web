@@ -539,6 +539,7 @@ class GbGpuForm(forms.Form):
             ('dcgm_r4', 'DCGM R4'),
             ('fd2', 'FD2'),
             ('hmc_log', 'HMC Log'),
+            ('nvlink', 'NVLINK'),
         ],
         widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
         label='Tests',
