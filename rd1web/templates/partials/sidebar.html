@@ -39,7 +39,7 @@
             {% endif %}
 
             <!-- RMA Management -->
-            {% if perms.pxe.can_view_rma_logs or perms.pxe.can_view_rma_general_logs or perms.pxe.can_access_rma_pxe or perms.pxe.can_access_rma_testing_db or perms.pxe.can_access_rma_dhcp_leases %}
+            {% if request.user.is_authenticated %}
             <div class="sb-sidenav-menu-heading">RMA Management</div>
             
             {% if perms.pxe.can_view_rma_logs %}
@@ -71,6 +71,10 @@
                 RMA Testing DB
             </a>
             {% endif %}
+
+            <a class="nav-link" href="{% url 'rma_gb_db' %}">
+                RMA GB DB
+            </a>
 
             {% if perms.pxe.can_access_rma_dhcp_leases %}
             <a class="nav-link" href="{% url 'rma_dhcp_leases' %}">

@@ -1511,7 +1511,8 @@
         });
         
         function linkGolden(entryId, goldenNumber) {
-            fetch(`/rma/golden/link/${entryId}/`, {
+            const opType = getCurrentOperationType();
+            fetch(`/rma/golden/link/${entryId}/?operation_type=${encodeURIComponent(opType)}`, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': getCookie('csrftoken'),
@@ -1524,8 +1525,8 @@
                     alert(`Successfully linked golden number "${goldenNumber}"`);
                     // Preserve operation_type when reloading
                     const currentOperationType = getCurrentOperationType();
-                    if (currentOperationType === 'pcie') {
-                        window.location.href = window.location.pathname + '?operation_type=pcie';
+                    if (currentOperationType === 'pcie' || currentOperationType === 'gb') {
+                        window.location.href = window.location.pathname + `?operation_type=${currentOperationType}`;
                     } else {
                         window.location.href = window.location.pathname;
                     }
@@ -1539,7 +1540,8 @@
         }
         
         function unlinkGolden(entryId, goldenNumber) {
-            fetch(`/rma/golden/unlink/${entryId}/`, {
+            const opType = getCurrentOperationType();
+            fetch(`/rma/golden/unlink/${entryId}/?operation_type=${encodeURIComponent(opType)}`, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': getCookie('csrftoken'),
@@ -1552,8 +1554,8 @@
                     alert(`Successfully unlinked golden number "${goldenNumber}"`);
                     // Preserve operation_type when reloading
                     const currentOperationType = getCurrentOperationType();
-                    if (currentOperationType === 'pcie') {
-                        window.location.href = window.location.pathname + '?operation_type=pcie';
+                    if (currentOperationType === 'pcie' || currentOperationType === 'gb') {
+                        window.location.href = window.location.pathname + `?operation_type=${currentOperationType}`;
                     } else {
                         window.location.href = window.location.pathname;
                     }
@@ -1573,11 +1575,15 @@
             if (pcieRadio && pcieRadio.checked) {
                 return 'pcie';
             }
+            const gbRadio = document.getElementById('gbTest');
+            if (gbRadio && gbRadio.checked) {
+                return 'gb';
+            }
             // Check URL parameter
             const urlParams = new URLSearchParams(window.location.search);
             const opType = urlParams.get('operation_type');
-            if (opType === 'pcie') {
-                return 'pcie';
+            if (opType === 'pcie' || opType === 'gb') {
+                return opType;
             }
             // Default to 'rma'
             return 'rma';
@@ -1846,7 +1852,8 @@
                 // Show modal
                 goldenSettingModal.show();
                 
-                fetch(`/rma/golden/setting/${entryId}/`)
+                const opType = getCurrentOperationType();
+                fetch(`/rma/golden/setting/${entryId}/?operation_type=${encodeURIComponent(opType)}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {

@@ -51,6 +51,14 @@ from .views.rma_testing_db import (
     golden_link,
     golden_unlink
 )
+from .views.rma_gb_db import (
+    rma_gb_db_list,
+    rma_gb_db_add,
+    rma_gb_db_edit,
+    rma_gb_db_delete,
+    rma_gb_db_get,
+    rma_gb_db_api,
+)
 from .views.rma_dhcp_leases import rma_dhcp_leases, rma_dhcp_leases_refresh
 from .views.rma_statistics import rma_statistics, rma_statistics_api, trigger_scan
 from .views.firmware_inventory import (
@@ -139,6 +147,14 @@ urlpatterns = [
     path('rma/testing-db/delete/<int:entry_id>/', rma_testing_db_delete, name='rma_testing_db_delete'),
     path('rma/testing-db/get/<int:entry_id>/', rma_testing_db_get, name='rma_testing_db_get'),
     path('api/rma/testing-db/', rma_testing_db_api, name='rma_testing_db_api'),
+
+    # RMA GB DB URLs
+    path('rma/gb-db/', rma_gb_db_list, name='rma_gb_db'),
+    path('rma/gb-db/add/', rma_gb_db_add, name='rma_gb_db_add'),
+    path('rma/gb-db/edit/<int:entry_id>/', rma_gb_db_edit, name='rma_gb_db_edit'),
+    path('rma/gb-db/delete/<int:entry_id>/', rma_gb_db_delete, name='rma_gb_db_delete'),
+    path('rma/gb-db/get/<int:entry_id>/', rma_gb_db_get, name='rma_gb_db_get'),
+    path('api/rma/gb-db/', rma_gb_db_api, name='rma_gb_db_api'),
     
     # RMA DHCP Leases URLs
     path('rma/dhcp-leases/', rma_dhcp_leases, name='rma_dhcp_leases'),

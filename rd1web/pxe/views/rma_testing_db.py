@@ -15,6 +15,7 @@ from ..models import RmaTestingDb
 from ..form import RmaTestingDbForm, RmaTestingDbSearchForm
 from ..remote_config import remote_dict
 from .rma_pxe import remove_pxe_entries_and_boot_files
+from ..models import RmaGbDb
 
 logger = logging.getLogger(__name__)
 
@@ -247,7 +248,11 @@ def rma_testing_db_api(request):
 def golden_link(request, entry_id):
     """API endpoint to link a golden number to the current user"""
     try:
-        entry = RmaTestingDb.objects.get(id=entry_id)
+        operation_type = request.GET.get('operation_type', 'rma')
+        if operation_type == 'gb':
+            entry = RmaGbDb.objects.get(id=entry_id)
+        else:
+            entry = RmaTestingDb.objects.get(id=entry_id)
         
         # Check if already linked
         if entry.linked_user is not None:
@@ -266,7 +271,7 @@ def golden_link(request, entry_id):
             'message': f'Successfully linked golden number "{entry.golden_number}"'
         })
         
-    except RmaTestingDb.DoesNotExist:
+    except (RmaTestingDb.DoesNotExist, RmaGbDb.DoesNotExist):
         return JsonResponse({
             'success': False,
             'error': 'Golden number entry not found'
@@ -285,7 +290,11 @@ def golden_link(request, entry_id):
 def golden_unlink(request, entry_id):
     """API endpoint to unlink a golden number"""
     try:
-        entry = RmaTestingDb.objects.get(id=entry_id)
+        operation_type = request.GET.get('operation_type', 'rma')
+        if operation_type == 'gb':
+            entry = RmaGbDb.objects.get(id=entry_id)
+        else:
+            entry = RmaTestingDb.objects.get(id=entry_id)
         
         # Check if not linked
         if entry.linked_user is None:
@@ -312,7 +321,10 @@ def golden_unlink(request, entry_id):
         entry.save()
 
         # Also remove PXE configuration (DB + PXE server boot files) for this golden's LAN MACs
-        cleanup_actions = remove_pxe_entries_and_boot_files([entry.lan0_mac, entry.lan1_mac])
+        if operation_type == 'gb':
+            cleanup_actions = remove_pxe_entries_and_boot_files([entry.lan0_mac])
+        else:
+            cleanup_actions = remove_pxe_entries_and_boot_files([entry.lan0_mac, entry.lan1_mac])
         
         return JsonResponse({
             'success': True,
@@ -320,7 +332,7 @@ def golden_unlink(request, entry_id):
             'cleanup_actions': cleanup_actions,
         })
         
-    except RmaTestingDb.DoesNotExist:
+    except (RmaTestingDb.DoesNotExist, RmaGbDb.DoesNotExist):
         return JsonResponse({
             'success': False,
             'error': 'Golden number entry not found'

@@ -1,0 +1,656 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}RMA GB DB{% endblock %}
+
+{% block extra_css %}
+<style>
+    .table-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 16px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        overflow: hidden;
+        margin-bottom: 30px;
+    }
+    .table-header {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        padding: 25px 30px;
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+    }
+    .table-content {
+        background: white;
+        padding: 0;
+    }
+    .modern-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        margin: 0;
+        background: white;
+    }
+    .modern-table thead th {
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        color: #ffffff !important;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+        padding: 20px 16px;
+        border: none;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    .modern-table tbody td {
+        padding: 16px;
+        border-bottom: 1px solid #f8f9fa;
+        color: #495057;
+        font-size: 0.9rem;
+        vertical-align: middle;
+    }
+    .modern-table tbody tr:nth-child(even) {
+        background: rgba(248, 249, 250, 0.5);
+    }
+    .modern-table tbody tr:hover {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+    .mac-address {
+        font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+        font-weight: 600;
+        color: #667eea;
+        background: rgba(102, 126, 234, 0.1);
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+    }
+    .btn-modern {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 25px;
+        padding: 12px 24px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 0.85rem;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    .btn-modern:hover {
+        transform: translateY(-1px);
+        color: white;
+    }
+    .action-btn {
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 3px;
+        border: none;
+        transition: all 0.2s ease;
+        font-size: 0.8rem;
+        color: white;
+    }
+    .action-btn:hover {
+        transform: scale(1.1);
+    }
+    .btn-edit { background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); }
+    .btn-delete { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); }
+    .stats-row {
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    .modal-header {
+        background-color: #007bff;
+        color: white;
+    }
+    .required-field::after {
+        content: " *";
+        color: #dc3545;
+    }
+    .pagination-container {
+        padding: 20px;
+        background: white;
+        border-top: 1px solid #e9ecef;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-database"></i> RMA GB DB
+        </h1>
+    </div>
+
+    <div class="stats-row">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-database text-primary me-2"></i>
+                    <div>
+                        <strong>Total Entries:</strong> <span id="total-count">{{ total_entries }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-network-wired text-info me-2"></i>
+                    <div>
+                        <strong>BMC Devices:</strong> <span id="bmc-count">{{ total_entries }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-cogs text-warning me-2"></i>
+                    <div>
+                        <strong>Status:</strong> <span id="status">Active</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-user text-success me-2"></i>
+                    <div>
+                        <strong>User:</strong> {{ request.user.username }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <div class="table-header">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h3 class="mb-0">
+                    <i class="fas fa-database"></i>
+                    RMA GB Database
+                </h3>
+                <div>
+                    <button type="button" class="btn btn-modern" data-bs-toggle="modal" data-bs-target="#addEntryModal">
+                        <i class="fas fa-plus"></i> Add New Entry
+                    </button>
+                    <button type="button" class="btn btn-modern" onclick="refreshTable()">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-content">
+            <table id="rmaTable" class="modern-table">
+                <thead>
+                    <tr>
+                        <th>BMC MAC</th>
+                        <th>BMC IP</th>
+                        <th>BMC Password</th>
+                        <th>LAN0 MAC</th>
+                        <th>Golden Number</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    {% for entry in entries %}
+                    <tr>
+                        <td><span class="mac-address">{{ entry.bmc_mac }}</span></td>
+                        <td>{{ entry.bmc_ip }}</td>
+                        <td>{{ entry.bmc_password }}</td>
+                        <td><span class="mac-address">{{ entry.lan0_mac }}</span></td>
+                        <td>{{ entry.golden_number }}</td>
+                        <td>
+                            <button type="button" class="action-btn btn-edit" onclick="editEntry({{ entry.id }})" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button type="button" class="action-btn btn-delete" onclick="confirmDelete({{ entry.id }}, '{{ entry.bmc_mac }}', '{{ entry.bmc_ip }}')" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center">No RMA GB DB entries found. Click "Add New Entry" to get started.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div id="paginationControls" class="pagination-container">
+                <div class="pagination-info">
+                    <span id="paginationInfo">Showing 0-0 of 0 entries</span>
+                </div>
+                <nav>
+                    <ul class="pagination mb-0" id="paginationNav">
+                        <li class="page-item" id="prevPageBtn">
+                            <a class="page-link" href="#" onclick="goToPage(currentPage - 1); return false;">Previous</a>
+                        </li>
+                        <li class="page-item" id="nextPageBtn">
+                            <a class="page-link" href="#" onclick="goToPage(currentPage + 1); return false;">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Entry Modal -->
+<div class="modal fade" id="addEntryModal" tabindex="-1" aria-labelledby="addEntryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addEntryModalLabel">
+                    <i class="fas fa-plus"></i> Add New RMA GB DB Entry
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="addEntryForm" method="post">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_bmc_mac" class="form-label required-field">BMC MAC Address</label>
+                                {{ add_form.bmc_mac }}
+                                <div class="form-text">Format: xx:xx:xx:xx:xx:xx</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_bmc_ip" class="form-label required-field">BMC IP Address</label>
+                                {{ add_form.bmc_ip }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="id_bmc_password" class="form-label required-field">BMC Password</label>
+                                {{ add_form.bmc_password }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_lan0_mac" class="form-label required-field">LAN0 MAC Address</label>
+                                {{ add_form.lan0_mac }}
+                                <div class="form-text">Format: xx:xx:xx:xx:xx:xx</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_golden_number" class="form-label">Golden Number</label>
+                                {{ add_form.golden_number }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save"></i> Add Entry
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Entry Modal -->
+<div class="modal fade" id="editEntryModal" tabindex="-1" aria-labelledby="editEntryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editEntryModalLabel">
+                    <i class="fas fa-edit"></i> Edit RMA GB DB Entry
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editEntryForm" method="post">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <input type="hidden" id="edit_entry_id" name="entry_id">
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_bmc_mac" class="form-label required-field">BMC MAC Address</label>
+                                <input type="text" class="form-control" id="edit_bmc_mac" name="bmc_mac" required>
+                                <div class="form-text">Format: xx:xx:xx:xx:xx:xx</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_bmc_ip" class="form-label required-field">BMC IP Address</label>
+                                <input type="text" class="form-control" id="edit_bmc_ip" name="bmc_ip" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="edit_bmc_password" class="form-label required-field">BMC Password</label>
+                                <input type="text" class="form-control" id="edit_bmc_password" name="bmc_password" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_lan0_mac" class="form-label required-field">LAN0 MAC Address</label>
+                                <input type="text" class="form-control" id="edit_lan0_mac" name="lan0_mac" required>
+                                <div class="form-text">Format: xx:xx:xx:xx:xx:xx</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_golden_number" class="form-label">Golden Number</label>
+                                <input type="text" class="form-control" id="edit_golden_number" name="golden_number">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Update Entry
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteConfirmModalLabel">
+                    <i class="fas fa-exclamation-triangle"></i> Confirm Deletion
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this RMA GB DB entry?</p>
+                <div class="alert alert-warning">
+                    <strong>BMC MAC:</strong> <span id="delete-bmc-mac"></span><br>
+                    <strong>BMC IP:</strong> <span id="delete-bmc-ip"></span>
+                </div>
+                <p class="text-danger"><strong>This action cannot be undone.</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="fas fa-trash"></i> Delete Entry
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+let deleteEntryId = null;
+let currentPage = 1;
+let totalRecords = 0;
+let recordsPerPage = 20;
+
+$(document).ready(function() {
+    loadTableData(1);
+
+    $('#addEntryForm').on('submit', function(e) {
+        e.preventDefault();
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.html('<i class="fas fa-spinner fa-spin"></i> Adding...').prop('disabled', true);
+
+        $.ajax({
+            url: "{% url 'rma_gb_db_add' %}",
+            type: 'POST',
+            data: $(this).serialize(),
+            success: function(response) {
+                submitBtn.html(originalText).prop('disabled', false);
+                if (response.success) {
+                    $('#addEntryModal').modal('hide');
+                    showAlert('success', response.message);
+                    $('#addEntryForm')[0].reset();
+                    loadTableData(1);
+                } else {
+                    showAlert('danger', response.message || 'Failed to add entry');
+                }
+            },
+            error: function(xhr) {
+                submitBtn.html(originalText).prop('disabled', false);
+                let errorMessage = 'An error occurred while adding the entry';
+                if (xhr.status === 403) errorMessage = 'Permission denied.';
+                showAlert('danger', errorMessage);
+            }
+        });
+    });
+
+    $('#editEntryForm').on('submit', function(e) {
+        e.preventDefault();
+        const entryId = $('#edit_entry_id').val();
+        if (!entryId) return;
+
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.html('<i class="fas fa-spinner fa-spin"></i> Updating...').prop('disabled', true);
+
+        $.ajax({
+            url: "{% url 'rma_gb_db_edit' 0 %}".replace('0', entryId),
+            type: 'POST',
+            data: $(this).serialize(),
+            success: function(response) {
+                submitBtn.html(originalText).prop('disabled', false);
+                if (response.success) {
+                    $('#editEntryModal').modal('hide');
+                    showAlert('success', response.message);
+                    loadTableData(1);
+                } else {
+                    showAlert('danger', response.message || 'Failed to update entry');
+                }
+            },
+            error: function() {
+                submitBtn.html(originalText).prop('disabled', false);
+                showAlert('danger', 'An error occurred while updating the entry');
+            }
+        });
+    });
+
+    $('#confirmDeleteBtn').on('click', function() {
+        if (!deleteEntryId) return;
+        const deleteBtn = $(this);
+        const originalText = deleteBtn.html();
+        deleteBtn.html('<i class="fas fa-spinner fa-spin"></i> Deleting...').prop('disabled', true);
+
+        $.ajax({
+            url: "{% url 'rma_gb_db_delete' 0 %}".replace('0', deleteEntryId),
+            type: 'POST',
+            data: { 'csrfmiddlewaretoken': $('[name=csrfmiddlewaretoken]').val() },
+            success: function(response) {
+                deleteBtn.html(originalText).prop('disabled', false);
+                $('#deleteConfirmModal').modal('hide');
+                if (response.success) {
+                    showAlert('success', response.message);
+                    loadTableData(1);
+                } else {
+                    showAlert('danger', response.message || 'Failed to delete entry');
+                }
+                deleteEntryId = null;
+            },
+            error: function() {
+                deleteBtn.html(originalText).prop('disabled', false);
+                $('#deleteConfirmModal').modal('hide');
+                showAlert('danger', 'An error occurred while deleting the entry');
+                deleteEntryId = null;
+            }
+        });
+    });
+});
+
+function editEntry(entryId) {
+    $.ajax({
+        url: "{% url 'rma_gb_db_get' 0 %}".replace('0', entryId),
+        type: 'GET',
+        success: function(response) {
+            if (response.success) {
+                const entry = response.entry;
+                $('#edit_entry_id').val(entry.id);
+                $('#edit_bmc_mac').val(entry.bmc_mac);
+                $('#edit_bmc_ip').val(entry.bmc_ip);
+                $('#edit_bmc_password').val(entry.bmc_password);
+                $('#edit_lan0_mac').val(entry.lan0_mac);
+                $('#edit_golden_number').val(entry.golden_number);
+                $('#editEntryModal').modal('show');
+            } else {
+                showAlert('danger', 'Error loading entry data');
+            }
+        },
+        error: function() {
+            showAlert('danger', 'An error occurred while loading the entry');
+        }
+    });
+}
+
+function confirmDelete(entryId, bmcMac, bmcIp) {
+    deleteEntryId = entryId;
+    $('#delete-bmc-mac').text(bmcMac);
+    $('#delete-bmc-ip').text(bmcIp);
+    $('#deleteConfirmModal').modal('show');
+}
+
+function refreshTable() {
+    loadTableData(currentPage);
+}
+
+function loadTableData(page) {
+    if (page < 1) page = 1;
+    currentPage = page;
+    const start = (page - 1) * recordsPerPage;
+
+    $.ajax({
+        url: "{% url 'rma_gb_db_api' %}",
+        type: 'GET',
+        data: { 'start': start, 'length': recordsPerPage, 'draw': page },
+        success: function(response) {
+            if (response.data) {
+                updateTable(response.data);
+                totalRecords = response.recordsTotal || response.recordsFiltered || 0;
+                updatePagination();
+                updateStats();
+            }
+        },
+        error: function() {
+            showAlert('danger', 'Failed to load data. Please try again.');
+        }
+    });
+}
+
+function goToPage(page) {
+    if (page < 1) return;
+    const totalPages = Math.ceil(totalRecords / recordsPerPage);
+    if (page > totalPages) return;
+    loadTableData(page);
+}
+
+function updatePagination() {
+    const totalPages = Math.ceil(totalRecords / recordsPerPage);
+    const startRecord = totalRecords > 0 ? (currentPage - 1) * recordsPerPage + 1 : 0;
+    const endRecord = Math.min(currentPage * recordsPerPage, totalRecords);
+    $('#paginationInfo').text(`Showing ${startRecord}-${endRecord} of ${totalRecords} entries`);
+
+    const prevBtn = $('#prevPageBtn');
+    const nextBtn = $('#nextPageBtn');
+
+    if (currentPage <= 1) {
+        prevBtn.addClass('disabled');
+        prevBtn.find('a').attr('onclick', 'return false;');
+    } else {
+        prevBtn.removeClass('disabled');
+        prevBtn.find('a').attr('onclick', `goToPage(${currentPage - 1}); return false;`);
+    }
+
+    if (currentPage >= totalPages || totalPages === 0) {
+        nextBtn.addClass('disabled');
+        nextBtn.find('a').attr('onclick', 'return false;');
+    } else {
+        nextBtn.removeClass('disabled');
+        nextBtn.find('a').attr('onclick', `goToPage(${currentPage + 1}); return false;`);
+    }
+}
+
+function updateTable(data) {
+    const tbody = $('#tableBody');
+    tbody.empty();
+    if (data.length === 0) {
+        tbody.append('<tr><td colspan="6" class="text-center">No RMA GB DB entries found. Click \"Add New Entry\" to get started.</td></tr>');
+        return;
+    }
+    data.forEach(function(entry) {
+        const row = `
+            <tr>
+                <td><span class="mac-address">${entry.bmc_mac}</span></td>
+                <td>${entry.bmc_ip}</td>
+                <td>${entry.bmc_password}</td>
+                <td><span class="mac-address">${entry.lan0_mac}</span></td>
+                <td>${entry.golden_number}</td>
+                <td>
+                    <button type="button" class="action-btn btn-edit" onclick="editEntry(${entry.id})" title="Edit">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button type="button" class="action-btn btn-delete" onclick="confirmDelete(${entry.id}, '${entry.bmc_mac}', '${entry.bmc_ip}')" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+        tbody.append(row);
+    });
+}
+
+function showAlert(type, message) {
+    $('.alert').remove();
+    const alertDiv = $('<div class="alert alert-' + type + ' alert-dismissible fade show position-fixed" role="alert" style="top: 80px; right: 20px; z-index: 9999; max-width: 420px;">' +
+                     '<strong>' + (type === 'success' ? 'Success!' : 'Error!') + '</strong> ' +
+                     message +
+                     '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+                     '</div>');
+    $('body').append(alertDiv);
+    setTimeout(function() { alertDiv.alert('close'); }, 5000);
+}
+
+function updateStats() {
+    $('#total-count').text(totalRecords);
+    $('#bmc-count').text(totalRecords);
+    $('#status').text('Active');
+}
+</script>
+{% endblock %}
+
