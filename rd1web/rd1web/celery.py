@@ -29,14 +29,6 @@ app.conf.beat_schedule = {
         'task': 'pxe.tasks.prewarm_rma_details_cache',
         'schedule': 60.0,  # Every 1 minute
     },
-    'prewarm-rma-gb-directory-cache-every-30-seconds': {
-        'task': 'pxe.tasks.prewarm_rma_gb_directory_cache',
-        'schedule': 30.0,  # Every 30 seconds
-    },
-    'prewarm-rma-gb-details-cache-every-1-minute': {
-        'task': 'pxe.tasks.prewarm_rma_gb_details_cache',
-        'schedule': 60.0,  # Every 1 minute
-    },
     'scan-rma-statistics-every-hour': {
         'task': 'pxe.tasks.scan_rma_statistics',
         'schedule': 3600.0,  # Every 1 hour
