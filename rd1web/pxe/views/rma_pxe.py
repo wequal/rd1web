@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 # Import configuration from local_config
 try:
-    from ..local_config import RMA_PXE_GENERATION_SCRIPT, PXE_BOOT_PATH, RMA_BASE_DIR
+    from ..local_config import RMA_PXE_GENERATION_SCRIPT, PXE_BOOT_PATH, RMA_BASE_DIR, RMA_GB_BASE_DIR
     logger.info("RMA PXE using configuration from local_config.py")
 except ImportError:
     # Fallback to defaults if local_config doesn't exist
@@ -30,6 +30,7 @@ except ImportError:
     RMA_PXE_GENERATION_SCRIPT = '/srv/share/scripts/rma_pxe_generation'
     PXE_BOOT_PATH = '/var/www/pxe/boot/'
     RMA_BASE_DIR = '/srv/rma'
+    RMA_GB_BASE_DIR = '/srv/rma/gb'
 
 
 def get_bmc_password_for_hmc_log(bmc_ip: str, bmc_user: str = "root", operation_type: str = "rma") -> str:
@@ -58,11 +59,13 @@ def get_bmc_password_for_hmc_log(bmc_ip: str, bmc_user: str = "root", operation_
 def collect_hmc_log_to_rma_folder(base_sn: str, rma_number: str, bmc_ip: str, operation_type: str = "gb") -> str:
     """
     Collect HMC event log via SSH to BMC (root user) and save under:
-      {RMA_BASE_DIR}/{base_sn}_{rma_number}/HMC_logs/hmc_event_log_{timestamp}.log
+      {base_dir}/{base_sn}_{rma_number}/HMC_logs/hmc_event_log_{timestamp}.log
+    For operation_type='gb', base_dir is RMA_GB_BASE_DIR; otherwise RMA_BASE_DIR.
     Returns the relative browse path for redirect: "{dir}/HMC_logs"
     """
     dir_name = f"{base_sn}_{rma_number}"
-    target_dir = os.path.join(RMA_BASE_DIR, dir_name)
+    base_dir = RMA_GB_BASE_DIR if operation_type == "gb" else RMA_BASE_DIR
+    target_dir = os.path.join(base_dir, dir_name)
     hmc_dir = os.path.join(target_dir, "HMC_logs")
     os.makedirs(hmc_dir, exist_ok=True)
 
@@ -583,7 +586,7 @@ def rma_pxe(request):
                                 bmc_ip=bmc_ip,
                                 operation_type='gb',
                             )
-                            return redirect(reverse('rma_log_browse', kwargs={'path': browse_path}))
+                            return redirect(reverse('rma_gb_log_browse', kwargs={'path': browse_path}))
                         except Exception as e:
                             logger.error(f"HMC Log collection failed: {e}")
                             result['actions'] = [f"HMC Log collection failed: {e}"]
