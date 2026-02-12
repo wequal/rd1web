@@ -2,7 +2,7 @@ from django import forms
 import re
 from django.core.exceptions import ValidationError
 from .models import RmaTestingDb, RmaGbDb
-
+###
 class PxeForm(forms.Form):
     mac=forms.CharField(widget=forms.Textarea(attrs={'class':'form-control','style': 'width: 300px;',}),label='MAC')
     image=forms.ChoiceField(choices=[('ubuntu2204-arm64','Ubuntu2204-ARM64'),('ubuntu2204-x86','Ubuntu2204-X86'),('rocky9-arm64','Rocky9-ARM64'),('rocky9-x86','Rocky9-X86')],label='Image')
