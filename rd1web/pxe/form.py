@@ -492,9 +492,19 @@ class GbGpuForm(forms.Form):
     Form for GB GPU Test (GB200/GB300) - restricted image + tests.
     Uses the same BMC IP choice population as other RMA forms.
     """
-    base_sn = forms.CharField(
+    base_sn_1 = forms.CharField(
         widget=forms.TextInput(attrs={'class': 'form-control', 'style': 'width: 500px;'}),
-        label='Base SN',
+        label='Base SN 1',
+        required=True,
+    )
+    base_sn_2 = forms.CharField(
+        widget=forms.TextInput(attrs={'class': 'form-control', 'style': 'width: 500px;'}),
+        label='Base SN 2',
+        required=True,
+    )
+    system_sn = forms.CharField(
+        widget=forms.TextInput(attrs={'class': 'form-control', 'style': 'width: 500px;'}),
+        label='System SN',
         required=True,
     )
     notice = forms.CharField(
@@ -552,14 +562,12 @@ class GbGpuForm(forms.Form):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        # Populate BMC IP choices based on user's linked golden numbers
-        if user:
-            linked_entries = RmaGbDb.objects.filter(linked_user=user).order_by('bmc_ip')
-            self.fields['bmc_ip'].choices = [
-                (entry.bmc_ip, f"{entry.bmc_ip} - {entry.golden_number}") for entry in linked_entries
-            ]
-        else:
-            self.fields['bmc_ip'].choices = []
+        # Populate BMC IP choices from RMA GB DB
+        # (GB flow should be able to pick an entry right after it's added)
+        gb_entries = RmaGbDb.objects.all().order_by('bmc_ip')
+        self.fields['bmc_ip'].choices = [
+            (entry.bmc_ip, f"{entry.bmc_ip} - {entry.golden_number}") for entry in gb_entries
+        ]
 
     def clean_tests(self):
         """Validate that Default and HMC Log are exclusive selections."""
@@ -577,6 +585,32 @@ class GbGpuForm(forms.Form):
             )
 
         return tests
+
+    def _clean_sn_token(self, field_name: str, label: str) -> str:
+        """
+        Ensure SN fields are safe for space-delimited tests_param tokens.
+        Disallow quotes/newlines/whitespace.
+        """
+        value = (self.cleaned_data.get(field_name) or "").strip()
+        if not value:
+            # required=True should catch this, but keep it explicit
+            raise ValidationError(f"{label} is required.")
+        if any(ch in value for ch in ("'", '"')):
+            raise ValidationError(f"{label} cannot contain quotes.")
+        if "\n" in value or "\r" in value:
+            raise ValidationError(f"{label} must be a single line.")
+        if any(ch.isspace() for ch in value):
+            raise ValidationError(f"{label} cannot contain whitespace.")
+        return value
+
+    def clean_base_sn_1(self):
+        return self._clean_sn_token("base_sn_1", "Base SN 1")
+
+    def clean_base_sn_2(self):
+        return self._clean_sn_token("base_sn_2", "Base SN 2")
+
+    def clean_system_sn(self):
+        return self._clean_sn_token("system_sn", "System SN")
 
     def clean_notice(self):
         """Keep Notice safe for shell + tests_param tokenization."""

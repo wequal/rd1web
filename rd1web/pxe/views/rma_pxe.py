@@ -310,9 +310,16 @@ def get_rma_info_by_bmc(request, bmc_ip):
             params_dict = {}
         
         base_sn = params_dict.get('base_sn', '') if isinstance(params_dict, dict) else ''
+        base_sn_1 = params_dict.get('base_sn_1', '') if isinstance(params_dict, dict) else ''
+        base_sn_2 = params_dict.get('base_sn_2', '') if isinstance(params_dict, dict) else ''
+        system_sn = params_dict.get('system_sn', '') if isinstance(params_dict, dict) else ''
         replacement_sn = params_dict.get('replacement_sn', '') if isinstance(params_dict, dict) else ''
         rma_number = params_dict.get('rma_number', '') if isinstance(params_dict, dict) else ''
         notice = params_dict.get('notice', '') if isinstance(params_dict, dict) else ''
+
+        # Backward compatibility: if old base_sn exists but base_sn_1 is empty, map it
+        if base_sn and not base_sn_1:
+            base_sn_1 = base_sn
         
         # Extract GPU SNs and Replacement GPU SNs for PCIE page
         gpu_sns = {}
@@ -325,6 +332,9 @@ def get_rma_info_by_bmc(request, bmc_ip):
         return JsonResponse({
             'success': True,
             'base_sn': base_sn,
+            'base_sn_1': base_sn_1,
+            'base_sn_2': base_sn_2,
+            'system_sn': system_sn,
             'replacement_sn': replacement_sn,
             'rma_number': rma_number,
             'notice': notice,
@@ -540,7 +550,9 @@ def rma_pxe(request):
                 pcie_form = PcieGpuForm(user=request.user, prefix='pcie')
                 gb_form = GbGpuForm(user=request.user, prefix='gb')
             elif operation_type == 'gb':
-                base_sn = bound_form.cleaned_data.get('base_sn', '').strip()
+                base_sn_1 = bound_form.cleaned_data.get('base_sn_1', '').strip()
+                base_sn_2 = bound_form.cleaned_data.get('base_sn_2', '').strip()
+                system_sn = bound_form.cleaned_data.get('system_sn', '').strip()
                 rma_number = bound_form.cleaned_data.get('rma_number', '')
                 bmc_ip = bound_form.cleaned_data.get('bmc_ip', '')
                 tests = bound_form.cleaned_data.get('tests', [])
@@ -556,16 +568,17 @@ def rma_pxe(request):
 
                 # HMC Log: special exclusive action, then redirect to logs browser
                 if 'hmc_log' in tests:
-                    if not base_sn:
-                        result['actions'] = ['Base SN is required for HMC Log.']
+                    if not base_sn_1 or not base_sn_2:
+                        result['actions'] = ['Base SN 1 and Base SN 2 are required for HMC Log.']
                     elif not rma_number:
                         result['actions'] = ['RMA Number is required for HMC Log.']
                     elif not bmc_ip:
                         result['actions'] = ['BMC IP is required for HMC Log.']
                     else:
                         try:
+                            base_sn_for_folder = f"{base_sn_1}-{base_sn_2}"
                             browse_path = collect_hmc_log_to_rma_folder(
-                                base_sn=base_sn,
+                                base_sn=base_sn_for_folder,
                                 rma_number=rma_number,
                                 bmc_ip=bmc_ip,
                                 operation_type='gb',
@@ -585,18 +598,26 @@ def rma_pxe(request):
                             result['check'].append(f"MAC: {entry.mac} | Image: {entry.image} | Parameters: {entry.parameters}")
                         except PxeEntry.DoesNotExist:
                             result['check'].append(f"MAC: {x} not found in database")
-                elif base_sn and rma_number and macs:
+                elif base_sn_1 and base_sn_2 and system_sn and rma_number and macs:
                     # Build tests parameter for GB
                     tests_list = list(tests) if tests else []
+                    # Add 'gb' to test parameters for GB GPU test (mirrors PCIE 'pcie')
+                    tests_list.append('gb')
                     if 'dcgm_r4' in tests:
                         tests_list.append(f"dcgmr4_loop={dcgmr4_loop or 1}")
                     if notice:
                         tests_list.append(f'notice={notice}')
+                    # Add SNs to test parameters for PXE script consumption
+                    tests_list.append(f"base_sn_1={base_sn_1}")
+                    tests_list.append(f"base_sn_2={base_sn_2}")
+                    tests_list.append(f"system_sn={system_sn}")
                     tests_param = " ".join(tests_list) if tests_list else " "
 
                     result['actions'] = []
                     params = {
-                        'base_sn': base_sn,
+                        'base_sn_1': base_sn_1,
+                        'base_sn_2': base_sn_2,
+                        'system_sn': system_sn,
                         'rma_number': rma_number,
                         'notice': notice,
                         'tests': tests_param,
@@ -609,7 +630,8 @@ def rma_pxe(request):
                             defaults={'parameters': params, 'image': image},
                         )
                         success, error = run_rma_command_sync(
-                            f"{RMA_PXE_GENERATION_SCRIPT} '{x}' '{image}' '{base_sn}' '{rma_number}' '' '{tests_param}'",
+                            # Pass literal 'gb' as the base_sn positional arg (script expects it)
+                            f"{RMA_PXE_GENERATION_SCRIPT} '{x}' '{image}' 'gb' '{rma_number}' '' '{tests_param}'",
                             timeout=60
                         )
                         if success:
@@ -675,7 +697,10 @@ def rma_pxe(request):
                     form = RmaForm(user=request.user, prefix='rma')
                     pcie_form = PcieGpuForm(user=request.user, prefix='pcie')
                     gb_form = GbGpuForm(user=request.user, prefix='gb')
-                    golden_entries = RmaTestingDb.objects.all().order_by('golden_number')
+                    if operation_type == 'gb':
+                        golden_entries = RmaGbDb.objects.all().order_by('golden_number')
+                    else:
+                        golden_entries = RmaTestingDb.objects.all().order_by('golden_number')
                     can_force_unlink = request.user.has_perm('pxe.can_force_unlink_golden')
                     return render(request,'features/rma_pxe.html',{
                         'form':form, 'pcie_form': pcie_form, 'operation_type': operation_type,

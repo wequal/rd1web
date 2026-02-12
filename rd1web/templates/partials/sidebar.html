@@ -48,6 +48,10 @@
             </a>
             {% endif %}
 
+            <a class="nav-link" href="{% url 'rma_gb_log' %}">
+                RMA GB Logs
+            </a>
+
             {% if False and perms.pxe.can_view_rma_general_logs %}
             <a class="nav-link" href="{% url 'rma_general_log' %}">
                 RMA General Logs

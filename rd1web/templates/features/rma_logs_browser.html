@@ -16,11 +16,11 @@
                     <i class="fas fa-file-archive me-1"></i>MI3XX ALL LOG
                 </button>
             {% endif %}
-            <a href="{% url 'rma_log' %}" class="btn btn-outline-info">
+            <a href="{% url overview_url_name %}" class="btn btn-outline-info">
                 <i class="fas fa-list me-1"></i>RMA Overview
             </a>
             {% if parent %}
-                <a href="{% url 'rma_log_browse' path=parent %}" class="btn btn-outline-primary">
+                <a href="{% url browse_url_name path=parent %}" class="btn btn-outline-primary">
                     <i class="fas fa-arrow-up me-2"></i>Back to Parent
                 </a>
             {% endif %}
@@ -33,14 +33,14 @@
             <nav aria-label="breadcrumb" class="mb-0">
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item">
-                        <a href="{% url 'rma_log' %}" class="text-decoration-none">
+                        <a href="{% url overview_url_name %}" class="text-decoration-none">
                             <i class="fas fa-home me-1"></i>RMA Logs
                         </a>
                     </li>
                     {% if not is_root %}
                         {% for part in breadcrumb_parts %}
                             <li class="breadcrumb-item">
-                                <a href="{% url 'rma_log_browse' path=part.path %}" class="text-decoration-none">{{ part.name }}</a>
+                                <a href="{% url browse_url_name path=part.path %}" class="text-decoration-none">{{ part.name }}</a>
                             </li>
                         {% endfor %}
                     {% endif %}
@@ -168,26 +168,29 @@
                                     <td>
                                         {% if item.is_dir %}
                                             <div class="btn-group" role="group">
-                                                <a href="{% url 'rma_log_browse' path=item.path %}" class="btn btn-sm btn-outline-primary">
+                                                <a href="{% url browse_url_name path=item.path %}" class="btn btn-sm btn-outline-primary">
                                                     <i class="fas fa-folder-open me-1"></i>Open
                                                 </a>
-                                                <a href="{% url 'rma_download_folder' path=item.path %}" class="btn btn-sm btn-success download-folder-btn" data-folder-name="{{ item.name }}">
+                                                <a href="{% url download_folder_url_name path=item.path %}"
+                                                   class="btn btn-sm btn-success download-folder-btn"
+                                                   data-folder-name="{{ item.name }}"
+                                                   data-async-url="{% url download_folder_async_url_name path=item.path %}">
                                                     <i class="fas fa-download me-1"></i>Download
                                                 </a>
                                             </div>
                                         {% else %}
                                             <div class="d-flex align-items-center gap-2 flex-wrap">
                                                 <div class="btn-group" role="group">
-                                                    <a href="{% url 'rma_view_file' path=item.path %}" class="btn btn-sm btn-outline-success" target="_blank">
+                                                    <a href="{% url view_url_name path=item.path %}" class="btn btn-sm btn-outline-success" target="_blank">
                                                         <i class="fas fa-eye me-1"></i>View
                                                     </a>
-                                                    <a href="{% url 'rma_view_file' path=item.path %}?download=true" class="btn btn-sm btn-primary" target="_blank">
+                                                    <a href="{% url view_url_name path=item.path %}?download=true" class="btn btn-sm btn-primary" target="_blank">
                                                         <i class="fas fa-download me-1"></i>Download
                                                     </a>
                                                 </div>
                                                 {% if item.name == "nvidia_fw_update" %}
                                                     <form method="post"
-                                                          action="{% url 'rma_delete_file' path=item.path %}"
+                                                          action="{% url delete_url_name path=item.path %}"
                                                           class="d-inline"
                                                           onsubmit="return confirm('Delete nvidia_fw_update?');">
                                                         {% csrf_token %}
@@ -239,6 +242,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const downloadButtons = document.querySelectorAll('.download-folder-btn');
     const progressModal = new bootstrap.Modal(document.getElementById('downloadProgressModal'));
     const folderNameElement = document.getElementById('downloadFolderName');
+    const downloadFolderStatusBase = "{{ download_folder_status_base_path }}";
     
     let pollInterval = null;
     
@@ -247,10 +251,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             
             const folderName = this.getAttribute('data-folder-name');
-            const downloadUrl = this.getAttribute('href');
-            
-            // Convert sync URL to async URL
-            const asyncUrl = downloadUrl.replace('/rma/download-folder/', '/rma/download-folder-async/');
+            const asyncUrl = this.getAttribute('data-async-url');
             
             // Update modal text
             folderNameElement.textContent = `Creating zip archive for: ${folderName}`;
@@ -291,7 +292,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     function checkDownloadStatus(taskId) {
-        const statusUrl = `/rma/download-folder-status/${taskId}/`;
+        const statusUrl = `${downloadFolderStatusBase}${taskId}/`;
         
         fetch(statusUrl)
             .then(response => response.json())
@@ -369,7 +370,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.stopPropagation();
 
             const path = this.getAttribute('data-path');
-            const collectUrl = `/rma/collect-mi3xx-alllog${path}/`;
+            const collectUrl = `{{ collect_mi3xx_alllog_base_path }}${path}/`;
 
             try {
                 fetch(collectUrl, {
@@ -388,7 +389,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     .then(data => {
                         if (data.success && data.task_id) {
                             window.Mi3xxAllLog.startTask(data.task_id, {
-                                reloadOnSuccess: true
+                                reloadOnSuccess: true,
+                                statusUrlBase: "{{ collect_mi3xx_alllog_status_base_path }}"
                             });
                         } else {
                             alert(data.error || 'Failed to start MI3XX ALL LOG collection.');

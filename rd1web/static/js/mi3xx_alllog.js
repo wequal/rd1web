@@ -106,7 +106,8 @@
         const els = getElements();
         if (!els) return;
 
-        const statusUrl = `/rma/collect-mi3xx-alllog-status/${taskId}/`;
+        const statusUrlBase = (options && options.statusUrlBase) || '/rma/collect-mi3xx-alllog-status/';
+        const statusUrl = `${statusUrlBase}${taskId}/`;
 
         fetch(statusUrl)
             .then(response => response.json())
