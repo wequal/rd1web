@@ -382,15 +382,45 @@
                         {% csrf_token %}
                         <input type="hidden" name="operation_type" value="gb">
 
-                        <!-- Base Serial Number -->
+                        <!-- Base SN 1 -->
                         <div class="mb-4">
-                            <label for="{{ gb_form.base_sn.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas me-2 text-primary"></i>{{ gb_form.base_sn.label }}
+                            <label for="{{ gb_form.base_sn_1.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas me-2 text-primary"></i>{{ gb_form.base_sn_1.label }}
                             </label>
-                            {{ gb_form.base_sn }}
-                            {% if gb_form.base_sn.errors %}
+                            {{ gb_form.base_sn_1 }}
+                            {% if gb_form.base_sn_1.errors %}
                                 <div class="text-danger mt-1">
-                                    {% for error in gb_form.base_sn.errors %}
+                                    {% for error in gb_form.base_sn_1.errors %}
+                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Base SN 2 -->
+                        <div class="mb-4">
+                            <label for="{{ gb_form.base_sn_2.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas me-2 text-primary"></i>{{ gb_form.base_sn_2.label }}
+                            </label>
+                            {{ gb_form.base_sn_2 }}
+                            {% if gb_form.base_sn_2.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in gb_form.base_sn_2.errors %}
+                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- System SN -->
+                        <div class="mb-4">
+                            <label for="{{ gb_form.system_sn.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas me-2 text-primary"></i>{{ gb_form.system_sn.label }}
+                            </label>
+                            {{ gb_form.system_sn }}
+                            {% if gb_form.system_sn.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in gb_form.system_sn.errors %}
                                         <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
                                     {% endfor %}
                                 </div>
@@ -1511,7 +1541,8 @@
         });
         
         function linkGolden(entryId, goldenNumber) {
-            fetch(`/rma/golden/link/${entryId}/`, {
+            const opType = getCurrentOperationType();
+            fetch(`/rma/golden/link/${entryId}/?operation_type=${encodeURIComponent(opType)}`, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': getCookie('csrftoken'),
@@ -1524,8 +1555,8 @@
                     alert(`Successfully linked golden number "${goldenNumber}"`);
                     // Preserve operation_type when reloading
                     const currentOperationType = getCurrentOperationType();
-                    if (currentOperationType === 'pcie') {
-                        window.location.href = window.location.pathname + '?operation_type=pcie';
+                    if (currentOperationType === 'pcie' || currentOperationType === 'gb') {
+                        window.location.href = window.location.pathname + `?operation_type=${currentOperationType}`;
                     } else {
                         window.location.href = window.location.pathname;
                     }
@@ -1539,7 +1570,8 @@
         }
         
         function unlinkGolden(entryId, goldenNumber) {
-            fetch(`/rma/golden/unlink/${entryId}/`, {
+            const opType = getCurrentOperationType();
+            fetch(`/rma/golden/unlink/${entryId}/?operation_type=${encodeURIComponent(opType)}`, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': getCookie('csrftoken'),
@@ -1552,8 +1584,8 @@
                     alert(`Successfully unlinked golden number "${goldenNumber}"`);
                     // Preserve operation_type when reloading
                     const currentOperationType = getCurrentOperationType();
-                    if (currentOperationType === 'pcie') {
-                        window.location.href = window.location.pathname + '?operation_type=pcie';
+                    if (currentOperationType === 'pcie' || currentOperationType === 'gb') {
+                        window.location.href = window.location.pathname + `?operation_type=${currentOperationType}`;
                     } else {
                         window.location.href = window.location.pathname;
                     }
@@ -1573,11 +1605,15 @@
             if (pcieRadio && pcieRadio.checked) {
                 return 'pcie';
             }
+            const gbRadio = document.getElementById('gbTest');
+            if (gbRadio && gbRadio.checked) {
+                return 'gb';
+            }
             // Check URL parameter
             const urlParams = new URLSearchParams(window.location.search);
             const opType = urlParams.get('operation_type');
-            if (opType === 'pcie') {
-                return 'pcie';
+            if (opType === 'pcie' || opType === 'gb') {
+                return opType;
             }
             // Default to 'rma'
             return 'rma';
@@ -1846,7 +1882,8 @@
                 // Show modal
                 goldenSettingModal.show();
                 
-                fetch(`/rma/golden/setting/${entryId}/`)
+                const opType = getCurrentOperationType();
+                fetch(`/rma/golden/setting/${entryId}/?operation_type=${encodeURIComponent(opType)}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
@@ -2013,13 +2050,17 @@
 
         // Auto-fill for GB form
         const gbBmcIpSelect = document.getElementById('id_gb-bmc_ip');
-        const gbBaseSnInput = document.getElementById('id_gb-base_sn');
+        const gbBaseSn1Input = document.getElementById('id_gb-base_sn_1');
+        const gbBaseSn2Input = document.getElementById('id_gb-base_sn_2');
+        const gbSystemSnInput = document.getElementById('id_gb-system_sn');
         const gbRmaNumberInput = document.getElementById('id_gb-rma_number');
         const gbNoticeInput = document.getElementById('id_gb-notice');
-        if (gbBmcIpSelect && gbBaseSnInput && gbRmaNumberInput) {
+        if (gbBmcIpSelect && gbBaseSn1Input && gbBaseSn2Input && gbSystemSnInput && gbRmaNumberInput) {
             async function fetchAndFillGbInfo(bmcIp) {
                 if (!bmcIp) {
-                    gbBaseSnInput.value = '';
+                    gbBaseSn1Input.value = '';
+                    gbBaseSn2Input.value = '';
+                    gbSystemSnInput.value = '';
                     gbRmaNumberInput.value = '';
                     if (gbNoticeInput) gbNoticeInput.value = '';
                     return;
@@ -2028,12 +2069,16 @@
                     const response = await fetch(`/api/rma/get-rma-info/${bmcIp}/?operation_type=gb`);
                     const data = await response.json();
                     if (data.success) {
-                        gbBaseSnInput.value = data.base_sn || '';
+                        gbBaseSn1Input.value = data.base_sn_1 || '';
+                        gbBaseSn2Input.value = data.base_sn_2 || '';
+                        gbSystemSnInput.value = data.system_sn || '';
                         gbRmaNumberInput.value = data.rma_number || '';
                         if (gbNoticeInput) gbNoticeInput.value = data.notice || '';
                     }
                 } catch (e) {
-                    gbBaseSnInput.value = '';
+                    gbBaseSn1Input.value = '';
+                    gbBaseSn2Input.value = '';
+                    gbSystemSnInput.value = '';
                     gbRmaNumberInput.value = '';
                     if (gbNoticeInput) gbNoticeInput.value = '';
                 }
@@ -2212,25 +2257,25 @@
                     rmaFormCard.style.display = 'none';
                     if (gbFormCard) gbFormCard.style.display = 'none';
                     pcieFormCard.style.display = 'block';
-                    // Update URL to preserve state
+                    // Reload page so server renders correct Golden Status + BMC IP options
                     const url = new URL(window.location);
                     url.searchParams.set('operation_type', 'pcie');
-                    window.history.pushState({}, '', url);
+                    window.location.href = url.toString();
                 } else if (this.value === 'gb') {
                     if (rmaFormCard) rmaFormCard.style.display = 'none';
                     if (pcieFormCard) pcieFormCard.style.display = 'none';
                     if (gbFormCard) gbFormCard.style.display = 'block';
                     const url = new URL(window.location);
                     url.searchParams.set('operation_type', 'gb');
-                    window.history.pushState({}, '', url);
+                    window.location.href = url.toString();
                 } else {
                     rmaFormCard.style.display = 'block';
                     if (gbFormCard) gbFormCard.style.display = 'none';
                     pcieFormCard.style.display = 'none';
-                    // Update URL to preserve state (remove parameter for RMA)
+                    // Reload page so server renders correct Golden Status + BMC IP options
                     const url = new URL(window.location);
                     url.searchParams.delete('operation_type');
-                    window.history.pushState({}, '', url);
+                    window.location.href = url.toString();
                 }
             });
         });
@@ -2398,7 +2443,9 @@
         const gbPxeForm = document.getElementById('gbPxeForm');
         if (gbPxeForm) {
             gbPxeForm.addEventListener('submit', function(e) {
-                const baseSn = document.getElementById('id_gb-base_sn');
+                const baseSn1 = document.getElementById('id_gb-base_sn_1');
+                const baseSn2 = document.getElementById('id_gb-base_sn_2');
+                const systemSn = document.getElementById('id_gb-system_sn');
                 const rmaNum = document.getElementById('id_gb-rma_number');
                 const bmcIp = document.getElementById('id_gb-bmc_ip');
                 const image = document.getElementById('id_gb-image');
@@ -2411,8 +2458,18 @@
                 const isHmc = !!(hmcCb && hmcCb.checked);
 
                 if (!isRemove && !isCheck) {
-                    if (!baseSn || !baseSn.value.trim()) {
-                        alert('Base SN is required for GB GPU Test.');
+                    if (!baseSn1 || !baseSn1.value.trim()) {
+                        alert('Base SN 1 is required for GB GPU Test.');
+                        e.preventDefault();
+                        return;
+                    }
+                    if (!baseSn2 || !baseSn2.value.trim()) {
+                        alert('Base SN 2 is required for GB GPU Test.');
+                        e.preventDefault();
+                        return;
+                    }
+                    if (!systemSn || !systemSn.value.trim()) {
+                        alert('System SN is required for GB GPU Test.');
                         e.preventDefault();
                         return;
                     }

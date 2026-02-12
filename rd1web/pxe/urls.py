@@ -51,6 +51,14 @@ from .views.rma_testing_db import (
     golden_link,
     golden_unlink
 )
+from .views.rma_gb_db import (
+    rma_gb_db_list,
+    rma_gb_db_add,
+    rma_gb_db_edit,
+    rma_gb_db_delete,
+    rma_gb_db_get,
+    rma_gb_db_api,
+)
 from .views.rma_dhcp_leases import rma_dhcp_leases, rma_dhcp_leases_refresh
 from .views.rma_statistics import rma_statistics, rma_statistics_api, trigger_scan
 from .views.firmware_inventory import (
@@ -109,6 +117,18 @@ urlpatterns = [
     path('rma/logs/<path:path>/', rma_log, name='rma_log_browse'),
     path('rma/delete/<path:path>/', rma_delete_file, name='rma_delete_file'),
     path('rma/view/<path:path>/', rma_view_file, name='rma_view_file'),
+    # RMA GB Logs (login-only, no extra perms gate)
+    path('rma/gb-logs/', rma_log, {'base': 'gb'}, name='rma_gb_log'),
+    path('rma/gb-logs/<path:path>/', rma_log, {'base': 'gb'}, name='rma_gb_log_browse'),
+    path('rma/gb-delete/<path:path>/', rma_delete_file, {'base': 'gb'}, name='rma_gb_delete_file'),
+    path('rma/gb-view/<path:path>/', rma_view_file, {'base': 'gb'}, name='rma_gb_view_file'),
+    path('rma/gb-download-folder/<path:path>/', rma_download_folder, {'base': 'gb'}, name='rma_gb_download_folder'),
+    path('rma/gb-download-folder-async/<path:path>/', rma_download_folder_async, {'base': 'gb'}, name='rma_gb_download_folder_async'),
+    path('rma/gb-download-folder-status/<str:task_id>/', rma_download_folder_status, {'base': 'gb'}, name='rma_gb_download_folder_status'),
+    path('rma/gb-download-zip/<str:zip_filename>/', rma_download_zip, {'base': 'gb'}, name='rma_gb_download_zip'),
+    path('rma/gb-collect-mi3xx-alllog/<path:path>/', rma_collect_mi3xx_alllog, {'base': 'gb'}, name='rma_gb_collect_mi3xx_alllog'),
+    path('rma/gb-collect-mi3xx-alllog-status/<str:task_id>/', rma_collect_mi3xx_alllog_status, {'base': 'gb'}, name='rma_gb_collect_mi3xx_alllog_status'),
+    path('rma/gb-collect-mi3xx-alllog-from-form/', rma_collect_mi3xx_alllog_from_form, {'base': 'gb'}, name='rma_gb_collect_mi3xx_alllog_from_form'),
     path('rma/general-logs/', rma_general_log, name='rma_general_log'),
     path('rma/general-logs/<path:path>/', rma_general_log, name='rma_general_log_browse'),
     path('rma/general-view/<path:path>/', rma_general_view_file, name='rma_general_view_file'),
@@ -139,6 +159,14 @@ urlpatterns = [
     path('rma/testing-db/delete/<int:entry_id>/', rma_testing_db_delete, name='rma_testing_db_delete'),
     path('rma/testing-db/get/<int:entry_id>/', rma_testing_db_get, name='rma_testing_db_get'),
     path('api/rma/testing-db/', rma_testing_db_api, name='rma_testing_db_api'),
+
+    # RMA GB DB URLs
+    path('rma/gb-db/', rma_gb_db_list, name='rma_gb_db'),
+    path('rma/gb-db/add/', rma_gb_db_add, name='rma_gb_db_add'),
+    path('rma/gb-db/edit/<int:entry_id>/', rma_gb_db_edit, name='rma_gb_db_edit'),
+    path('rma/gb-db/delete/<int:entry_id>/', rma_gb_db_delete, name='rma_gb_db_delete'),
+    path('rma/gb-db/get/<int:entry_id>/', rma_gb_db_get, name='rma_gb_db_get'),
+    path('api/rma/gb-db/', rma_gb_db_api, name='rma_gb_db_api'),
     
     # RMA DHCP Leases URLs
     path('rma/dhcp-leases/', rma_dhcp_leases, name='rma_dhcp_leases'),

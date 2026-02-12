@@ -26,6 +26,8 @@ try:
     from ..local_config import (
         RMA_BASE_DIR,
         TEMP_ZIPS_DIR,
+        RMA_GB_BASE_DIR,
+        TEMP_ZIPS_GB_DIR,
         RMA_CACHE_TIMEOUT,
         RMA_DETAILS_CACHE_TIMEOUT,
         RMA_STATS_CACHE_TIMEOUT,
@@ -45,11 +47,36 @@ except ImportError:
     logger.warning("local_config.py not found, using default RMA configuration")
     RMA_BASE_DIR = '/srv/rma-b31'
     TEMP_ZIPS_DIR = '/srv/rma-b31/.TempZips'
+    RMA_GB_BASE_DIR = '/srv/rma/gb'
+    TEMP_ZIPS_GB_DIR = '/srv/rma/gb/.TempZips'
     RMA_CACHE_TIMEOUT = 30  # 30 seconds cache for basic directory listings
     RMA_DETAILS_CACHE_TIMEOUT = 60  # 1 minute cache for directory details
     RMA_STATS_CACHE_TIMEOUT = 300  # 5 minutes cache for file stats
     ZIP_TASK_TIMEOUT = 3600  # 1 hour timeout for zip creation tasks
     remote_download = None
+
+
+def _resolve_rma_context(base: str | None):
+    """
+    Resolve base-specific paths and cache namespace.
+
+    base:
+      - None / 'main': use RMA_BASE_DIR + TEMP_ZIPS_DIR
+      - 'gb': use RMA_GB_BASE_DIR + TEMP_ZIPS_GB_DIR
+    """
+    if (base or 'main') == 'gb':
+        return {
+            'base': 'gb',
+            'base_dir': RMA_GB_BASE_DIR,
+            'temp_zips_dir': TEMP_ZIPS_GB_DIR,
+            'cache_ns': 'rma_gb',
+        }
+    return {
+        'base': 'main',
+        'base_dir': RMA_BASE_DIR,
+        'temp_zips_dir': TEMP_ZIPS_DIR,
+        'cache_ns': 'rma',
+    }
 
 class TimeoutError(Exception):
     """Custom timeout exception"""
@@ -163,26 +190,27 @@ def get_apache_url(path):
         base_url = f"{base_url}:8888"
     return f"{base_url}/{path}"
 
-def cleanup_old_temp_zips():
+def cleanup_old_temp_zips(temp_zips_dir=None):
     """
     Remove temporary zip files older than 1 hour from the temp directory
     """
+    temp_zips_dir = temp_zips_dir or TEMP_ZIPS_DIR
     try:
         # Create temp directory if it doesn't exist
-        if not os.path.exists(TEMP_ZIPS_DIR):
-            os.makedirs(TEMP_ZIPS_DIR, exist_ok=True)
-            logger.info(f"Created temp zips directory: {TEMP_ZIPS_DIR}")
+        if not os.path.exists(temp_zips_dir):
+            os.makedirs(temp_zips_dir, exist_ok=True)
+            logger.info(f"Created temp zips directory: {temp_zips_dir}")
             return
         
         current_time = time.time()
         one_hour_ago = current_time - 3600  # 1 hour in seconds
         
         # Iterate through files in temp directory
-        for filename in os.listdir(TEMP_ZIPS_DIR):
+        for filename in os.listdir(temp_zips_dir):
             if not filename.endswith('.zip'):
                 continue
             
-            file_path = os.path.join(TEMP_ZIPS_DIR, filename)
+            file_path = os.path.join(temp_zips_dir, filename)
             
             try:
                 # Get file modification time
@@ -198,7 +226,7 @@ def cleanup_old_temp_zips():
     except Exception as e:
         logger.error(f"Error cleaning up temp zips: {e}")
 
-def create_temp_zip(source_dir, dir_name):
+def create_temp_zip(source_dir, dir_name, temp_zips_dir=None):
     """
     Create a temporary zip file of a directory using system zip command (much faster)
     
@@ -210,20 +238,21 @@ def create_temp_zip(source_dir, dir_name):
         str: Filename of the created zip file, or None on error
     """
     import subprocess
+    temp_zips_dir = temp_zips_dir or TEMP_ZIPS_DIR
     
     try:
         # Clean up old zips first
-        cleanup_old_temp_zips()
+        cleanup_old_temp_zips(temp_zips_dir=temp_zips_dir)
         
         # Create temp directory if it doesn't exist
-        if not os.path.exists(TEMP_ZIPS_DIR):
-            os.makedirs(TEMP_ZIPS_DIR, exist_ok=True)
-            logger.info(f"Created temp zips directory: {TEMP_ZIPS_DIR}")
+        if not os.path.exists(temp_zips_dir):
+            os.makedirs(temp_zips_dir, exist_ok=True)
+            logger.info(f"Created temp zips directory: {temp_zips_dir}")
         
         # Generate unique filename with timestamp
         timestamp = int(time.time())
         zip_filename = f"{dir_name}_{timestamp}.zip"
-        zip_path = os.path.join(TEMP_ZIPS_DIR, zip_filename)
+        zip_path = os.path.join(temp_zips_dir, zip_filename)
         
         # Create zip file using system zip command (2-5x faster than Python zipfile)
         logger.info(f"Creating zip file: {zip_path} from {source_dir}")
@@ -256,7 +285,7 @@ def create_temp_zip(source_dir, dir_name):
         logger.error(f"Error creating temp zip for {dir_name}: {e}")
         return None
 
-def create_zip_async(task_id, source_dir, dir_name):
+def create_zip_async(task_id, source_dir, dir_name, temp_zips_dir=None, cache_ns: str = "rma"):
     """
     Create zip in background thread and update task status in cache
     
@@ -265,57 +294,62 @@ def create_zip_async(task_id, source_dir, dir_name):
         source_dir (str): Full path to directory to zip
         dir_name (str): Name of the directory
     """
+    temp_zips_dir = temp_zips_dir or TEMP_ZIPS_DIR
     try:
         logger.info(f"Starting async zip creation for task {task_id}: {dir_name}")
         
         # Update status to processing
-        task_data = cache.get(f'zip_task_{task_id}')
+        task_data = cache.get(f'{cache_ns}_zip_task_{task_id}')
         if task_data:
             task_data['status'] = 'processing'
-            cache.set(f'zip_task_{task_id}', task_data, ZIP_TASK_TIMEOUT)
+            cache.set(f'{cache_ns}_zip_task_{task_id}', task_data, ZIP_TASK_TIMEOUT)
         
         # Create the zip file
-        zip_filename = create_temp_zip(source_dir, dir_name)
+        zip_filename = create_temp_zip(source_dir, dir_name, temp_zips_dir=temp_zips_dir)
         
         if zip_filename:
             # Update status to completed
-            task_data = cache.get(f'zip_task_{task_id}')
+            task_data = cache.get(f'{cache_ns}_zip_task_{task_id}')
             if task_data:
                 task_data['status'] = 'completed'
                 task_data['zip_filename'] = zip_filename
-                cache.set(f'zip_task_{task_id}', task_data, ZIP_TASK_TIMEOUT)
+                cache.set(f'{cache_ns}_zip_task_{task_id}', task_data, ZIP_TASK_TIMEOUT)
             logger.info(f"Async zip creation completed for task {task_id}: {zip_filename}")
         else:
             # Update status to failed
-            task_data = cache.get(f'zip_task_{task_id}')
+            task_data = cache.get(f'{cache_ns}_zip_task_{task_id}')
             if task_data:
                 task_data['status'] = 'failed'
                 task_data['error'] = 'Failed to create zip file'
-                cache.set(f'zip_task_{task_id}', task_data, ZIP_TASK_TIMEOUT)
+                cache.set(f'{cache_ns}_zip_task_{task_id}', task_data, ZIP_TASK_TIMEOUT)
             logger.error(f"Async zip creation failed for task {task_id}")
             
     except Exception as e:
         # Update status to failed
-        task_data = cache.get(f'zip_task_{task_id}')
+        task_data = cache.get(f'{cache_ns}_zip_task_{task_id}')
         if task_data:
             task_data['status'] = 'failed'
             task_data['error'] = str(e)
-            cache.set(f'zip_task_{task_id}', task_data, ZIP_TASK_TIMEOUT)
+            cache.set(f'{cache_ns}_zip_task_{task_id}', task_data, ZIP_TASK_TIMEOUT)
         logger.error(f"Exception in async zip creation for task {task_id}: {e}")
 
 @login_required
-def rma_download_folder_async(request, path):
+def rma_download_folder_async(request, path, base=None):
     """
     Start async zip creation and return task ID immediately
     Returns JSON with task_id for polling
     """
     import uuid
+    ctx = _resolve_rma_context(base)
+    base_dir = ctx["base_dir"]
+    temp_zips_dir = ctx["temp_zips_dir"]
+    cache_ns = ctx["cache_ns"]
     
     decoded_path = unquote(path)
-    remote_path = os.path.normpath(os.path.join(RMA_BASE_DIR, decoded_path))
+    remote_path = os.path.normpath(os.path.join(base_dir, decoded_path))
 
     # Security check
-    if not remote_path.startswith(RMA_BASE_DIR):
+    if not remote_path.startswith(base_dir):
         return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
     try:
@@ -336,7 +370,7 @@ def rma_download_folder_async(request, path):
             'error': None,
             'created_at': time.time()
         }
-        cache.set(f'zip_task_{task_id}', task_data, ZIP_TASK_TIMEOUT)
+        cache.set(f'{cache_ns}_zip_task_{task_id}', task_data, ZIP_TASK_TIMEOUT)
         
         # Get directory name
         dir_name = os.path.basename(remote_path)
@@ -344,7 +378,7 @@ def rma_download_folder_async(request, path):
         # Start zip creation in background thread
         thread = threading.Thread(
             target=create_zip_async,
-            args=(task_id, remote_path, dir_name),
+            args=(task_id, remote_path, dir_name, temp_zips_dir, cache_ns),
             daemon=True
         )
         thread.start()
@@ -362,14 +396,16 @@ def rma_download_folder_async(request, path):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @login_required
-def rma_download_folder_status(request, task_id):
+def rma_download_folder_status(request, task_id, base=None):
     """
     Check status of async zip creation task from cache
     Returns JSON with status and download URL when ready
     """
+    ctx = _resolve_rma_context(base)
+    cache_ns = ctx["cache_ns"]
     try:
         # Get task from cache
-        task = cache.get(f'zip_task_{task_id}')
+        task = cache.get(f'{cache_ns}_zip_task_{task_id}')
         
         if not task:
             return JsonResponse({'success': False, 'error': 'Task not found'}, status=404)
@@ -385,7 +421,8 @@ def rma_download_folder_status(request, task_id):
             # Zip is ready, return download URL
             zip_filename = task['zip_filename']
             from django.urls import reverse
-            django_url = reverse('rma_download_zip', kwargs={'zip_filename': zip_filename})
+            download_zip_url_name = 'rma_gb_download_zip' if ctx["base"] == 'gb' else 'rma_download_zip'
+            django_url = reverse(download_zip_url_name, kwargs={'zip_filename': zip_filename})
             response_data['download_url'] = django_url
             # Cache will auto-expire after ZIP_TASK_TIMEOUT
             
@@ -393,7 +430,7 @@ def rma_download_folder_status(request, task_id):
             # Zip creation failed
             response_data['error'] = task.get('error', 'Unknown error')
             # Optionally delete failed task immediately
-            cache.delete(f'zip_task_{task_id}')
+            cache.delete(f'{cache_ns}_zip_task_{task_id}')
         
         return JsonResponse(response_data)
         
@@ -412,13 +449,14 @@ def _is_safe_gpu_sn_query(query: str) -> bool:
     return len(query) <= 64
 
 
-def find_rma_dirs_by_gpu_sn(gpu_sn_query: str):
+def find_rma_dirs_by_gpu_sn(gpu_sn_query: str, base_dir=None, cache_ns: str = "rma"):
     """
     Find top-level RMA directories whose descendant filenames contain the provided GPU SN substring.
 
     Returns:
         set[str]: set of top-level directory names (e.g. {"RR35B_RR35B"})
     """
+    base_dir = base_dir or RMA_BASE_DIR
     if not _is_safe_gpu_sn_query(gpu_sn_query):
         return set()
 
@@ -426,7 +464,7 @@ def find_rma_dirs_by_gpu_sn(gpu_sn_query: str):
     if not query:
         return set()
 
-    cache_key = f"rma_gpu_sn_match_{query}"
+    cache_key = f"{cache_ns}_gpu_sn_match_{query}"
     cached = cache.get(cache_key)
     if cached is not None:
         # Stored as list for cache safety
@@ -492,7 +530,7 @@ def find_rma_dirs_by_gpu_sn(gpu_sn_query: str):
                 logger.warning(f"GPU SN scan error for {dir_name}: {e}")
             return False
 
-    all_rma_directories = get_rma_directories_basic()
+    all_rma_directories = get_rma_directories_basic(base_dir=base_dir, cache_ns=cache_ns)
 
     # Parallelize by top-level directory (IO-bound); keep concurrency modest to avoid disk thrash.
     try:
@@ -528,18 +566,22 @@ def find_rma_dirs_by_gpu_sn(gpu_sn_query: str):
 
 
 @login_required  
-def rma_log(request, path=""):
+def rma_log(request, path="", base=None):
     """
     RMA Logs view - displays RMA directories from /srv/rma
     Supports browsing RMA directories with pattern {base_sn}_{rma_number}
     """
+    ctx = _resolve_rma_context(base)
+    base_dir = ctx["base_dir"]
+    cache_ns = ctx["cache_ns"]
+
     if path:
         # If path is provided, use the existing log browser functionality
-        return rma_log_browser(request, path)
+        return rma_log_browser(request, path, base=ctx["base"])
     
     # Check if this is an AJAX request for lazy loading
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        return rma_log_ajax(request)
+        return rma_log_ajax(request, base=ctx["base"])
     
     # Get search query from request
     search_query = request.GET.get('search', '').strip()
@@ -550,14 +592,14 @@ def rma_log(request, path=""):
     refresh_cache = request.GET.get('refresh', 'false').lower() == 'true'
     if refresh_cache:
         from django.core.cache import cache
-        cache.delete('rma_directories_basic_v2')
+        cache.delete(f'{cache_ns}_directories_basic_v2')
     
     # Get all RMA directories BASIC INFO ONLY (super fast - just listdir + stat)
-    all_rma_directories = get_rma_directories_basic()
+    all_rma_directories = get_rma_directories_basic(base_dir=base_dir, cache_ns=cache_ns)
     
     # Filter directories based on search query
     if search_query and search_mode == 'gpu_sn':
-        matched = find_rma_dirs_by_gpu_sn(search_query)
+        matched = find_rma_dirs_by_gpu_sn(search_query, base_dir=base_dir, cache_ns=cache_ns)
         rma_directories = [d for d in all_rma_directories if d.get('name') in matched]
     elif search_query:
         filtered_directories = []
@@ -585,7 +627,7 @@ def rma_log(request, path=""):
     page_dir_names = [d['name'] for d in page_directories]
     
     # Load details for visible directories (uses async internally for better performance)
-    details_map = load_directory_details_batch_optimized(page_dir_names)
+    details_map = load_directory_details_batch_optimized(page_dir_names, base_dir=base_dir, cache_ns=cache_ns)
     
     # Merge details into page directories
     page_directories_with_stats = []
@@ -596,25 +638,61 @@ def rma_log(request, path=""):
         page_directories_with_stats.append(rma_dir)
     
     # Main RMA logs page - show RMA directories
-    context = {
-        'page_title': 'RMA Logs',
-        'page_obj': page_obj,
-        'rma_directories': page_directories_with_stats,
-        'search_query': search_query,
-        'search_mode': search_mode,
-        'total_directories': len(all_rma_directories),
-        'filtered_count': len(rma_directories),
-        'paginator': paginator,
-        'page_number': page_number
-    }
+    if ctx["base"] == "gb":
+        context = {
+            'page_title': 'RMA GB Logs',
+            'overview_url_name': 'rma_gb_log',
+            'browse_url_name': 'rma_gb_log_browse',
+            'view_url_name': 'rma_gb_view_file',
+            'delete_url_name': 'rma_gb_delete_file',
+            'download_folder_url_name': 'rma_gb_download_folder',
+            'download_folder_async_url_name': 'rma_gb_download_folder_async',
+            'download_folder_status_base_path': '/rma/gb-download-folder-status/',
+            'download_zip_url_name': 'rma_gb_download_zip',
+            'collect_mi3xx_alllog_base_path': '/rma/gb-collect-mi3xx-alllog',
+            'show_sys_sn_column': True,
+            'page_obj': page_obj,
+            'rma_directories': page_directories_with_stats,
+            'search_query': search_query,
+            'search_mode': search_mode,
+            'total_directories': len(all_rma_directories),
+            'filtered_count': len(rma_directories),
+            'paginator': paginator,
+            'page_number': page_number,
+        }
+    else:
+        context = {
+            'page_title': 'RMA Logs',
+            'overview_url_name': 'rma_log',
+            'browse_url_name': 'rma_log_browse',
+            'view_url_name': 'rma_view_file',
+            'delete_url_name': 'rma_delete_file',
+            'download_folder_url_name': 'rma_download_folder',
+            'download_folder_async_url_name': 'rma_download_folder_async',
+            'download_folder_status_base_path': '/rma/download-folder-status/',
+            'download_zip_url_name': 'rma_download_zip',
+            'collect_mi3xx_alllog_base_path': '/rma/collect-mi3xx-alllog',
+            'show_sys_sn_column': False,
+            'page_obj': page_obj,
+            'rma_directories': page_directories_with_stats,
+            'search_query': search_query,
+            'search_mode': search_mode,
+            'total_directories': len(all_rma_directories),
+            'filtered_count': len(rma_directories),
+            'paginator': paginator,
+            'page_number': page_number,
+        }
     
     return render(request, 'features/rma_logs.html', context)
 
 @login_required
-def rma_log_ajax(request):
+def rma_log_ajax(request, base=None):
     """
     AJAX endpoint for lazy loading RMA directories
     """
+    ctx = _resolve_rma_context(base)
+    base_dir = ctx["base_dir"]
+    cache_ns = ctx["cache_ns"]
     try:
         search_query = request.GET.get('search', '').strip()
         search_mode = request.GET.get('search_mode', 'basic').strip() or 'basic'
@@ -624,14 +702,14 @@ def rma_log_ajax(request):
         refresh_cache = request.GET.get('refresh', 'false').lower() == 'true'
         if refresh_cache:
             from django.core.cache import cache
-            cache.delete('rma_directories_basic_v2')
+            cache.delete(f'{cache_ns}_directories_basic_v2')
         
         # Get all RMA directories BASIC INFO ONLY (super fast)
-        all_rma_directories = get_rma_directories_basic()
+        all_rma_directories = get_rma_directories_basic(base_dir=base_dir, cache_ns=cache_ns)
         
         # Filter directories based on search query
         if search_query and search_mode == 'gpu_sn':
-            matched = find_rma_dirs_by_gpu_sn(search_query)
+            matched = find_rma_dirs_by_gpu_sn(search_query, base_dir=base_dir, cache_ns=cache_ns)
             rma_directories = [d for d in all_rma_directories if d.get('name') in matched]
         elif search_query:
             filtered_directories = []
@@ -659,7 +737,7 @@ def rma_log_ajax(request):
         page_dir_names = [d['name'] for d in page_directories]
         
         # Load details for visible directories (uses async internally for better performance)
-        details_map = load_directory_details_batch_optimized(page_dir_names)
+        details_map = load_directory_details_batch_optimized(page_dir_names, base_dir=base_dir, cache_ns=cache_ns)
         
         # Merge details into page directories
         page_directories_with_stats = []
@@ -676,6 +754,7 @@ def rma_log_ajax(request):
                 'name': rma_dir['name'],
                 'base_sn': rma_dir['base_sn'],
                 'rma_number': rma_dir['rma_number'],
+                'sys_sn': rma_dir.get('sys_sn', 'N/A'),
                 'test_details': rma_dir.get('test_details', {}),
                 'gpu_model': rma_dir.get('gpu_model', 'Unknown'),
                 'golden_number': rma_dir.get('golden_number', 'N/A'),
@@ -718,7 +797,7 @@ def rma_log_ajax(request):
         }, status=500)
 
 
-def get_rma_directories_basic():
+def get_rma_directories_basic(base_dir=None, cache_ns: str = "rma"):
     """
     Get BASIC list of RMA directories (fast - only name, base_sn, rma_number, mtime)
     Does NOT load test_status, gpu_model, or golden_number (use load_directory_details_batch for those)
@@ -726,8 +805,9 @@ def get_rma_directories_basic():
     Returns:
         list: List of dictionaries with basic directory info
     """
+    base_dir = base_dir or RMA_BASE_DIR
     # Check cache first
-    cache_key = "rma_directories_basic_v2"
+    cache_key = f"{cache_ns}_directories_basic_v2"
     cached_dirs = cache.get(cache_key)
     
     if cached_dirs is not None:
@@ -737,13 +817,13 @@ def get_rma_directories_basic():
     
     try:
         # Check if local directory exists
-        if not os.path.exists(RMA_BASE_DIR):
-            logger.warning(f"RMA base directory does not exist: {RMA_BASE_DIR}")
+        if not os.path.exists(base_dir):
+            logger.warning(f"RMA base directory does not exist: {base_dir}")
             return []
         
         # List directories locally
         try:
-            items = os.listdir(RMA_BASE_DIR)
+            items = os.listdir(base_dir)
         except Exception as e:
             logger.error(f"Cannot list local RMA directory: {e}")
             return []
@@ -753,7 +833,7 @@ def get_rma_directories_basic():
         
         # Process local directory items - BASIC INFO ONLY
         for item in items:
-            item_path = os.path.join(RMA_BASE_DIR, item)
+            item_path = os.path.join(base_dir, item)
             
             # Skip non-directories
             if not os.path.isdir(item_path):
@@ -807,7 +887,7 @@ def get_rma_directories_basic():
     return rma_directories
 
 
-def load_directory_details_batch(directory_names):
+def load_directory_details_batch(directory_names, base_dir=None, cache_ns: str = "rma"):
     """
     Load details (test_status, gpu_model, golden_number) for a batch of directories
     Uses individual caching for each directory's details
@@ -821,14 +901,15 @@ def load_directory_details_batch(directory_names):
     Returns:
         dict: Dictionary mapping directory name to its details
     """
+    base_dir = base_dir or RMA_BASE_DIR
     details_map = {}
     
     # Batch query BOTH testers AND golden numbers at once to prevent connection pool exhaustion
-    tester_map, golden_map = get_all_rma_data_batch(directory_names)
+    tester_map, golden_map = get_all_rma_data_batch(directory_names, base_dir=base_dir, cache_ns=cache_ns)
     
     for dir_name in directory_names:
         # Check cache first
-        cache_key = f"rma_details_{dir_name}"
+        cache_key = f"{cache_ns}_details_{dir_name}"
         cached_details = cache.get(cache_key)
         
         if cached_details is not None:
@@ -837,16 +918,18 @@ def load_directory_details_batch(directory_names):
         
         # Load details if not cached
         try:
-            test_details = get_test_status(dir_name)
-            gpu_model = get_gpu_model(dir_name)
+            test_details = get_test_status(dir_name, base_dir=base_dir)
+            gpu_model = get_gpu_model(dir_name, base_dir=base_dir, cache_ns=cache_ns)
             golden_number = golden_map.get(dir_name, 'N/A')  # Use batch lookup instead of individual query
             tester_name = tester_map.get(dir_name, 'N/A')  # Use batch lookup instead of individual query
+            sys_sn = get_system_sn(dir_name, base_dir=base_dir, cache_ns=cache_ns)
             
             details = {
                 'test_details': test_details,
                 'gpu_model': gpu_model,
                 'golden_number': golden_number,
                 'tester_name': tester_name,
+                'sys_sn': sys_sn,
                 'details_loaded': True,
             }
             
@@ -862,6 +945,7 @@ def load_directory_details_batch(directory_names):
                 'gpu_model': 'Unknown',
                 'golden_number': 'N/A',
                 'tester_name': 'N/A',
+                'sys_sn': 'N/A',
                 'details_loaded': True,
                 'error': str(e),
             }
@@ -870,7 +954,7 @@ def load_directory_details_batch(directory_names):
     return details_map
 
 
-async def async_load_directory_details_batch(directory_names, max_concurrent=10):
+async def async_load_directory_details_batch(directory_names, base_dir=None, cache_ns: str = "rma", max_concurrent=10):
     """
     Load details ASYNC for a batch of directories with concurrent file I/O
     Much faster than sync version when loading multiple directories
@@ -882,12 +966,13 @@ async def async_load_directory_details_batch(directory_names, max_concurrent=10)
     Returns:
         dict: Dictionary mapping directory name to its details
     """
+    base_dir = base_dir or RMA_BASE_DIR
     details_map = {}
     uncached_dirs = []
     
     # First pass: Check cache (sync, very fast)
     for dir_name in directory_names:
-        cache_key = f"rma_details_{dir_name}"
+        cache_key = f"{cache_ns}_details_{dir_name}"
         cached_details = cache.get(cache_key)
         
         if cached_details is not None:
@@ -907,17 +992,19 @@ async def async_load_directory_details_batch(directory_names, max_concurrent=10)
         async with semaphore:
             try:
                 # Run all four operations concurrently
-                test_details_task = asyncio.to_thread(get_test_status, dir_name)
-                gpu_model_task = asyncio.to_thread(get_gpu_model, dir_name)
-                golden_number_task = asyncio.to_thread(get_golden_number, dir_name)
-                tester_name_task = asyncio.to_thread(get_tester_name, dir_name)
+                test_details_task = asyncio.to_thread(get_test_status, dir_name, base_dir)
+                gpu_model_task = asyncio.to_thread(get_gpu_model, dir_name, base_dir, cache_ns)
+                golden_number_task = asyncio.to_thread(get_golden_number, dir_name, base_dir, cache_ns)
+                tester_name_task = asyncio.to_thread(get_tester_name, dir_name, base_dir, cache_ns)
+                sys_sn_task = asyncio.to_thread(get_system_sn, dir_name, base_dir, cache_ns)
                 
                 # Wait for all four to complete
-                test_details, gpu_model, golden_number, tester_name = await asyncio.gather(
+                test_details, gpu_model, golden_number, tester_name, sys_sn = await asyncio.gather(
                     test_details_task,
                     gpu_model_task,
                     golden_number_task,
                     tester_name_task,
+                    sys_sn_task,
                     return_exceptions=True
                 )
                 
@@ -937,17 +1024,22 @@ async def async_load_directory_details_batch(directory_names, max_concurrent=10)
                 if isinstance(tester_name, Exception):
                     logger.warning(f"Error loading tester_name for {dir_name}: {tester_name}")
                     tester_name = 'N/A'
+
+                if isinstance(sys_sn, Exception):
+                    logger.warning(f"Error loading sys_sn for {dir_name}: {sys_sn}")
+                    sys_sn = 'N/A'
                 
                 details = {
                     'test_details': test_details,
                     'gpu_model': gpu_model,
                     'golden_number': golden_number,
                     'tester_name': tester_name,
+                    'sys_sn': sys_sn,
                     'details_loaded': True,
                 }
                 
                 # Cache for 1 minute
-                cache.set(f"rma_details_{dir_name}", details, RMA_DETAILS_CACHE_TIMEOUT)
+                cache.set(f"{cache_ns}_details_{dir_name}", details, RMA_DETAILS_CACHE_TIMEOUT)
                 
                 return dir_name, details
                 
@@ -958,6 +1050,7 @@ async def async_load_directory_details_batch(directory_names, max_concurrent=10)
                     'gpu_model': 'Unknown',
                     'golden_number': 'N/A',
                     'tester_name': 'N/A',
+                    'sys_sn': 'N/A',
                     'details_loaded': True,
                     'error': str(e),
                 }
@@ -977,7 +1070,7 @@ async def async_load_directory_details_batch(directory_names, max_concurrent=10)
     return details_map
 
 
-def load_directory_details_batch_optimized(directory_names):
+def load_directory_details_batch_optimized(directory_names, base_dir=None, cache_ns: str = "rma"):
     """
     Optimized wrapper that uses async loading if possible, falls back to sync
     This is the recommended function to use in views
@@ -994,7 +1087,7 @@ def load_directory_details_batch_optimized(directory_names):
         asyncio.set_event_loop(loop)
         try:
             details_map = loop.run_until_complete(
-                async_load_directory_details_batch(directory_names)
+                async_load_directory_details_batch(directory_names, base_dir=base_dir, cache_ns=cache_ns)
             )
             return details_map
         finally:
@@ -1002,7 +1095,7 @@ def load_directory_details_batch_optimized(directory_names):
     except Exception as e:
         logger.warning(f"Async loading failed, falling back to sync: {e}")
         # Fall back to sync version
-        return load_directory_details_batch(directory_names)
+        return load_directory_details_batch(directory_names, base_dir=base_dir, cache_ns=cache_ns)
 
 
 def get_rma_directories(include_stats=False, include_status=False):
@@ -1240,23 +1333,29 @@ def format_size(size):
         size /= 1024
     return f"{size:.1f} TB"
 
-def parse_sys_info_file(directory_name):
+def parse_sys_info_file(directory_name, base_dir=None, cache_ns: str = "rma"):
     """
-    Parse sys_info.txt file to extract GPU model and BMC IP
+    Parse sys_info.txt file to extract GPU model, BMC IP, and System SN.
     
     Args:
         directory_name (str): The RMA directory name
         
     Returns:
-        dict: Dictionary with 'gpu_model' and 'bmc_ip' keys, or None if file doesn't exist
+        dict: Dictionary with 'gpu_model', 'bmc_ip', and 'sys_sn' keys, or None if file doesn't exist
     """
+    base_dir = base_dir or RMA_BASE_DIR
+    cache_key = f"{cache_ns}_sys_info_{directory_name}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     try:
-        sys_info_file_path = os.path.join(RMA_BASE_DIR, directory_name, "sys_info.txt")
+        sys_info_file_path = os.path.join(base_dir, directory_name, "sys_info.txt")
         
         if not os.path.exists(sys_info_file_path):
             return None
         
-        result = {'gpu_model': None, 'bmc_ip': None}
+        result = {'gpu_model': None, 'bmc_ip': None, 'sys_sn': None}
         
         try:
             with open(sys_info_file_path, 'r', encoding='utf-8') as f:
@@ -1278,7 +1377,10 @@ def parse_sys_info_file(directory_name):
                         result['gpu_model'] = value if value else None
                     elif key == 'BMC_IP':
                         result['bmc_ip'] = value if value else None
+                    elif key == 'SYS_SN':
+                        result['sys_sn'] = value if value else None
             
+            cache.set(cache_key, result, RMA_DETAILS_CACHE_TIMEOUT)
             return result
             
         except Exception as e:
@@ -1288,6 +1390,19 @@ def parse_sys_info_file(directory_name):
     except Exception as e:
         logger.warning(f"Error accessing sys_info.txt for {directory_name}: {e}")
         return None
+
+
+def get_system_sn(directory_name, base_dir=None, cache_ns: str = "rma"):
+    """
+    Get System SN from sys_info.txt (SYS_SN: ...)
+    """
+    try:
+        sys_info = parse_sys_info_file(directory_name, base_dir=base_dir, cache_ns=cache_ns)
+        if sys_info and sys_info.get("sys_sn"):
+            return sys_info["sys_sn"]
+    except Exception:
+        pass
+    return "N/A"
 
 def parse_test_status_content(content):
     """
@@ -1349,7 +1464,7 @@ def parse_test_status_content(content):
     
     return test_details
 
-def get_gpu_model(directory_name):
+def get_gpu_model(directory_name, base_dir=None, cache_ns: str = "rma"):
     """
     Get GPU model from sys_info.txt (primary) or gpu_model.txt (fallback) file in RMA directory
     
@@ -1359,14 +1474,15 @@ def get_gpu_model(directory_name):
     Returns:
         str: GPU model string or 'Unknown' if not found
     """
+    base_dir = base_dir or RMA_BASE_DIR
     try:
         # Primary source: sys_info.txt
-        sys_info = parse_sys_info_file(directory_name)
+        sys_info = parse_sys_info_file(directory_name, base_dir=base_dir, cache_ns=cache_ns)
         if sys_info and sys_info.get('gpu_model'):
             return sys_info['gpu_model']
         
         # Fallback: gpu_model.txt
-        gpu_model_file_path = os.path.join(RMA_BASE_DIR, directory_name, "gpu_model.txt")
+        gpu_model_file_path = os.path.join(base_dir, directory_name, "gpu_model.txt")
         
         if os.path.exists(gpu_model_file_path):
             try:
@@ -1388,7 +1504,7 @@ def get_gpu_model(directory_name):
         logger.warning(f"Error reading GPU model for {directory_name}: {e}")
         return 'Unknown'
 
-def get_golden_number(directory_name):
+def get_golden_number(directory_name, base_dir=None, cache_ns: str = "rma"):
     """
     Get golden number from RMA Testing DB by reading BMC IP from sys_info.txt (primary) or bmc_ip.txt (fallback)
     
@@ -1398,9 +1514,10 @@ def get_golden_number(directory_name):
     Returns:
         str: Golden number or 'N/A' if not found
     """
+    base_dir = base_dir or RMA_BASE_DIR
     try:
         # Check cache first
-        cache_key = f"rma_golden_{directory_name}"
+        cache_key = f"{cache_ns}_golden_{directory_name}"
         cached_golden = cache.get(cache_key)
         if cached_golden is not None:
             return cached_golden
@@ -1408,13 +1525,13 @@ def get_golden_number(directory_name):
         bmc_ip = None
         
         # Primary source: sys_info.txt
-        sys_info = parse_sys_info_file(directory_name)
+        sys_info = parse_sys_info_file(directory_name, base_dir=base_dir, cache_ns=cache_ns)
         if sys_info and sys_info.get('bmc_ip'):
             bmc_ip = sys_info['bmc_ip']
         
         # Fallback: bmc_ip.txt
         if not bmc_ip:
-            bmc_ip_file_path = os.path.join(RMA_BASE_DIR, directory_name, "bmc_ip.txt")
+            bmc_ip_file_path = os.path.join(base_dir, directory_name, "bmc_ip.txt")
             
             if os.path.exists(bmc_ip_file_path):
                 try:
@@ -1425,13 +1542,14 @@ def get_golden_number(directory_name):
         
         # Query database if we have BMC IP
         if bmc_ip:
-            # Import RmaTestingDb model
-            from ..models import RmaTestingDb
+            # Use RMA Testing DB for main logs, RMA GB DB for GB logs
+            from ..models import RmaTestingDb, RmaGbDb
             from django.db import connection
             
             # Query database for matching BMC IP
             try:
-                rma_entry = RmaTestingDb.objects.filter(bmc_ip=bmc_ip).first()
+                model = RmaGbDb if cache_ns == "rma_gb" else RmaTestingDb
+                rma_entry = model.objects.filter(bmc_ip=bmc_ip).first()
                 if rma_entry and rma_entry.golden_number:
                     golden_number = rma_entry.golden_number
                     # Cache the result for 1 minute
@@ -1456,7 +1574,7 @@ def get_golden_number(directory_name):
         logger.warning(f"Error getting golden number for {directory_name}: {e}")
         return 'N/A'
 
-def get_all_rma_data_batch(directory_names):
+def get_all_rma_data_batch(directory_names, base_dir=None, cache_ns: str = "rma"):
     """
     Get BOTH golden numbers AND tester names for multiple directories in a SINGLE database query.
     This prevents connection pool exhaustion by batching all queries together.
@@ -1467,7 +1585,8 @@ def get_all_rma_data_batch(directory_names):
     Returns:
         tuple: (tester_map, golden_map) - two dictionaries mapping directory_name -> value
     """
-    from ..models import RmaTestingDb
+    base_dir = base_dir or RMA_BASE_DIR
+    from ..models import RmaTestingDb, RmaGbDb
     from django.db import connection
     
     tester_map = {}
@@ -1477,8 +1596,8 @@ def get_all_rma_data_batch(directory_names):
     # Step 1: Collect all BMC IPs from all directories and check cache
     for dir_name in directory_names:
         # Check cache first
-        cached_tester = cache.get(f"rma_tester_{dir_name}")
-        cached_golden = cache.get(f"rma_golden_{dir_name}")
+        cached_tester = cache.get(f"{cache_ns}_tester_{dir_name}")
+        cached_golden = cache.get(f"{cache_ns}_golden_{dir_name}")
         
         if cached_tester is not None and cached_golden is not None:
             tester_map[dir_name] = cached_tester
@@ -1490,7 +1609,7 @@ def get_all_rma_data_batch(directory_names):
         
         # Try sys_info.txt first
         try:
-            sys_info = parse_sys_info_file(dir_name)
+            sys_info = parse_sys_info_file(dir_name, base_dir=base_dir, cache_ns=cache_ns)
             if sys_info and sys_info.get('bmc_ip'):
                 bmc_ip = sys_info['bmc_ip']
         except Exception:
@@ -1498,7 +1617,7 @@ def get_all_rma_data_batch(directory_names):
         
         # Try bmc_ip.txt as fallback
         if not bmc_ip:
-            bmc_ip_file_path = os.path.join(RMA_BASE_DIR, dir_name, "bmc_ip.txt")
+            bmc_ip_file_path = os.path.join(base_dir, dir_name, "bmc_ip.txt")
             if os.path.exists(bmc_ip_file_path):
                 try:
                     with open(bmc_ip_file_path, 'r', encoding='utf-8') as f:
@@ -1515,8 +1634,9 @@ def get_all_rma_data_batch(directory_names):
     # Step 2: Query database ONCE for all BMC IPs - get BOTH tester and golden number
     if bmc_ip_to_dirs:
         try:
+            model = RmaGbDb if cache_ns == "rma_gb" else RmaTestingDb
             # Single query for all BMC IPs
-            entries = RmaTestingDb.objects.filter(
+            entries = model.objects.filter(
                 bmc_ip__in=bmc_ip_to_dirs.keys()
             ).select_related('linked_user')
             
@@ -1540,8 +1660,8 @@ def get_all_rma_data_batch(directory_names):
                     tester_map[dir_name] = tester
                     golden_map[dir_name] = golden
                     # Cache both results
-                    cache.set(f"rma_tester_{dir_name}", tester, RMA_DETAILS_CACHE_TIMEOUT)
-                    cache.set(f"rma_golden_{dir_name}", golden, RMA_DETAILS_CACHE_TIMEOUT)
+                    cache.set(f"{cache_ns}_tester_{dir_name}", tester, RMA_DETAILS_CACHE_TIMEOUT)
+                    cache.set(f"{cache_ns}_golden_{dir_name}", golden, RMA_DETAILS_CACHE_TIMEOUT)
                     
         except Exception as e:
             logger.warning(f"Error in batch RMA data query: {e}")
@@ -1553,15 +1673,15 @@ def get_all_rma_data_batch(directory_names):
     for dir_name in directory_names:
         if dir_name not in tester_map:
             tester_map[dir_name] = 'N/A'
-            cache.set(f"rma_tester_{dir_name}", 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
+            cache.set(f"{cache_ns}_tester_{dir_name}", 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
         if dir_name not in golden_map:
             golden_map[dir_name] = 'N/A'
-            cache.set(f"rma_golden_{dir_name}", 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
+            cache.set(f"{cache_ns}_golden_{dir_name}", 'N/A', RMA_DETAILS_CACHE_TIMEOUT)
     
     return tester_map, golden_map
 
 
-def get_tester_name(directory_name):
+def get_tester_name(directory_name, base_dir=None, cache_ns: str = "rma"):
     """
     Get tester name from RMA Testing DB by reading BMC IP and finding linked user
     
@@ -1571,9 +1691,10 @@ def get_tester_name(directory_name):
     Returns:
         str: Tester username or 'N/A' if not found
     """
+    base_dir = base_dir or RMA_BASE_DIR
     try:
         # Check cache first
-        cache_key = f"rma_tester_{directory_name}"
+        cache_key = f"{cache_ns}_tester_{directory_name}"
         cached_tester = cache.get(cache_key)
         if cached_tester is not None:
             return cached_tester
@@ -1581,13 +1702,13 @@ def get_tester_name(directory_name):
         bmc_ip = None
         
         # Primary source: sys_info.txt
-        sys_info = parse_sys_info_file(directory_name)
+        sys_info = parse_sys_info_file(directory_name, base_dir=base_dir, cache_ns=cache_ns)
         if sys_info and sys_info.get('bmc_ip'):
             bmc_ip = sys_info['bmc_ip']
         
         # Fallback: bmc_ip.txt
         if not bmc_ip:
-            bmc_ip_file_path = os.path.join(RMA_BASE_DIR, directory_name, "bmc_ip.txt")
+            bmc_ip_file_path = os.path.join(base_dir, directory_name, "bmc_ip.txt")
             
             if os.path.exists(bmc_ip_file_path):
                 try:
@@ -1598,13 +1719,14 @@ def get_tester_name(directory_name):
         
         # Query database if we have BMC IP
         if bmc_ip:
-            # Import RmaTestingDb model
-            from ..models import RmaTestingDb
+            # Use RMA Testing DB for main logs, RMA GB DB for GB logs
+            from ..models import RmaTestingDb, RmaGbDb
             from django.db import connection
             
             # Query database for matching BMC IP
             try:
-                rma_entry = RmaTestingDb.objects.filter(bmc_ip=bmc_ip).select_related('linked_user').first()
+                model = RmaGbDb if cache_ns == "rma_gb" else RmaTestingDb
+                rma_entry = model.objects.filter(bmc_ip=bmc_ip).select_related('linked_user').first()
                 # Show current tester if linked, otherwise show last tester
                 if rma_entry and rma_entry.linked_user:
                     tester_name = rma_entry.linked_user.username  # Current tester
@@ -1635,7 +1757,7 @@ def get_tester_name(directory_name):
         logger.warning(f"Error getting tester name for {directory_name}: {e}")
         return 'N/A'
 
-def get_test_status(directory_name):
+def get_test_status(directory_name, base_dir=None):
     """
     Get test status from test_status.txt file in RMA directory
     
@@ -1645,9 +1767,10 @@ def get_test_status(directory_name):
     Returns:
         dict: Dictionary of test details with individual test statuses
     """
+    base_dir = base_dir or RMA_BASE_DIR
     try:
         # Read test_status.txt from the local directory
-        status_file_path = os.path.join(RMA_BASE_DIR, directory_name, "test_status.txt")
+        status_file_path = os.path.join(base_dir, directory_name, "test_status.txt")
         
         if os.path.exists(status_file_path):
             try:
@@ -1707,16 +1830,19 @@ def get_file_extension(filename):
         return f'{ext} file'
 
 @login_required
-def rma_log_browser(request, path=""):
+def rma_log_browser(request, path="", base=None):
     """
     Browse RMA directory contents from remote host
     """
+    ctx = _resolve_rma_context(base)
+    base_dir = ctx["base_dir"]
+    cache_ns = ctx["cache_ns"]
     decoded_path = unquote(path)
     # Construct remote path
-    remote_path = os.path.normpath(os.path.join(RMA_BASE_DIR, decoded_path))
+    remote_path = os.path.normpath(os.path.join(base_dir, decoded_path))
 
     # Security check - ensure path stays within RMA_BASE_DIR
-    if not remote_path.startswith(RMA_BASE_DIR):
+    if not remote_path.startswith(base_dir):
         raise Http404("Access denied")
 
     items = []
@@ -1795,7 +1921,10 @@ def rma_log_browser(request, path=""):
         raise Http404("Cannot read directory")
 
     # Get current directory name
-    current_dir = os.path.basename(remote_path) if remote_path != RMA_BASE_DIR else "RMA Logs"
+    if remote_path != base_dir:
+        current_dir = os.path.basename(remote_path)
+    else:
+        current_dir = "RMA GB Logs" if ctx["base"] == "gb" else "RMA Logs"
 
     # Parent directory logic
     path_parts = decoded_path.strip("/").split("/") if decoded_path.strip("/") else []
@@ -1826,7 +1955,7 @@ def rma_log_browser(request, path=""):
         base_sn, rma_number = match.groups()
         
         # Read GPU model from sys_info.txt
-        sys_info = parse_sys_info_file(dir_name)
+        sys_info = parse_sys_info_file(dir_name, base_dir=base_dir, cache_ns=cache_ns)
         if sys_info and sys_info.get('gpu_model'):
             gpu_model = sys_info['gpu_model'].upper()
             # Excluded GPU models for MI3XX ALL LOG
@@ -1836,13 +1965,34 @@ def rma_log_browser(request, path=""):
             if not any(excluded in gpu_model for excluded in excluded_models):
                 show_mi3xx_button = True
     
+    if ctx["base"] == "gb":
+        overview_url_name = "rma_gb_log"
+        browse_url_name = "rma_gb_log_browse"
+        view_url_name = "rma_gb_view_file"
+        delete_url_name = "rma_gb_delete_file"
+        download_folder_url_name = "rma_gb_download_folder"
+        download_folder_async_url_name = "rma_gb_download_folder_async"
+        download_folder_status_base_path = "/rma/gb-download-folder-status/"
+        collect_mi3xx_alllog_base_path = "/rma/gb-collect-mi3xx-alllog"
+        collect_mi3xx_alllog_status_base_path = "/rma/gb-collect-mi3xx-alllog-status/"
+    else:
+        overview_url_name = "rma_log"
+        browse_url_name = "rma_log_browse"
+        view_url_name = "rma_view_file"
+        delete_url_name = "rma_delete_file"
+        download_folder_url_name = "rma_download_folder"
+        download_folder_async_url_name = "rma_download_folder_async"
+        download_folder_status_base_path = "/rma/download-folder-status/"
+        collect_mi3xx_alllog_base_path = "/rma/collect-mi3xx-alllog"
+        collect_mi3xx_alllog_status_base_path = "/rma/collect-mi3xx-alllog-status/"
+
     return render(request, "features/rma_logs_browser.html", {
         "items": items,
         "current_path": "/" + decoded_path.strip("/"),
         "current_dir": current_dir,
         "parent": parent_path,
         "breadcrumb_parts": breadcrumb_parts,
-        "is_root": remote_path == RMA_BASE_DIR,
+        "is_root": remote_path == base_dir,
         "total_size": format_size(total_size),
         "file_count": file_count,
         "dir_count": dir_count,
@@ -1850,6 +2000,15 @@ def rma_log_browser(request, path=""):
         "show_mi3xx_button": show_mi3xx_button,
         "base_sn": base_sn,
         "rma_number": rma_number,
+        "overview_url_name": overview_url_name,
+        "browse_url_name": browse_url_name,
+        "view_url_name": view_url_name,
+        "delete_url_name": delete_url_name,
+        "download_folder_url_name": download_folder_url_name,
+        "download_folder_async_url_name": download_folder_async_url_name,
+        "download_folder_status_base_path": download_folder_status_base_path,
+        "collect_mi3xx_alllog_base_path": collect_mi3xx_alllog_base_path,
+        "collect_mi3xx_alllog_status_base_path": collect_mi3xx_alllog_status_base_path,
     })
 
 def render_csv_as_html(file_content, filename):
@@ -2026,16 +2185,18 @@ def render_csv_as_html(file_content, filename):
         return f"<p>Error reading CSV file: {str(e)}</p>"
 
 @login_required
-def rma_view_file(request, path):
+def rma_view_file(request, path, base=None):
     """
     View RMA files from remote host for viewing only
     Downloads are handled directly via Apache2 server on RMA host
     """
+    ctx = _resolve_rma_context(base)
+    base_dir = ctx["base_dir"]
     # Construct remote path
-    remote_path = os.path.normpath(os.path.join(RMA_BASE_DIR, path))
+    remote_path = os.path.normpath(os.path.join(base_dir, path))
 
     # Security check
-    if not remote_path.startswith(RMA_BASE_DIR):
+    if not remote_path.startswith(base_dir):
         raise Http404("Access denied")
 
     # Get filename
@@ -2054,7 +2215,8 @@ def rma_view_file(request, path):
         
         # For downloads, serve through Django from local disk
         if download_requested:
-            if remote_download:
+            # For GB logs, path doesn't include "gb/" prefix, so remote Apache redirect would be wrong.
+            if remote_download and ctx["base"] != "gb":
                 # Use remote Apache download
                 apache_url = f"http://{remote_download}/{path}"
                 return redirect(apache_url)
@@ -2220,7 +2382,7 @@ def is_text_file(file_path):
 
 @login_required
 @require_POST
-def rma_delete_file(request, path):
+def rma_delete_file(request, path, base=None):
     """
     Delete a specific RMA file from local disk.
 
@@ -2228,11 +2390,13 @@ def rma_delete_file(request, path):
     - target must resolve within RMA_BASE_DIR
     - only allow deleting the exact filename: nvidia_fw_update
     """
+    ctx = _resolve_rma_context(base)
+    base_dir = ctx["base_dir"]
     decoded_path = unquote(path).lstrip("/")
-    target_path = os.path.normpath(os.path.join(RMA_BASE_DIR, decoded_path))
+    target_path = os.path.normpath(os.path.join(base_dir, decoded_path))
 
     # Security check - ensure path stays within RMA_BASE_DIR
-    if not target_path.startswith(RMA_BASE_DIR):
+    if not target_path.startswith(base_dir):
         raise Http404("Access denied")
 
     # Only allow deleting the exact target filename
@@ -2256,8 +2420,10 @@ def rma_delete_file(request, path):
     # Redirect back to the parent folder listing
     parent_rel = os.path.dirname(decoded_path.strip("/"))
     if parent_rel:
-        return redirect("rma_log_browse", path=parent_rel)
-    return redirect("rma_log")
+        browse_url_name = "rma_gb_log_browse" if ctx["base"] == "gb" else "rma_log_browse"
+        return redirect(browse_url_name, path=parent_rel)
+    overview_url_name = "rma_gb_log" if ctx["base"] == "gb" else "rma_log"
+    return redirect(overview_url_name)
 
 def monitor_remote_progress(task_id, progress_file, rma_remote, stop_event):
     """
@@ -2842,13 +3008,16 @@ except Exception as e:
         }, 1800)
 
 @login_required
-def rma_collect_mi3xx_alllog(request, path):
+def rma_collect_mi3xx_alllog(request, path, base=None):
     """
     Start async MI3XX ALL LOG collection and return task ID immediately
     """
     import uuid
     
     decoded_path = unquote(path)
+    ctx = _resolve_rma_context(base)
+    base_dir = ctx["base_dir"]
+    cache_ns = ctx["cache_ns"]
     
     # Extract base_sn and rma_number from path
     pattern = re.compile(r'^(.+)_(.+)$')
@@ -2862,7 +3031,7 @@ def rma_collect_mi3xx_alllog(request, path):
 
     try:
         # Read BMC IP from sys_info.txt (local copy)
-        sys_info = parse_sys_info_file(dir_name)
+        sys_info = parse_sys_info_file(dir_name, base_dir=base_dir, cache_ns=cache_ns)
         if not sys_info or not sys_info.get('bmc_ip'):
             return JsonResponse({'success': False, 'error': 'BMC IP not found in sys_info.txt'}, status=400)
         
@@ -2901,7 +3070,7 @@ def rma_collect_mi3xx_alllog(request, path):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @login_required
-def rma_collect_mi3xx_alllog_from_form(request):
+def rma_collect_mi3xx_alllog_from_form(request, base=None):
     """
     Start async MI3XX ALL LOG collection using Base SN, RMA Number, and BMC IP
     provided directly from the RMA GPU TEST form instead of an existing RMA
@@ -2914,6 +3083,9 @@ def rma_collect_mi3xx_alllog_from_form(request):
         return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
 
     try:
+        ctx = _resolve_rma_context(base)
+        base_dir = ctx["base_dir"]
+
         if request.content_type == 'application/json':
             try:
                 payload = json.loads(request.body.decode('utf-8'))
@@ -2938,7 +3110,7 @@ def rma_collect_mi3xx_alllog_from_form(request):
             )
 
         dir_name = f"{base_sn}_{rma_number}"
-        local_dir_path = os.path.join(RMA_BASE_DIR, dir_name)
+        local_dir_path = os.path.join(base_dir, dir_name)
 
         # Ensure the target directory exists under RMA_BASE_DIR
         try:
@@ -2991,7 +3163,7 @@ def rma_collect_mi3xx_alllog_from_form(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @login_required
-def rma_collect_mi3xx_alllog_status(request, task_id):
+def rma_collect_mi3xx_alllog_status(request, task_id, base=None):
     """
     Check status of MI3XX ALL LOG collection task
     """
@@ -3015,19 +3187,21 @@ def rma_collect_mi3xx_alllog_status(request, task_id):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @login_required
-def rma_download_zip(request, zip_filename):
+def rma_download_zip(request, zip_filename, base=None):
     """
     Serve zip file from TEMP_ZIPS_DIR through Django
     """
+    ctx = _resolve_rma_context(base)
+    temp_zips_dir = ctx["temp_zips_dir"]
     # Security check - ensure filename is safe (no path traversal)
     if '..' in zip_filename or '/' in zip_filename or '\\' in zip_filename:
         raise Http404("Invalid filename")
     
     # Construct full path to zip file
-    zip_path = os.path.normpath(os.path.join(TEMP_ZIPS_DIR, zip_filename))
+    zip_path = os.path.normpath(os.path.join(temp_zips_dir, zip_filename))
     
     # Security check - ensure path stays within TEMP_ZIPS_DIR
-    if not zip_path.startswith(TEMP_ZIPS_DIR):
+    if not zip_path.startswith(temp_zips_dir):
         raise Http404("Access denied")
     
     try:
@@ -3056,20 +3230,23 @@ def rma_download_zip(request, zip_filename):
         raise Http404(f"Cannot serve zip file: {str(e)}")
 
 @login_required
-def rma_download_folder(request, path):
+def rma_download_folder(request, path, base=None):
     """
     Download RMA folder as a zip file
     Creates a temporary zip file and serves through Django
     """
     from django.shortcuts import redirect
     from django.urls import reverse
+    ctx = _resolve_rma_context(base)
+    base_dir = ctx["base_dir"]
+    temp_zips_dir = ctx["temp_zips_dir"]
     
     decoded_path = unquote(path)
     # Construct directory path
-    remote_path = os.path.normpath(os.path.join(RMA_BASE_DIR, decoded_path))
+    remote_path = os.path.normpath(os.path.join(base_dir, decoded_path))
 
     # Security check - ensure path stays within RMA_BASE_DIR
-    if not remote_path.startswith(RMA_BASE_DIR):
+    if not remote_path.startswith(base_dir):
         raise Http404("Access denied")
 
     try:
@@ -3084,13 +3261,14 @@ def rma_download_folder(request, path):
         dir_name = os.path.basename(remote_path)
         
         # Create temporary zip file
-        zip_filename = create_temp_zip(remote_path, dir_name)
+        zip_filename = create_temp_zip(remote_path, dir_name, temp_zips_dir=temp_zips_dir)
         
         if zip_filename is None:
             raise Http404("Failed to create zip file")
         
         # Generate Django URL for download
-        django_url = reverse('rma_download_zip', kwargs={'zip_filename': zip_filename})
+        download_zip_url_name = 'rma_gb_download_zip' if ctx["base"] == 'gb' else 'rma_download_zip'
+        django_url = reverse(download_zip_url_name, kwargs={'zip_filename': zip_filename})
         
         logger.info(f"Redirecting to Django for folder download: {django_url}")
         

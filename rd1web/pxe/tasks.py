@@ -88,6 +88,78 @@ def prewarm_rma_details_cache(self):
         raise self.retry(exc=e, countdown=120)  # Retry after 2 minutes
 
 
+@shared_task(bind=True, ignore_result=True, max_retries=3)
+def prewarm_rma_gb_directory_cache(self):
+    """
+    Pre-warm the RMA GB directory basic info cache.
+    Mirrors prewarm_rma_directory_cache but for GB base_dir/cache_ns.
+    """
+    try:
+        # Import here to avoid circular imports
+        from .views.rma_logs import get_rma_directories_basic, RMA_GB_BASE_DIR
+
+        logger.info("Starting RMA GB directory cache pre-warming...")
+
+        directories = get_rma_directories_basic(base_dir=RMA_GB_BASE_DIR, cache_ns="rma_gb")
+
+        dir_count = len(directories)
+        logger.info(f"RMA GB directory cache pre-warmed successfully: {dir_count} directories")
+
+        return {
+            "status": "success",
+            "directory_count": dir_count,
+        }
+
+    except Exception as e:
+        logger.error(f"Error pre-warming RMA GB directory cache: {e}")
+        raise self.retry(exc=e, countdown=60)  # Retry after 1 minute
+
+
+@shared_task(bind=True, ignore_result=True, max_retries=3)
+def prewarm_rma_gb_details_cache(self):
+    """
+    Pre-warm the RMA GB directory details cache for recently modified directories.
+    Mirrors prewarm_rma_details_cache but for GB base_dir/cache_ns.
+    """
+    try:
+        # Import here to avoid circular imports
+        from .views.rma_logs import (
+            get_rma_directories_basic,
+            load_directory_details_batch,
+            RMA_GB_BASE_DIR,
+        )
+
+        logger.info("Starting RMA GB details cache pre-warming...")
+
+        directories = get_rma_directories_basic(base_dir=RMA_GB_BASE_DIR, cache_ns="rma_gb")
+
+        if not directories:
+            logger.warning("No RMA GB directories found for details pre-warming")
+            return {"status": "no_directories"}
+
+        top_directories = directories[:40]
+        dir_names = [d["name"] for d in top_directories]
+
+        logger.info(f"Pre-warming GB details for {len(dir_names)} recent directories...")
+
+        details_map = load_directory_details_batch(
+            dir_names, base_dir=RMA_GB_BASE_DIR, cache_ns="rma_gb"
+        )
+
+        prewarmed_count = len(details_map)
+        logger.info(f"RMA GB details cache pre-warmed successfully: {prewarmed_count} directories")
+
+        return {
+            "status": "success",
+            "prewarmed_count": prewarmed_count,
+            "total_directories": len(directories),
+        }
+
+    except Exception as e:
+        logger.error(f"Error pre-warming RMA GB details cache: {e}")
+        raise self.retry(exc=e, countdown=120)  # Retry after 2 minutes
+
+
 @shared_task(bind=True, ignore_result=True)
 def clear_rma_cache(self):
     """
@@ -102,6 +174,10 @@ def clear_rma_cache(self):
         
         # Clear old cache keys for compatibility
         cache.delete('rma_directories_basic')
+
+        # Clear GB basic directory cache keys
+        cache.delete('rma_gb_directories_basic_v2')
+        cache.delete('rma_gb_directories_basic')
         
         # Note: Individual detail caches will expire naturally
         # We don't clear them here to avoid cache stampede
