@@ -2,6 +2,8 @@ from django import forms
 import re
 from django.core.exceptions import ValidationError
 from .models import RmaTestingDb, RmaGbDb
+
+BLANK_BMC_CHOICE = [('', '-- Select BMC IP --')]
 ###
 class PxeForm(forms.Form):
     mac=forms.CharField(widget=forms.Textarea(attrs={'class':'form-control','style': 'width: 300px;',}),label='MAC')
@@ -350,14 +352,14 @@ class RmaForm(forms.Form):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
-        # Populate BMC IP choices based on user's linked golden numbers
+        # Populate BMC IP choices based on user's linked golden numbers (blank default)
         if user:
             from .models import RmaTestingDb
             linked_entries = RmaTestingDb.objects.filter(linked_user=user).order_by('bmc_ip')
-            self.fields['bmc_ip'].choices = [(entry.bmc_ip, f"{entry.bmc_ip} - {entry.golden_number}") for entry in linked_entries]
+            self.fields['bmc_ip'].choices = BLANK_BMC_CHOICE + [(entry.bmc_ip, f"{entry.bmc_ip} - {entry.golden_number}") for entry in linked_entries]
         else:
-            self.fields['bmc_ip'].choices = []
-    
+            self.fields['bmc_ip'].choices = BLANK_BMC_CHOICE
+
     def clean_tests(self):
         """Validate that Default and All Log are not combined with other tests or firmware update."""
         tests = self.cleaned_data.get('tests', [])
@@ -468,13 +470,13 @@ class PcieGpuForm(forms.Form):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
-        # Populate BMC IP choices based on user's linked golden numbers
+        # Populate BMC IP choices based on user's linked golden numbers (blank default)
         if user:
             from .models import RmaTestingDb
             linked_entries = RmaTestingDb.objects.filter(linked_user=user).order_by('bmc_ip')
-            self.fields['bmc_ip'].choices = [(entry.bmc_ip, f"{entry.bmc_ip} - {entry.golden_number}") for entry in linked_entries]
+            self.fields['bmc_ip'].choices = BLANK_BMC_CHOICE + [(entry.bmc_ip, f"{entry.bmc_ip} - {entry.golden_number}") for entry in linked_entries]
         else:
-            self.fields['bmc_ip'].choices = []
+            self.fields['bmc_ip'].choices = BLANK_BMC_CHOICE
 
     def clean_tests(self):
         """Validate that Default is not combined with other tests."""
@@ -562,12 +564,12 @@ class GbGpuForm(forms.Form):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        # Populate BMC IP choices from RMA GB DB
-        # (GB flow should be able to pick an entry right after it's added)
-        gb_entries = RmaGbDb.objects.all().order_by('bmc_ip')
-        self.fields['bmc_ip'].choices = [
-            (entry.bmc_ip, f"{entry.bmc_ip} - {entry.golden_number}") for entry in gb_entries
-        ]
+        # Populate BMC IP choices based on user's linked golden numbers (blank default, same as RMA/PCIE)
+        if user:
+            linked_entries = RmaGbDb.objects.filter(linked_user=user).order_by('bmc_ip')
+            self.fields['bmc_ip'].choices = BLANK_BMC_CHOICE + [(entry.bmc_ip, f"{entry.bmc_ip} - {entry.golden_number}") for entry in linked_entries]
+        else:
+            self.fields['bmc_ip'].choices = BLANK_BMC_CHOICE
 
     def clean_tests(self):
         """Validate that Default and HMC Log are exclusive selections."""
