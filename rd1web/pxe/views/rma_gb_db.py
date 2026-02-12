@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
@@ -52,6 +52,7 @@ def rma_gb_db_list(request):
         'search_form': search_form,
         'add_form': add_form,
         'total_entries': queryset.count(),
+        'can_delete': request.user.has_perm('pxe.can_delete_rma_gb_db'),
     }
 
     return render(request, 'features/rma_gb_db.html', context)
@@ -135,6 +136,7 @@ def rma_gb_db_edit(request, entry_id):
 
 
 @login_required
+@permission_required('pxe.can_delete_rma_gb_db', raise_exception=True)
 @require_http_methods(["POST"])
 def rma_gb_db_delete(request, entry_id):
     """Delete RMA GB DB entry"""

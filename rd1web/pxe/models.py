@@ -233,6 +233,9 @@ class RmaGbDb(models.Model):
         ordering = ['bmc_mac']
         verbose_name = 'RMA GB DB Entry'
         verbose_name_plural = 'RMA GB DB Entries'
+        permissions = [
+            ('can_delete_rma_gb_db', 'Can delete RMA GB DB entries'),
+        ]
 
     def clean(self):
         """Additional validation for the model"""
