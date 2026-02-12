@@ -233,6 +233,9 @@ class RmaGbDb(models.Model):
         ordering = ['bmc_mac']
         verbose_name = 'RMA GB DB Entry'
         verbose_name_plural = 'RMA GB DB Entries'
+        permissions = [
+            ('can_delete_rma_gb_db', 'Can delete RMA GB DB entries'),
+        ]
 
     def clean(self):
         """Additional validation for the model"""
@@ -270,6 +273,13 @@ class RmaTestStatistic(models.Model):
     RMA Test Statistics model for tracking GPU test failures
     Stores parsed test results from test_results.log files
     """
+    base = models.CharField(
+        max_length=10,
+        default='main',
+        db_index=True,
+        help_text="Statistics base source: 'main' for RMA_BASE_DIR, 'gb' for RMA_GB_BASE_DIR",
+        verbose_name='Base',
+    )
     directory_name = models.CharField(
         max_length=255,
         db_index=True,
@@ -318,11 +328,13 @@ class RmaTestStatistic(models.Model):
         ordering = ['-test_date']
         verbose_name = 'RMA Test Statistic'
         verbose_name_plural = 'RMA Test Statistics'
-        unique_together = [['directory_name', 'file_mtime']]
+        unique_together = [['base', 'directory_name', 'file_mtime']]
         indexes = [
             models.Index(fields=['test_date']),
             models.Index(fields=['gpu_model']),
             models.Index(fields=['test_date', 'gpu_model']),
+            models.Index(fields=['base', 'test_date']),
+            models.Index(fields=['base', 'gpu_model']),
         ]
     
     def __str__(self):

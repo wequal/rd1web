@@ -213,9 +213,11 @@
                             <button type="button" class="action-btn btn-edit" onclick="editEntry({{ entry.id }})" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </button>
+                            {% if perms.pxe.can_delete_rma_gb_db %}
                             <button type="button" class="action-btn btn-delete" onclick="confirmDelete({{ entry.id }}, '{{ entry.bmc_mac }}', '{{ entry.bmc_ip }}')" title="Delete">
                                 <i class="fas fa-trash"></i>
                             </button>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
@@ -420,6 +422,7 @@ let deleteEntryId = null;
 let currentPage = 1;
 let totalRecords = 0;
 let recordsPerPage = 20;
+let canDelete = {% if can_delete %}true{% else %}false{% endif %};
 
 $(document).ready(function() {
     loadTableData(1);
@@ -625,9 +628,9 @@ function updateTable(data) {
                     <button type="button" class="action-btn btn-edit" onclick="editEntry(${entry.id})" title="Edit">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button type="button" class="action-btn btn-delete" onclick="confirmDelete(${entry.id}, '${entry.bmc_mac}', '${entry.bmc_ip}')" title="Delete">
+                    ${canDelete ? `<button type="button" class="action-btn btn-delete" onclick="confirmDelete(${entry.id}, '${entry.bmc_mac}', '${entry.bmc_ip}')" title="Delete">
                         <i class="fas fa-trash"></i>
-                    </button>
+                    </button>` : ''}
                 </td>
             </tr>
         `;
