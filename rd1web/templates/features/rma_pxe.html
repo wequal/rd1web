@@ -2291,39 +2291,45 @@
             replacementContainer.style.display = showReplacementToggle.checked ? 'block' : 'none';
         }
 
-        // Auto-fill for PCIE form
+        // Auto-fill for PCIE form (BMC IP from PCIE DB; fills RMA number + GPU/Replacement SNs from PXE params)
         const pcieBmcIpSelect = document.getElementById('id_pcie-bmc_ip');
-        console.log('PCIE auto-fill init - bmcIpSelect:', pcieBmcIpSelect);
-        
+        const pcieRmaNumberInput = document.getElementById('id_pcie-rma_number');
+
+        function clearPcieFormFields() {
+            if (pcieRmaNumberInput) pcieRmaNumberInput.value = '';
+            for (let i = 1; i <= 8; i++) {
+                const gpuField = document.getElementById('id_pcie-gpu' + i + '_sn');
+                const rgField = document.getElementById('id_pcie-rg' + i + '_sn');
+                if (gpuField) gpuField.value = '';
+                if (rgField) rgField.value = '';
+            }
+        }
+
         async function fetchAndFillPcieInfo(bmcIp) {
-            console.log('fetchAndFillPcieInfo called with:', bmcIp);
-            if (!bmcIp) return;
+            if (!bmcIp) {
+                clearPcieFormFields();
+                return;
+            }
             try {
-                const response = await fetch(`/api/rma/get-rma-info/${bmcIp}/?operation_type=pcie`);
+                const response = await fetch('/api/rma/get-rma-info/' + encodeURIComponent(bmcIp) + '/?operation_type=pcie');
                 const data = await response.json();
-                console.log('PCIE Auto-fill API response:', data);
                 if (data.success) {
-                    const rmaNumField = document.getElementById('id_pcie-rma_number');
-                    if (rmaNumField) {
-                        rmaNumField.value = data.rma_number || '';
+                    if (pcieRmaNumberInput) {
+                        pcieRmaNumberInput.value = data.rma_number || '';
                     }
                     for (let i = 1; i <= 8; i++) {
-                        const gpuField = document.getElementById(`id_pcie-gpu${i}_sn`);
-                        const rgField = document.getElementById(`id_pcie-rg${i}_sn`);
-                        
-                        const gpuValue = data[`gpu${i}_sn`] || 
-                                       (data.gpu_sns ? data.gpu_sns[`gpu${i}_sn`] : '') || 
-                                       '';
-                        const rgValue = data[`rg${i}_sn`] || 
-                                      (data.rgpu_sns ? data.rgpu_sns[`rg${i}_sn`] : '') || 
-                                      '';
-                        
+                        const gpuField = document.getElementById('id_pcie-gpu' + i + '_sn');
+                        const rgField = document.getElementById('id_pcie-rg' + i + '_sn');
+                        const gpuValue = (data['gpu' + i + '_sn'] != null && data['gpu' + i + '_sn'] !== '') ? data['gpu' + i + '_sn'] : '';
+                        const rgValue = (data['rg' + i + '_sn'] != null && data['rg' + i + '_sn'] !== '') ? data['rg' + i + '_sn'] : '';
                         if (gpuField) gpuField.value = gpuValue;
                         if (rgField) rgField.value = rgValue;
                     }
+                } else {
+                    clearPcieFormFields();
                 }
-            } catch (e) { 
-                console.error('Error auto-filling PCIE info:', e); 
+            } catch (e) {
+                clearPcieFormFields();
             }
         }
 
@@ -2331,7 +2337,7 @@
             pcieBmcIpSelect.addEventListener('change', function() {
                 fetchAndFillPcieInfo(this.value);
             });
-            
+            // Run on load when PCIE form is visible and a BMC IP is already selected
             if (pcieBmcIpSelect.value) {
                 fetchAndFillPcieInfo(pcieBmcIpSelect.value);
             }
