@@ -106,6 +106,7 @@ class UserActivityAdmin(admin.ModelAdmin):
             week_start = today - timedelta(days=today.weekday())
             week_end = week_start + timedelta(days=6)
             month_start = today.replace(day=1)
+            month_end = month_start.replace(day=calendar.monthrange(month_start.year, month_start.month)[1])
         elif year and month:
             # Specific month selected - use that month
             month_start = datetime.date(int(year), int(month), 1)
@@ -119,6 +120,7 @@ class UserActivityAdmin(admin.ModelAdmin):
                 today = datetime.date(int(year), int(month), last_day)
             week_start = today - timedelta(days=today.weekday())
             week_end = week_start + timedelta(days=6)
+            month_end = datetime.date(int(year), int(month), last_day)
         elif year:
             # Specific year selected - use current month/day of that year or last day of year
             current_date = now.astimezone(la_tz).date()
@@ -132,11 +134,13 @@ class UserActivityAdmin(admin.ModelAdmin):
             week_start = today - timedelta(days=today.weekday())
             week_end = week_start + timedelta(days=6)
             month_start = today.replace(day=1)
+            month_end = month_start.replace(day=calendar.monthrange(month_start.year, month_start.month)[1])
         else:
             # No filters - use current date
             week_start = today - timedelta(days=today.weekday())
             week_end = week_start + timedelta(days=6)  # Sunday
             month_start = today.replace(day=1)
+            month_end = month_start.replace(day=calendar.monthrange(month_start.year, month_start.month)[1])
         
         # Calculate statistics (exclude 'devin' user from statistics)
         daily_stats = UserActivity.objects.filter(
@@ -144,11 +148,13 @@ class UserActivityAdmin(admin.ModelAdmin):
         ).exclude(user__username='devin').values('action').annotate(count=Count('id')).order_by('-count')
         
         weekly_stats = UserActivity.objects.filter(
-            timestamp__date__gte=week_start
+            timestamp__date__gte=week_start,
+            timestamp__date__lte=week_end
         ).exclude(user__username='devin').values('action').annotate(count=Count('id')).order_by('-count')
         
         monthly_stats = UserActivity.objects.filter(
-            timestamp__date__gte=month_start
+            timestamp__date__gte=month_start,
+            timestamp__date__lte=month_end
         ).exclude(user__username='devin').values('action').annotate(count=Count('id')).order_by('-count')
         
         # Convert QuerySets to lists for proper evaluation
@@ -167,11 +173,13 @@ class UserActivityAdmin(admin.ModelAdmin):
         ).exclude(user__username='devin').values('user__username').annotate(count=Count('id')).order_by('-count')[:10]
         
         user_weekly = UserActivity.objects.filter(
-            timestamp__date__gte=week_start
+            timestamp__date__gte=week_start,
+            timestamp__date__lte=week_end
         ).exclude(user__username='devin').values('user__username').annotate(count=Count('id')).order_by('-count')[:10]
         
         user_monthly = UserActivity.objects.filter(
-            timestamp__date__gte=month_start
+            timestamp__date__gte=month_start,
+            timestamp__date__lte=month_end
         ).exclude(user__username='devin').values('user__username').annotate(count=Count('id')).order_by('-count')[:10]
         
         # Convert user QuerySets to lists for charts
@@ -202,6 +210,7 @@ class UserActivityAdmin(admin.ModelAdmin):
             'week_start': week_start,
             'week_end': week_end,
             'month_start': month_start,
+            'month_end': month_end,
         })
         
         return super().changelist_view(request, extra_context=extra_context)
