@@ -11,7 +11,7 @@ from django.utils import timezone
 import json
 import logging
 
-from ..models import RmaTestingDb
+from ..models import RmaTestingDb, RmaPcieDb
 from ..form import RmaTestingDbForm, RmaTestingDbSearchForm
 from ..remote_config import remote_dict
 from .rma_pxe import remove_pxe_entries_and_boot_files
@@ -61,6 +61,19 @@ def rma_testing_db_list(request):
         'search_form': search_form,
         'add_form': add_form,
         'total_entries': queryset.count(),
+        # shared-template configuration
+        'active_db': 'sxm',
+        'db_page_title': 'SXM DB',
+        'db_table_title': 'SXM Database',
+        'empty_table_message': 'No SXM DB entries found. Click Add New Entry to get started.',
+        'can_delete': True,
+        'lan1_required': True,
+        # endpoint names (used by template)
+        'add_url_name': 'rma_testing_db_add',
+        'edit_url_name': 'rma_testing_db_edit',
+        'delete_url_name': 'rma_testing_db_delete',
+        'get_url_name': 'rma_testing_db_get',
+        'api_url_name': 'rma_testing_db_api',
     }
     
     return render(request, 'features/rma_testing_db.html', context)
@@ -251,6 +264,8 @@ def golden_link(request, entry_id):
         operation_type = request.GET.get('operation_type', 'rma')
         if operation_type == 'gb':
             entry = RmaGbDb.objects.get(id=entry_id)
+        elif operation_type == 'pcie':
+            entry = RmaPcieDb.objects.get(id=entry_id)
         else:
             entry = RmaTestingDb.objects.get(id=entry_id)
         
@@ -271,7 +286,7 @@ def golden_link(request, entry_id):
             'message': f'Successfully linked golden number "{entry.golden_number}"'
         })
         
-    except (RmaTestingDb.DoesNotExist, RmaGbDb.DoesNotExist):
+    except (RmaTestingDb.DoesNotExist, RmaGbDb.DoesNotExist, RmaPcieDb.DoesNotExist):
         return JsonResponse({
             'success': False,
             'error': 'Golden number entry not found'
@@ -293,6 +308,8 @@ def golden_unlink(request, entry_id):
         operation_type = request.GET.get('operation_type', 'rma')
         if operation_type == 'gb':
             entry = RmaGbDb.objects.get(id=entry_id)
+        elif operation_type == 'pcie':
+            entry = RmaPcieDb.objects.get(id=entry_id)
         else:
             entry = RmaTestingDb.objects.get(id=entry_id)
         
@@ -323,6 +340,11 @@ def golden_unlink(request, entry_id):
         # Also remove PXE configuration (DB + PXE server boot files) for this golden's LAN MACs
         if operation_type == 'gb':
             cleanup_actions = remove_pxe_entries_and_boot_files([entry.lan0_mac])
+        elif operation_type == 'pcie':
+            macs = [entry.lan0_mac]
+            if entry.lan1_mac:
+                macs.append(entry.lan1_mac)
+            cleanup_actions = remove_pxe_entries_and_boot_files(macs)
         else:
             cleanup_actions = remove_pxe_entries_and_boot_files([entry.lan0_mac, entry.lan1_mac])
         
@@ -332,7 +354,7 @@ def golden_unlink(request, entry_id):
             'cleanup_actions': cleanup_actions,
         })
         
-    except (RmaTestingDb.DoesNotExist, RmaGbDb.DoesNotExist):
+    except (RmaTestingDb.DoesNotExist, RmaGbDb.DoesNotExist, RmaPcieDb.DoesNotExist):
         return JsonResponse({
             'success': False,
             'error': 'Golden number entry not found'

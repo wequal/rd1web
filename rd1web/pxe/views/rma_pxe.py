@@ -5,7 +5,7 @@ from django.urls import reverse
 from ..form import RmaForm, PcieGpuForm, GbGpuForm
 from fabric import Connection
 from django.contrib.auth.decorators import login_required, permission_required
-from ..models import PxeEntry, RmaTestingDb, RmaGbDb, FirmwareFile
+from ..models import PxeEntry, RmaTestingDb, RmaGbDb, RmaPcieDb, FirmwareFile
 from ..remote_config import remote_dict, async_rma
 import asyncio
 import json
@@ -41,6 +41,9 @@ def get_bmc_password_for_hmc_log(bmc_ip: str, bmc_user: str = "root", operation_
     if operation_type == "gb":
         entry = RmaGbDb.objects.filter(bmc_ip=bmc_ip).first()
         not_found_msg = "RMA GB DB"
+    elif operation_type == "pcie":
+        entry = RmaPcieDb.objects.filter(bmc_ip=bmc_ip).first()
+        not_found_msg = "RMA PCIE DB"
     else:
         entry = RmaTestingDb.objects.filter(bmc_ip=bmc_ip).first()
         not_found_msg = "RMA Testing DB"
@@ -106,6 +109,15 @@ def get_lan_macs(bmc_ip):
         entry = RmaTestingDb.objects.get(bmc_ip=bmc_ip)
         return [entry.lan0_mac, entry.lan1_mac]
     except RmaTestingDb.DoesNotExist:
+        return None, None
+
+
+def get_pcie_lan_macs(bmc_ip):
+    """PCIE GPU TEST uses LAN0 + optional LAN1 from RmaPcieDb."""
+    try:
+        entry = RmaPcieDb.objects.get(bmc_ip=bmc_ip)
+        return [entry.lan0_mac, entry.lan1_mac]
+    except RmaPcieDb.DoesNotExist:
         return None, None
 
 
@@ -199,6 +211,8 @@ def get_rma_info_by_bmc(request, bmc_ip):
         try:
             if operation_type == 'gb':
                 rma_entry = RmaGbDb.objects.get(bmc_ip=bmc_ip)
+            elif operation_type == 'pcie':
+                rma_entry = RmaPcieDb.objects.get(bmc_ip=bmc_ip)
             else:
                 rma_entry = RmaTestingDb.objects.get(bmc_ip=bmc_ip)
             
@@ -226,7 +240,7 @@ def get_rma_info_by_bmc(request, bmc_ip):
                 macs = [rma_entry.lan0_mac, rma_entry.lan1_mac]
             # Normalize MACs (remove colons/dashes, lowercase)
             macs = [mac.replace(':', '').replace('-', '').lower() for mac in macs if mac]
-        except (RmaTestingDb.DoesNotExist, RmaGbDb.DoesNotExist):
+        except (RmaTestingDb.DoesNotExist, RmaGbDb.DoesNotExist, RmaPcieDb.DoesNotExist):
             return JsonResponse({
                 'success': True,
                 'base_sn': '',
@@ -519,7 +533,7 @@ def rma_pxe(request):
                 if 'dcgm_r4' in tests:
                     params_storage['dcgmr4_loop'] = dcgmr4_loop or 1
                 
-                macs = get_lan_macs(bmc_ip)
+                macs = get_pcie_lan_macs(bmc_ip)
                 macs = [normalize_mac_for_pxe(x) for x in macs if x]
                 macs = [x for x in macs if x]
                 
@@ -772,6 +786,8 @@ def rma_pxe(request):
     
     if operation_type == 'gb':
         golden_entries = RmaGbDb.objects.all().order_by('golden_number')
+    elif operation_type == 'pcie':
+        golden_entries = RmaPcieDb.objects.all().order_by('golden_number')
     else:
         golden_entries = RmaTestingDb.objects.all().order_by('golden_number')
     can_force_unlink = request.user.has_perm('pxe.can_force_unlink_golden')
@@ -795,6 +811,8 @@ def golden_setting_api(request, entry_id):
         operation_type = request.GET.get('operation_type', 'rma')
         if operation_type == 'gb':
             entry = RmaGbDb.objects.get(id=entry_id)
+        elif operation_type == 'pcie':
+            entry = RmaPcieDb.objects.get(id=entry_id)
         else:
             entry = RmaTestingDb.objects.get(id=entry_id)
         
@@ -845,7 +863,7 @@ def golden_setting_api(request, entry_id):
             'settings': result_data
         })
 
-    except (RmaTestingDb.DoesNotExist, RmaGbDb.DoesNotExist):
+    except (RmaTestingDb.DoesNotExist, RmaGbDb.DoesNotExist, RmaPcieDb.DoesNotExist):
         return JsonResponse({
             'success': False,
             'error': 'Golden unit not found'

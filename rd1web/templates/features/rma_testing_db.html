@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}RMA Testing DB{% endblock %}
+{% block title %}{{ db_page_title|default:"SXM DB" }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -271,9 +271,15 @@
     <!-- Page Header -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">
-            <i class="fas fa-database"></i> RMA Testing DB
+            <i class="fas fa-database"></i> {{ db_page_title|default:"SXM DB" }}
         </h1>
     </div>
+
+    {% if active_db %}
+        {% include 'partials/rma_db_switch.html' with active_db=active_db %}
+    {% else %}
+        {% include 'partials/rma_db_switch.html' with active_db='sxm' %}
+    {% endif %}
 
     <!-- Statistics -->
     <div class="stats-row">
@@ -319,7 +325,7 @@
             <div class="header-actions">
                 <h3 class="mb-0">
                     <i class="fas fa-database"></i>
-                    RMA Testing Database
+                    {{ db_table_title|default:"SXM Database" }}
                 </h3>
                 <div>
                     <button type="button" class="btn btn-modern" data-bs-toggle="modal" data-bs-target="#addEntryModal">
@@ -358,14 +364,16 @@
                             <button type="button" class="action-btn btn-edit" onclick="editEntry({{ entry.id }})" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </button>
+                            {% if can_delete %}
                             <button type="button" class="action-btn btn-delete" onclick="confirmDelete({{ entry.id }}, '{{ entry.bmc_mac }}', '{{ entry.bmc_ip }}')" title="Delete">
                                 <i class="fas fa-trash"></i>
                             </button>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center">No RMA Testing DB entries found. Click "Add New Entry" to get started.</td>
+                        <td colspan="7" class="text-center">{{ empty_table_message|default:"No SXM DB entries found. Click Add New Entry to get started." }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -397,7 +405,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="addEntryModalLabel">
-                    <i class="fas fa-plus"></i> Add New RMA Testing DB Entry
+                    <i class="fas fa-plus"></i> Add New {{ db_page_title|default:"SXM DB" }} Entry
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -439,7 +447,7 @@
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="id_lan1_mac" class="form-label required-field">LAN1 MAC Address</label>
+                                <label for="id_lan1_mac" class="form-label {% if lan1_required %}required-field{% endif %}">LAN1 MAC Address</label>
                                 {{ add_form.lan1_mac }}
                                 <div class="form-text">Format: xx:xx:xx:xx:xx:xx</div>
                             </div>
@@ -474,7 +482,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="editEntryModalLabel">
-                    <i class="fas fa-edit"></i> Edit RMA Testing DB Entry
+                    <i class="fas fa-edit"></i> Edit {{ db_page_title|default:"SXM DB" }} Entry
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -518,8 +526,8 @@
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="edit_lan1_mac" class="form-label required-field">LAN1 MAC Address</label>
-                                <input type="text" class="form-control" id="edit_lan1_mac" name="lan1_mac" required>
+                                <label for="edit_lan1_mac" class="form-label {% if lan1_required %}required-field{% endif %}">LAN1 MAC Address</label>
+                                <input type="text" class="form-control" id="edit_lan1_mac" name="lan1_mac" {% if lan1_required %}required{% endif %}>
                                 <div class="form-text">Format: xx:xx:xx:xx:xx:xx</div>
                             </div>
                         </div>
@@ -558,7 +566,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p>Are you sure you want to delete this RMA Testing DB entry?</p>
+                <p>Are you sure you want to delete this {{ db_page_title|default:"SXM DB" }} entry?</p>
                 <div class="alert alert-warning">
                     <strong>BMC MAC:</strong> <span id="delete-bmc-mac"></span><br>
                     <strong>BMC IP:</strong> <span id="delete-bmc-ip"></span>
@@ -582,15 +590,18 @@
 <!-- jQuery for functionality -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
+{% with add_name=add_url_name|default:'rma_testing_db_add' edit_name=edit_url_name|default:'rma_testing_db_edit' delete_name=delete_url_name|default:'rma_testing_db_delete' get_name=get_url_name|default:'rma_testing_db_get' api_name=api_url_name|default:'rma_testing_db_api' %}
 <script>
 let table;
 let deleteEntryId = null;
 let currentPage = 1;
 let totalRecords = 0;
 let recordsPerPage = 20;
+let canDelete = {% if can_delete %}true{% else %}false{% endif %};
+const emptyTableMessage = "{{ empty_table_message|default:"No SXM DB entries found. Click Add New Entry to get started."|escapejs }}";
 
 $(document).ready(function() {
-    console.log('RMA Testing DB: Modern UI initialized');
+    console.log('{{ db_page_title|default:"SXM DB"|escapejs }}: Modern UI initialized');
     
     // Check if jQuery is loaded
     if (typeof $ === 'undefined') {
@@ -611,7 +622,7 @@ $(document).ready(function() {
         submitBtn.html('<i class="fas fa-spinner fa-spin"></i> Adding...').prop('disabled', true);
         
         $.ajax({
-            url: "{% url 'rma_testing_db_add' %}",
+            url: "{% url add_name %}",
             type: 'POST',
             data: $(this).serialize(),
             success: function(response) {
@@ -666,7 +677,7 @@ $(document).ready(function() {
         submitBtn.html('<i class="fas fa-spinner fa-spin"></i> Updating...').prop('disabled', true);
         
         $.ajax({
-            url: "{% url 'rma_testing_db_edit' 0 %}".replace('0', entryId),
+            url: "{% url edit_name 0 %}".replace('0', entryId),
             type: 'POST',
             data: $(this).serialize(),
             success: function(response) {
@@ -717,7 +728,7 @@ $(document).ready(function() {
         deleteBtn.html('<i class="fas fa-spinner fa-spin"></i> Deleting...').prop('disabled', true);
         
         $.ajax({
-            url: "{% url 'rma_testing_db_delete' 0 %}".replace('0', deleteEntryId),
+            url: "{% url delete_name 0 %}".replace('0', deleteEntryId),
             type: 'POST',
             data: {
                 'csrfmiddlewaretoken': $('[name=csrfmiddlewaretoken]').val()
@@ -760,7 +771,7 @@ $(document).ready(function() {
 
 function editEntry(entryId) {
     $.ajax({
-        url: "{% url 'rma_testing_db_get' 0 %}".replace('0', entryId),
+        url: "{% url get_name 0 %}".replace('0', entryId),
         type: 'GET',
         success: function(response) {
             if (response.success) {
@@ -801,7 +812,7 @@ function loadTableData(page) {
     const start = (page - 1) * recordsPerPage;
     
     $.ajax({
-        url: "{% url 'rma_testing_db_api' %}",
+        url: "{% url api_name %}",
         type: 'GET',
         data: {
             'start': start,
@@ -903,11 +914,15 @@ function updateTable(data) {
     tbody.empty();
     
     if (data.length === 0) {
-        tbody.append('<tr><td colspan="7" class="text-center">No RMA Testing DB entries found. Click "Add New Entry" to get started.</td></tr>');
+        tbody.append(`<tr><td colspan="7" class="text-center">${emptyTableMessage}</td></tr>`);
         return;
     }
     
     data.forEach(function(entry) {
+        const deleteBtn = canDelete ? `
+                    <button type="button" class="action-btn btn-delete" onclick="confirmDelete(${entry.id}, '${entry.bmc_mac}', '${entry.bmc_ip}')" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>` : '';
         const row = `
             <tr>
                 <td><span class="mac-address">${entry.bmc_mac}</span></td>
@@ -920,9 +935,7 @@ function updateTable(data) {
                     <button type="button" class="action-btn btn-edit" onclick="editEntry(${entry.id})" title="Edit">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button type="button" class="action-btn btn-delete" onclick="confirmDelete(${entry.id}, '${entry.bmc_mac}', '${entry.bmc_ip}')" title="Delete">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    ${deleteBtn}
                 </td>
             </tr>
         `;
@@ -974,4 +987,5 @@ function updateStats() {
     $('#status').text('Active');
 }
 </script>
+{% endwith %}
 {% endblock %}

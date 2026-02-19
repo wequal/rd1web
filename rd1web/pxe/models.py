@@ -268,6 +268,114 @@ class RmaGbDb(models.Model):
         return f"RMA GB Entry: {self.bmc_mac} ({self.bmc_ip})"
 
 
+class RmaPcieDb(models.Model):
+    """RMA PCIE Database model (LAN1 optional) for storing BMC and network configuration"""
+
+    bmc_mac = models.CharField(
+        max_length=17,
+        unique=True,
+        validators=[validate_mac_address],
+        help_text='BMC MAC address (format: xx:xx:xx:xx:xx:xx)',
+        verbose_name='BMC MAC Address',
+    )
+    bmc_ip = models.GenericIPAddressField(
+        help_text='BMC IP address',
+        verbose_name='BMC IP Address',
+    )
+    bmc_password = models.CharField(
+        max_length=255,
+        help_text='BMC unique password',
+        verbose_name='BMC Password',
+    )
+    lan0_mac = models.CharField(
+        max_length=17,
+        validators=[validate_mac_address],
+        help_text='LAN0 MAC address (format: xx:xx:xx:xx:xx:xx)',
+        verbose_name='LAN0 MAC Address',
+    )
+    lan1_mac = models.CharField(
+        max_length=17,
+        validators=[validate_mac_address],
+        blank=True,
+        default='',
+        help_text='LAN1 MAC address (format: xx:xx:xx:xx:xx:xx)',
+        verbose_name='LAN1 MAC Address',
+    )
+    golden_number = models.CharField(
+        max_length=100,
+        default='',
+        blank=True,
+        help_text='Golden Number identifier',
+        verbose_name='Golden Number',
+    )
+    linked_user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='linked_pcie_golden_numbers',
+        help_text='User currently linked to this golden number',
+        verbose_name='Linked User',
+    )
+    linked_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='Timestamp when the golden number was linked to current user',
+        verbose_name='Linked At',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_tester = models.CharField(
+        max_length=150,
+        null=True,
+        blank=True,
+        help_text='Last user who was linked to this golden number',
+        verbose_name='Last Tester',
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['bmc_mac']
+        verbose_name = 'RMA PCIE DB Entry'
+        verbose_name_plural = 'RMA PCIE DB Entries'
+        permissions = [
+            ('can_delete_rma_pcie_db', 'Can delete PCIE DB entries'),
+        ]
+
+    def clean(self):
+        """Additional validation for the model"""
+        super().clean()
+
+        # Normalize MAC addresses to lowercase with colons
+        if self.bmc_mac:
+            self.bmc_mac = self._normalize_mac(self.bmc_mac)
+        if self.lan0_mac:
+            self.lan0_mac = self._normalize_mac(self.lan0_mac)
+        if self.lan1_mac:
+            self.lan1_mac = self._normalize_mac(self.lan1_mac)
+
+        # Check for duplicate MAC addresses across different fields
+        macs = [self.bmc_mac, self.lan0_mac]
+        if self.lan1_mac:
+            macs.append(self.lan1_mac)
+        if len(set(macs)) != len(macs):
+            raise ValidationError('MAC addresses must be unique across BMC, LAN0, and LAN1')
+
+    def _normalize_mac(self, mac):
+        """Normalize MAC address to lowercase with colons"""
+        if not mac:
+            return mac
+        clean_mac = re.sub(r'[:-]', '', mac.upper())
+        return ':'.join(clean_mac[i:i + 2] for i in range(0, 12, 2)).lower()
+
+    def save(self, *args, **kwargs):
+        """Override save to ensure clean() is called"""
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"RMA PCIE Entry: {self.bmc_mac} ({self.bmc_ip})"
+
+
 class RmaTestStatistic(models.Model):
     """
     RMA Test Statistics model for tracking GPU test failures
