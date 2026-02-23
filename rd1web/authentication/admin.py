@@ -106,6 +106,7 @@ class UserActivityAdmin(admin.ModelAdmin):
             week_start = today - timedelta(days=today.weekday())
             week_end = week_start + timedelta(days=6)
             month_start = today.replace(day=1)
+            month_end = month_start.replace(day=calendar.monthrange(month_start.year, month_start.month)[1])
         elif year and month:
             # Specific month selected - use that month
             month_start = datetime.date(int(year), int(month), 1)
@@ -119,6 +120,7 @@ class UserActivityAdmin(admin.ModelAdmin):
                 today = datetime.date(int(year), int(month), last_day)
             week_start = today - timedelta(days=today.weekday())
             week_end = week_start + timedelta(days=6)
+            month_end = datetime.date(int(year), int(month), last_day)
         elif year:
             # Specific year selected - use current month/day of that year or last day of year
             current_date = now.astimezone(la_tz).date()
@@ -132,11 +134,13 @@ class UserActivityAdmin(admin.ModelAdmin):
             week_start = today - timedelta(days=today.weekday())
             week_end = week_start + timedelta(days=6)
             month_start = today.replace(day=1)
+            month_end = month_start.replace(day=calendar.monthrange(month_start.year, month_start.month)[1])
         else:
             # No filters - use current date
             week_start = today - timedelta(days=today.weekday())
             week_end = week_start + timedelta(days=6)  # Sunday
             month_start = today.replace(day=1)
+            month_end = month_start.replace(day=calendar.monthrange(month_start.year, month_start.month)[1])
         
         # Calculate statistics (exclude 'devin' user from statistics)
         daily_stats = UserActivity.objects.filter(
@@ -144,11 +148,13 @@ class UserActivityAdmin(admin.ModelAdmin):
         ).exclude(user__username='devin').values('action').annotate(count=Count('id')).order_by('-count')
         
         weekly_stats = UserActivity.objects.filter(
-            timestamp__date__gte=week_start
+            timestamp__date__gte=week_start,
+            timestamp__date__lte=week_end
         ).exclude(user__username='devin').values('action').annotate(count=Count('id')).order_by('-count')
         
         monthly_stats = UserActivity.objects.filter(
-            timestamp__date__gte=month_start
+            timestamp__date__gte=month_start,
+            timestamp__date__lte=month_end
         ).exclude(user__username='devin').values('action').annotate(count=Count('id')).order_by('-count')
         
         # Convert QuerySets to lists for proper evaluation
@@ -167,11 +173,13 @@ class UserActivityAdmin(admin.ModelAdmin):
         ).exclude(user__username='devin').values('user__username').annotate(count=Count('id')).order_by('-count')[:10]
         
         user_weekly = UserActivity.objects.filter(
-            timestamp__date__gte=week_start
+            timestamp__date__gte=week_start,
+            timestamp__date__lte=week_end
         ).exclude(user__username='devin').values('user__username').annotate(count=Count('id')).order_by('-count')[:10]
         
         user_monthly = UserActivity.objects.filter(
-            timestamp__date__gte=month_start
+            timestamp__date__gte=month_start,
+            timestamp__date__lte=month_end
         ).exclude(user__username='devin').values('user__username').annotate(count=Count('id')).order_by('-count')[:10]
         
         # Convert user QuerySets to lists for charts
@@ -184,8 +192,38 @@ class UserActivityAdmin(admin.ModelAdmin):
         weekly_chart_data = [{'action': item['user__username'], 'count': item['count']} for item in user_weekly_list]
         monthly_chart_data = [{'action': item['user__username'], 'count': item['count']} for item in user_monthly_list]
         
+        # Date selector context: current selection and dropdown choices
+        date_filter_year = today.year
+        date_filter_month = today.month
+        date_filter_day = today.day
+        date_filter_years = list(range(today.year, today.year - 6, -1))
+        date_filter_months = [(i, datetime.date(2000, i, 1).strftime('%B')) for i in range(1, 13)]
+        date_filter_days = list(range(1, 32))  # 1-31 for day dropdown
+        date_selector_today = now.astimezone(la_tz).date()  # actual today for "Today" link
+        # Build "Today" and "Show all" URLs with other GET params preserved
+        q_today = request.GET.copy()
+        for k in ('timestamp__year', 'timestamp__month', 'timestamp__day'):
+            q_today.pop(k, None)
+        q_today['timestamp__year'] = date_selector_today.year
+        q_today['timestamp__month'] = date_selector_today.month
+        q_today['timestamp__day'] = date_selector_today.day
+        date_selector_today_url = request.path + ('?' + q_today.urlencode() if q_today else '')
+        q_show_all = request.GET.copy()
+        for k in ('timestamp__year', 'timestamp__month', 'timestamp__day'):
+            q_show_all.pop(k, None)
+        date_selector_show_all_url = request.path + ('?' + q_show_all.urlencode() if q_show_all else '')
+        
         extra_context = extra_context or {}
         extra_context.update({
+            'date_filter_year': date_filter_year,
+            'date_filter_month': date_filter_month,
+            'date_filter_day': date_filter_day,
+            'date_filter_years': date_filter_years,
+            'date_filter_months': date_filter_months,
+            'date_filter_days': date_filter_days,
+            'date_selector_today': date_selector_today,
+            'date_selector_today_url': date_selector_today_url,
+            'date_selector_show_all_url': date_selector_show_all_url,
             'daily_stats': daily_stats_list,
             'weekly_stats': weekly_stats_list,
             'monthly_stats': monthly_stats_list,
@@ -202,6 +240,7 @@ class UserActivityAdmin(admin.ModelAdmin):
             'week_start': week_start,
             'week_end': week_end,
             'month_start': month_start,
+            'month_end': month_end,
         })
         
         return super().changelist_view(request, extra_context=extra_context)

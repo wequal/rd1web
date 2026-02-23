@@ -18,8 +18,8 @@ from .models import RmaTestStatistic
 logger = logging.getLogger(__name__)
 
 # Import configuration from local_config (required, no fallback)
-from .local_config import RMA_BASE_DIR
-logger.info("RMA statistics using RMA_BASE_DIR from local_config.py")
+from .local_config import RMA_BASE_DIR, RMA_GB_BASE_DIR
+logger.info("RMA statistics using RMA_BASE_DIR and RMA_GB_BASE_DIR from local_config.py")
 
 
 def parse_test_results_log(log_content):
@@ -192,16 +192,20 @@ def parse_sys_info_file(sys_info_path):
         return 'Unknown'
 
 
-def scan_rma_directory(dir_name):
+def scan_rma_directory(dir_name, base_dir=None, base='main'):
     """
     Scan a single RMA directory and update/create database record
     
     Args:
         dir_name (str): Directory name (e.g., "1660224656070_XD250311087")
+        base_dir (str): Root path for this RMA tree (default RMA_BASE_DIR)
+        base (str): Statistics base label 'main' or 'gb' for RMA_BASE_DIR / RMA_GB_BASE_DIR
         
     Returns:
         tuple: (success: bool, message: str)
     """
+    if base_dir is None:
+        base_dir = RMA_BASE_DIR
     try:
         # Parse directory name
         pattern = re.compile(r'^(.+)_(.+)$')
@@ -212,22 +216,37 @@ def scan_rma_directory(dir_name):
         
         base_sn, rma_number = match.groups()
         
-        # Construct paths
-        dir_path = os.path.join(RMA_BASE_DIR, dir_name)
-        test_results_path = os.path.join(dir_path, 'test_results.log')
-        sys_info_path = os.path.join(dir_path, 'sys_info.txt')
-        
-        # Check if directory exists
+        # Construct paths and resolve symlinks so we read from actual location
+        dir_path = os.path.join(base_dir, dir_name)
         if not os.path.exists(dir_path):
-            return False, f"Directory not found: {dir_path}"
-        
-        # Check if test_results.log exists
-        if not os.path.exists(test_results_path):
-            return False, f"test_results.log not found in {dir_name}"
-        
-        # Get directory mtime for test_date
+            return False, f"Directory not found (base={base}): {dir_path}"
         try:
-            dir_mtime = os.path.getmtime(dir_path)
+            dir_path_resolved = os.path.realpath(dir_path)
+        except OSError:
+            dir_path_resolved = dir_path
+        # Attribute to gb when the resolved path is under RMA_GB_BASE_DIR (avoids double-count when main has symlinks to gb)
+        try:
+            gb_base_resolved = os.path.realpath(RMA_GB_BASE_DIR)
+        except OSError:
+            gb_base_resolved = RMA_GB_BASE_DIR
+        if dir_path_resolved == gb_base_resolved or (
+            dir_path_resolved.startswith(gb_base_resolved + os.sep)
+        ):
+            effective_base = 'gb'
+        else:
+            effective_base = base
+        test_results_path = os.path.join(dir_path_resolved, 'test_results.log')
+        sys_info_path = os.path.join(dir_path_resolved, 'sys_info.txt')
+        
+        if not os.path.exists(test_results_path):
+            return False, (
+                f"test_results.log not found (base={base}): {dir_name} "
+                f"path={test_results_path}"
+            )
+        
+        # Get directory mtime for test_date (use resolved path)
+        try:
+            dir_mtime = os.path.getmtime(dir_path_resolved)
         except Exception as e:
             return False, f"Cannot get mtime for directory: {e}"
         
@@ -258,8 +277,9 @@ def scan_rma_directory(dir_name):
         # Get GPU model
         gpu_model = parse_sys_info_file(sys_info_path)
         
-        # Check if this directory already has a record with same file_mtime
+        # Check if this directory already has a record with same file_mtime (for this base)
         existing_record = RmaTestStatistic.objects.filter(
+            base=effective_base,
             directory_name=dir_name,
             file_mtime=file_mtime
         ).first()
@@ -312,16 +332,17 @@ def scan_rma_directory(dir_name):
         # Parse test results
         test_results = parse_test_results_log(log_content)
         
-        # Create or update record - ensure only one record per directory
+        # Create or update record - one record per (base, directory_name, file_mtime)
         RmaTestStatistic.objects.update_or_create(
+            base=effective_base,
             directory_name=dir_name,
+            file_mtime=file_mtime,
             defaults={
                 'base_sn': base_sn,
                 'rma_number': rma_number,
                 'gpu_model': gpu_model,
                 'test_date': test_date,
                 'test_results': test_results,
-                'file_mtime': file_mtime,
             }
         )
         
@@ -335,6 +356,7 @@ def scan_rma_directory(dir_name):
 def scan_all_rma_directories():
     """
     Scan all RMA directories and update statistics database
+    Scans both RMA_BASE_DIR (main) and RMA_GB_BASE_DIR (gb).
     Uses directory modification time for test_date
     Only creates new records when test_results.log changes
     
@@ -349,48 +371,49 @@ def scan_all_rma_directories():
         'error_messages': [],
     }
     
+    # (base_dir, base_label) for each scan target
+    scan_targets = [
+        (RMA_BASE_DIR, 'main'),
+        (RMA_GB_BASE_DIR, 'gb'),
+    ]
+    
+    pattern = re.compile(r'^(.+)_(.+)$')
+    
     try:
-        # Check if RMA base directory exists
-        if not os.path.exists(RMA_BASE_DIR):
-            logger.error(f"RMA base directory not found: {RMA_BASE_DIR}")
-            return stats
-        
-        # Get all directories
-        try:
-            items = os.listdir(RMA_BASE_DIR)
-        except Exception as e:
-            logger.error(f"Cannot list RMA directory: {e}")
-            return stats
-        
-        # Pattern to match {base_sn}_{rma_number}
-        pattern = re.compile(r'^(.+)_(.+)$')
-        
-        # Process each directory
-        for item in items:
-            item_path = os.path.join(RMA_BASE_DIR, item)
-            
-            # Skip non-directories
-            if not os.path.isdir(item_path):
+        for base_dir, base_label in scan_targets:
+            if not os.path.exists(base_dir):
+                logger.warning(
+                    f"RMA statistics: skipping {base_label!r} scan - directory not found: {base_dir}"
+                )
+                continue
+            logger.info(f"RMA statistics: scanning base={base_label!r} path={base_dir}")
+            try:
+                items = os.listdir(base_dir)
+            except Exception as e:
+                logger.error(f"Cannot list RMA directory {base_dir}: {e}")
+                stats['error_messages'].append(f"{base_dir}: {e}")
                 continue
             
-            # Check if it matches pattern
-            if not pattern.match(item):
-                continue
-            
-            stats['total'] += 1
-            
-            # Scan directory
-            success, message = scan_rma_directory(item)
-            
-            if success:
-                if 'Skipped' in message:
-                    stats['skipped'] += 1
+            for item in items:
+                item_path = os.path.join(base_dir, item)
+                
+                if not os.path.isdir(item_path):
+                    continue
+                if not pattern.match(item):
+                    continue
+                
+                stats['total'] += 1
+                success, message = scan_rma_directory(item, base_dir=base_dir, base=base_label)
+                
+                if success:
+                    if 'Skipped' in message:
+                        stats['skipped'] += 1
+                    else:
+                        stats['processed'] += 1
                 else:
-                    stats['processed'] += 1
-            else:
-                stats['errors'] += 1
-                stats['error_messages'].append(message)
-                logger.warning(f"Scan error: {message}")
+                    stats['errors'] += 1
+                    stats['error_messages'].append(message)
+                    logger.warning(f"Scan error: {message}")
         
         logger.info(f"RMA statistics scan complete: {stats['processed']} processed, "
                    f"{stats['skipped']} skipped, {stats['errors']} errors out of {stats['total']} total")
@@ -498,19 +521,20 @@ def get_weekly_statistics(start_date, end_date):
     Returns:
         dict: Statistics with total unique RMAs and GPU model breakdown
     """
-    # Get all records in the date range
+    # Get all records in the date range (main and gb bases)
     all_records = RmaTestStatistic.objects.filter(
         test_date__gte=start_date,
         test_date__lte=end_date
-    ).order_by('directory_name', '-file_mtime', '-test_date', '-updated_at')
+    ).order_by('base', 'directory_name', '-file_mtime', '-test_date', '-updated_at')
     
-    # Get unique directories (most recent record for each directory)
+    # Get unique directories (most recent record per base + directory_name)
     seen_directories = set()
     unique_records = []
     
     for record in all_records:
-        if record.directory_name not in seen_directories:
-            seen_directories.add(record.directory_name)
+        key = (record.base, record.directory_name)
+        if key not in seen_directories:
+            seen_directories.add(key)
             unique_records.append(record)
     
     total_units = len(unique_records)

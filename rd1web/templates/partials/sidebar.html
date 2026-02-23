@@ -70,14 +70,8 @@
             </a>
             {% endif %}
 
-            {% if perms.pxe.can_access_rma_testing_db %}
             <a class="nav-link" href="{% url 'rma_testing_db' %}">
-                RMA Testing DB
-            </a>
-            {% endif %}
-
-            <a class="nav-link" href="{% url 'rma_gb_db' %}">
-                RMA GB DB
+                RMA DB
             </a>
 
             {% if perms.pxe.can_access_rma_dhcp_leases %}

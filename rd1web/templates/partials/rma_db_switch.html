@@ -1,0 +1,66 @@
+{# RMA DB switch: SXM DB <-> GB DB <-> PCIE DB #}
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-body py-2">
+                <div class="d-flex flex-wrap align-items-center gap-3">
+                    <span class="text-muted small fw-semibold">DB:</span>
+                    {% with active=active_db|default:'' %}
+                    <div class="form-check form-check-inline mb-0">
+                        <input
+                            class="form-check-input rma-db-radio"
+                            type="radio"
+                            name="rmaDbSwitch"
+                            id="rmaDbSxm"
+                            value="sxm"
+                            data-url="{% url 'rma_testing_db' %}"
+                            {% if active == 'sxm' %}checked{% endif %}
+                        >
+                        <label class="form-check-label" for="rmaDbSxm">SXM DB</label>
+                    </div>
+
+                    <div class="form-check form-check-inline mb-0">
+                        <input
+                            class="form-check-input rma-db-radio"
+                            type="radio"
+                            name="rmaDbSwitch"
+                            id="rmaDbGb"
+                            value="gb"
+                            data-url="{% url 'rma_gb_db' %}"
+                            {% if active == 'gb' %}checked{% endif %}
+                        >
+                        <label class="form-check-label" for="rmaDbGb">GB DB</label>
+                    </div>
+
+                    <div class="form-check form-check-inline mb-0">
+                        <input
+                            class="form-check-input rma-db-radio"
+                            type="radio"
+                            name="rmaDbSwitch"
+                            id="rmaDbPcie"
+                            value="pcie"
+                            data-url="{% url 'rma_pcie_db' %}"
+                            {% if active == 'pcie' %}checked{% endif %}
+                        >
+                        <label class="form-check-label" for="rmaDbPcie">PCIE DB</label>
+                    </div>
+                    {% endwith %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(() => {
+    const radios = document.querySelectorAll('.rma-db-radio');
+    if (!radios.length) return;
+    radios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            const url = radio.dataset.url;
+            if (url) window.location.href = url;
+        });
+    });
+})();
+</script>
+

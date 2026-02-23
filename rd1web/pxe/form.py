@@ -1,7 +1,7 @@
 from django import forms
 import re
 from django.core.exceptions import ValidationError
-from .models import RmaTestingDb, RmaGbDb
+from .models import RmaTestingDb, RmaGbDb, RmaPcieDb
 
 BLANK_BMC_CHOICE = [('', '-- Select BMC IP --')]
 ###
@@ -470,10 +470,10 @@ class PcieGpuForm(forms.Form):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
-        # Populate BMC IP choices based on user's linked golden numbers (blank default)
+        # Populate BMC IP choices based on user's linked golden numbers from PCIE DB (blank default)
         if user:
-            from .models import RmaTestingDb
-            linked_entries = RmaTestingDb.objects.filter(linked_user=user).order_by('bmc_ip')
+            from .models import RmaPcieDb
+            linked_entries = RmaPcieDb.objects.filter(linked_user=user).order_by('bmc_ip')
             self.fields['bmc_ip'].choices = BLANK_BMC_CHOICE + [(entry.bmc_ip, f"{entry.bmc_ip} - {entry.golden_number}") for entry in linked_entries]
         else:
             self.fields['bmc_ip'].choices = BLANK_BMC_CHOICE
@@ -698,7 +698,7 @@ class RmaTestingDbForm(forms.ModelForm):
     
     class Meta:
         model = RmaTestingDb
-        fields = ['bmc_mac', 'bmc_ip', 'bmc_password', 'lan0_mac', 'lan1_mac', 'golden_number']
+        fields = ['bmc_mac', 'bmc_ip', 'bmc_password', 'lan0_mac', 'lan1_mac', 'golden_number', 'is_golden']
         widgets = {
             'bmc_mac': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -727,6 +727,7 @@ class RmaTestingDbForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'Enter Golden Number'
             }),
+            'is_golden': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
 
@@ -794,6 +795,62 @@ class RmaTestingDbSearchForm(forms.Form):
         label='Search'
     )
     
+    def clean_search(self):
+        """Clean and validate search input"""
+        search = self.cleaned_data.get('search', '').strip()
+        return search
+
+
+class RmaPcieDbForm(forms.ModelForm):
+    """Form for adding/editing RMA PCIE DB entries (LAN1 optional)"""
+
+    class Meta:
+        model = RmaPcieDb
+        fields = ['bmc_mac', 'bmc_ip', 'bmc_password', 'lan0_mac', 'lan1_mac', 'golden_number']
+        widgets = {
+            'bmc_mac': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'xx:xx:xx:xx:xx:xx',
+                'pattern': '[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}'
+            }),
+            'bmc_ip': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': '192.168.1.100'
+            }),
+            'bmc_password': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter BMC password'
+            }),
+            'lan0_mac': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'xx:xx:xx:xx:xx:xx',
+                'pattern': '[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}'
+            }),
+            'lan1_mac': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'xx:xx:xx:xx:xx:xx (optional)',
+                'pattern': '[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}'
+            }),
+            'golden_number': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter Golden Number'
+            }),
+        }
+
+
+class RmaPcieDbSearchForm(forms.Form):
+    """Form for searching RMA PCIE DB entries"""
+
+    search = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Search by MAC address, IP, or password...',
+            'id': 'search-input'
+        }),
+        label='Search'
+    )
+
     def clean_search(self):
         """Clean and validate search input"""
         search = self.cleaned_data.get('search', '').strip()

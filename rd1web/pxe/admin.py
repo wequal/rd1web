@@ -32,7 +32,7 @@ class ArpScanResultAdmin(admin.ModelAdmin):
 class RmaTestingDbAdmin(admin.ModelAdmin):
     """Admin interface for RMA Testing DB"""
     
-    list_display = ('bmc_mac', 'bmc_ip', 'bmc_password_short', 'lan0_mac', 'lan1_mac', 'golden_number', 'created_at', 'updated_at')
+    list_display = ('bmc_mac', 'bmc_ip', 'bmc_password_short', 'lan0_mac', 'lan1_mac', 'golden_number', 'is_golden', 'created_at', 'updated_at')
     list_filter = ('created_at', 'updated_at')
     search_fields = ('bmc_mac', 'bmc_ip', 'bmc_password', 'lan0_mac', 'lan1_mac', 'golden_number')
     readonly_fields = ('created_at', 'updated_at')
@@ -43,7 +43,7 @@ class RmaTestingDbAdmin(admin.ModelAdmin):
             'fields': ('bmc_mac', 'bmc_ip', 'bmc_password')
         }),
         ('Network Configuration', {
-            'fields': ('lan0_mac', 'lan1_mac', 'golden_number')
+            'fields': ('lan0_mac', 'lan1_mac', 'golden_number', 'is_golden')
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),
