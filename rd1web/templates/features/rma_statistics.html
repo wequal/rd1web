@@ -166,11 +166,11 @@
         </div>
     </div>
 
-    <!-- NVIDIA GPU Models (H/B Series) -->
+    <!-- NVIDIA GPU Models -->
     <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
             <h6 class="m-0 font-weight-bold text-primary">
-                <i class="fas fa-microchip me-2"></i>NVIDIA GPU Models (H/B Series)
+                <i class="fas fa-microchip me-2"></i>NVIDIA GPU Models
             </h6>
         </div>
         <div class="card-body">
@@ -190,7 +190,7 @@
                     </thead>
                     <tbody>
                         {% for gpu_model, data in stats.gpu_breakdown.items %}
-                        {% if gpu_model.0 == 'H' or gpu_model.0 == 'B' %}
+                        {% if gpu_model|upper|slice:":2" != "MI" %}
                         <tr>
                             <td>
                                 <strong>{{ gpu_model }}</strong>
@@ -269,7 +269,7 @@
                     </thead>
                     <tbody>
                         {% for gpu_model, data in stats.gpu_breakdown.items %}
-                        {% if gpu_model.0 == 'M' %}
+                        {% if gpu_model|upper|slice:":2" == "MI" %}
                         <tr>
                             <td>
                                 <strong>{{ gpu_model }}</strong>
