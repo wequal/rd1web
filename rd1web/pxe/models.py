@@ -102,6 +102,11 @@ class RmaTestingDb(models.Model):
         help_text='Golden Number identifier',
         verbose_name='Golden Number'
     )
+    is_golden = models.BooleanField(
+        default=False,
+        help_text='Mark this entry as a golden unit',
+        verbose_name='Is Golden'
+    )
     linked_user = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,

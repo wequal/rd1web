@@ -63,6 +63,7 @@ def rma_pcie_db_list(request):
         "db_table_title": "PCIE Database",
         "empty_table_message": "No PCIE DB entries found. Click Add New Entry to get started.",
         "can_delete": request.user.has_perm("pxe.can_delete_rma_pcie_db"),
+        "show_is_golden": False,
         "lan1_required": False,
         # endpoint names (used by template)
         "add_url_name": "rma_pcie_db_add",

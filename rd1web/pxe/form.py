@@ -698,7 +698,7 @@ class RmaTestingDbForm(forms.ModelForm):
     
     class Meta:
         model = RmaTestingDb
-        fields = ['bmc_mac', 'bmc_ip', 'bmc_password', 'lan0_mac', 'lan1_mac', 'golden_number']
+        fields = ['bmc_mac', 'bmc_ip', 'bmc_password', 'lan0_mac', 'lan1_mac', 'golden_number', 'is_golden']
         widgets = {
             'bmc_mac': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -727,6 +727,7 @@ class RmaTestingDbForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'Enter Golden Number'
             }),
+            'is_golden': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
 

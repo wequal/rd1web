@@ -192,8 +192,38 @@ class UserActivityAdmin(admin.ModelAdmin):
         weekly_chart_data = [{'action': item['user__username'], 'count': item['count']} for item in user_weekly_list]
         monthly_chart_data = [{'action': item['user__username'], 'count': item['count']} for item in user_monthly_list]
         
+        # Date selector context: current selection and dropdown choices
+        date_filter_year = today.year
+        date_filter_month = today.month
+        date_filter_day = today.day
+        date_filter_years = list(range(today.year, today.year - 6, -1))
+        date_filter_months = [(i, datetime.date(2000, i, 1).strftime('%B')) for i in range(1, 13)]
+        date_filter_days = list(range(1, 32))  # 1-31 for day dropdown
+        date_selector_today = now.astimezone(la_tz).date()  # actual today for "Today" link
+        # Build "Today" and "Show all" URLs with other GET params preserved
+        q_today = request.GET.copy()
+        for k in ('timestamp__year', 'timestamp__month', 'timestamp__day'):
+            q_today.pop(k, None)
+        q_today['timestamp__year'] = date_selector_today.year
+        q_today['timestamp__month'] = date_selector_today.month
+        q_today['timestamp__day'] = date_selector_today.day
+        date_selector_today_url = request.path + ('?' + q_today.urlencode() if q_today else '')
+        q_show_all = request.GET.copy()
+        for k in ('timestamp__year', 'timestamp__month', 'timestamp__day'):
+            q_show_all.pop(k, None)
+        date_selector_show_all_url = request.path + ('?' + q_show_all.urlencode() if q_show_all else '')
+        
         extra_context = extra_context or {}
         extra_context.update({
+            'date_filter_year': date_filter_year,
+            'date_filter_month': date_filter_month,
+            'date_filter_day': date_filter_day,
+            'date_filter_years': date_filter_years,
+            'date_filter_months': date_filter_months,
+            'date_filter_days': date_filter_days,
+            'date_selector_today': date_selector_today,
+            'date_selector_today_url': date_selector_today_url,
+            'date_selector_show_all_url': date_selector_show_all_url,
             'daily_stats': daily_stats_list,
             'weekly_stats': weekly_stats_list,
             'monthly_stats': monthly_stats_list,
