@@ -576,7 +576,7 @@ def rma_pxe(request):
                 image = bound_form.cleaned_data.get('image', '')
                 remove = bound_form.cleaned_data.get('remove', False)
                 check = bound_form.cleaned_data.get('check', False)
-                notice = bound_form.cleaned_data.get('notice', '').strip()
+                notice = bound_form.cleaned_data.get('notice', '').strip().replace(' ', '_')
                 dcgmr4_loop = bound_form.cleaned_data.get('dcgmr4_loop')
 
                 macs = get_gb_lan_macs(bmc_ip) or []
@@ -673,7 +673,7 @@ def rma_pxe(request):
                 eco_number = bound_form.cleaned_data.get('eco_number', '')
                 gpu_model = bound_form.cleaned_data.get('gpu_model', '')
                 cooling = bound_form.cleaned_data.get('cooling', '')
-                notice = bound_form.cleaned_data.get('notice', '').strip()
+                notice = bound_form.cleaned_data.get('notice', '').strip().replace(' ', '_')
                 dcgmr4_loop = bound_form.cleaned_data.get('dcgmr4_loop')
                 
                 # Debug logging
