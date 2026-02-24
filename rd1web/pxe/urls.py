@@ -4,8 +4,8 @@ from asgiref.sync import async_to_sync
 from . import views
 from .views.index import index
 from .views.pxe_input import pxe_input
-from .views.ipmitool import ipmitool, get_firmware_sequence_status
-from .views.firmware_update import check_firmware_status, system_reset, get_firmware_info_view
+from .views.ipmitool import ipmitool
+from .views.firmware_update import get_firmware_info_view
 from .views.log_view import log_view
 from .views.view_file import view_file
 from .views.system_details import system_details, system_list
@@ -89,10 +89,7 @@ urlpatterns = [
     path('', index, name='index'),
     path('pxe/', pxe_input, name='pxe'),
     path('ipmitool/', ipmitool, name='ipmitool'),
-    path('ipmitool/firmware/status/', check_firmware_status, name='check_firmware_status'),
-    path('ipmitool/firmware/sequence_status/', get_firmware_sequence_status, name='get_firmware_sequence_status'),
     path('ipmitool/firmware/info/', get_firmware_info_view, name='get_firmware_info'),
-    path('ipmitool/system/reset/', system_reset, name='system_reset'),
 
     path('mac-ip/', mac_ip_results, name='mac_ip_results'),
     path('api/mac-ip/', mac_ip_api, name='mac_ip_api'),

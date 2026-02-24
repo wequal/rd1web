@@ -1,26 +1,17 @@
 from django.shortcuts import render
-from django.conf import settings
 from django.contrib.auth.decorators import login_required, permission_required
 from django.http import JsonResponse
 import asyncio
 import subprocess
-from ..form import IpmiForm, FirmwareUploadForm, UniquePasswordForm
+from ..form import IpmiForm, UniquePasswordForm
 import logging
 from .unique_password import handle_unique_password_request
-from .firmware_update import perform_sequential_updates, system_reset_sync, determine_firmware_type
-import json
-import os
-import uuid
-import threading
-import redis
-import time
 try:
     from .. import local_config
 except ImportError:
     local_config = None
 
 logger = logging.getLogger(__name__)
-redis_client = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0)
 
 def cmdline(cmd):
     try:
@@ -32,7 +23,7 @@ def cmdline(cmd):
 async def run_ipmitool(ip,user,pwd,command):
     cmd_1 = f"ipmitool -I lanplus -C 3 -H {ip} -U {user} -P {pwd} {command}"
     cmd_2 = f"ipmitool -H {ip} -U {user} -P {pwd} {command}"
-    cmd_3 = f"ipmitool -I lan -C 17 -H {ip} -U {user} -P {pwd} {command}"
+    cmd_3 = f"ipmitool -I lanplus -C 17 -H {ip} -U {user} -P {pwd} {command}"
     
     output = await asyncio.to_thread(cmdline, cmd_1)
 
@@ -45,38 +36,6 @@ async def run_ipmitool(ip,user,pwd,command):
 async def run_all_ipmitool(bmc_ip,user,pwd,command):
     tasks=[run_ipmitool(x,user,pwd[i],command) for i,x in enumerate(bmc_ip)]
     return await asyncio.gather(*tasks)
-
-def run_firmware_update_sequence(sequence_id, bmc_ip, credentials, firmware_files):
-    """Wrapper function to run sequential updates and handle final reset."""
-    try:
-        perform_sequential_updates(sequence_id, bmc_ip, credentials, firmware_files)
-
-        # After updates, check if a reset is needed
-        status_raw = redis_client.get(f"firmware_sequence:{sequence_id}")
-        if status_raw:
-            sequence_status = json.loads(status_raw)
-            # Only reset if the flag is set and no errors have occurred
-            if sequence_status.get('needs_reset') and 'error' not in sequence_status:
-                # Update overall status to inform the user about the incoming reset
-                sequence_status['overall_status'] = "Updates complete, initiating system reset..."
-                redis_client.set(f"firmware_sequence:{sequence_id}", json.dumps(sequence_status), ex=3600)
-                
-                # Wait a moment for the status to be picked up by the frontend
-                time.sleep(3) 
-
-                system_reset_sync(bmc_ip, credentials)
-
-    except Exception as e:
-        logger.error(f"Error in firmware update thread for sequence {sequence_id}: {e}")
-        # Attempt to retrieve current status to append the error
-        try:
-            status_raw = redis_client.get(f"firmware_sequence:{sequence_id}")
-            if status_raw:
-                error_status = json.loads(status_raw)
-                error_status['error'] = str(e)
-                redis_client.set(f"firmware_sequence:{sequence_id}", json.dumps(error_status), ex=3600)
-        except Exception as redis_e:
-            logger.error(f"Could not update Redis with final error state: {redis_e}")
 
 
 @login_required
@@ -97,21 +56,14 @@ def ipmitool(request):
         
         if operation_type == 'unique_password':
             ipmi_form = IpmiForm(rma=is_rma, user=request.user)
-            firmware_form = FirmwareUploadForm(rma=is_rma, user=request.user)
             unique_password_form = UniquePasswordForm(request.POST)
-        elif operation_type == 'firmware':
-            ipmi_form = IpmiForm(rma=is_rma, user=request.user)
-            firmware_form = FirmwareUploadForm(request.POST, request.FILES, rma=is_rma, user=request.user)
-            unique_password_form = UniquePasswordForm()
         else:
             # Default to IPMI form (operation_type is None or 'ipmi')
             ipmi_form = IpmiForm(request.POST, rma=is_rma, user=request.user)
-            firmware_form = FirmwareUploadForm(rma=is_rma, user=request.user)
             unique_password_form = UniquePasswordForm()
     else:
         # GET request - initialize empty forms
         ipmi_form = IpmiForm(rma=is_rma, user=request.user)
-        firmware_form = FirmwareUploadForm(rma=is_rma, user=request.user)
         unique_password_form = UniquePasswordForm()
     
     if request.method == "POST":
@@ -124,73 +76,6 @@ def ipmitool(request):
             if is_ajax:
                 return response
             result['password_result'] = response.content
-
-        elif operation_type == 'firmware' and firmware_form.is_valid():
-            try:
-                bmc_ip = firmware_form.cleaned_data['bmc_ip'].strip()
-                if not bmc_ip:
-                    raise ValueError('BMC IP is required')
-                user = firmware_form.cleaned_data.get('user', 'ADMIN')
-                pwd = firmware_form.cleaned_data.get('pwd', '')
-                uploaded_files = firmware_form.cleaned_data['firmware_file']
-
-                os.makedirs('/tmp/firmware', exist_ok=True)
-                
-                firmware_files = []
-                for firmware_file in uploaded_files:
-                    unique_filename = f"{uuid.uuid4()}_{firmware_file.name}"
-                    temp_file_path = os.path.join('/tmp/firmware', unique_filename)
-                    with open(temp_file_path, 'wb+') as f:
-                        for chunk in firmware_file.chunks():
-                            f.write(chunk)
-                    firmware_files.append((firmware_file.name, temp_file_path))
-                
-                credentials = {'username': user, 'password': pwd}
-                sequence_id = str(uuid.uuid4())
-
-                # Create initial status in Redis immediately to prevent race condition
-                initial_status = {
-                    'needs_reset': False,
-                    'overall_status': '',
-                    'files': {
-                        os.path.basename(file_path): {
-                            'original_name': original_name,
-                            'status': 'Pending',
-                            'progress': 0,
-                            'type': determine_firmware_type(original_name)
-                        } for original_name, file_path in firmware_files
-                    }
-                }
-                redis_client.set(f"firmware_sequence:{sequence_id}", json.dumps(initial_status), ex=3600)
-
-                # Start the update process in a background thread
-                thread = threading.Thread(
-                    target=run_firmware_update_sequence,
-                    args=(sequence_id, bmc_ip, credentials, firmware_files)
-                )
-                thread.daemon = True
-                thread.start()
-                
-                if is_ajax:
-                    return JsonResponse({
-                        'success': True,
-                        'sequence_id': sequence_id,
-                        'bmc_ip': bmc_ip,
-                        'user': user,
-                        'pwd': pwd,
-                    })
-                else:
-                    result['upload_result'] = {'sequence_id': sequence_id}
-                    
-            except Exception as e:
-                logger.error(f"Error in firmware update: {str(e)}")
-                if is_ajax:
-                    return JsonResponse({
-                        'success': False,
-                        'error': str(e)
-                    })
-                else:
-                    result['error'] = str(e)
 
         else:
             # Handle regular IPMI commands (default case, operation_type == 'ipmi', or None)
@@ -233,7 +118,6 @@ def ipmitool(request):
     # Prepare context
     context = {
         'form': ipmi_form,
-        'firmware_form': firmware_form,
         'unique_password_form': unique_password_form,
         'result': result,
         'task_id': task_id,
@@ -241,17 +125,3 @@ def ipmitool(request):
     }
     
     return render(request, 'features/ipmitool.html', context)
-
-def get_firmware_sequence_status(request):
-    """API endpoint to get the status of a firmware update sequence."""
-    sequence_id = request.GET.get('sequence_id')
-    if not sequence_id:
-        return JsonResponse({'success': False, 'error': 'sequence_id is required'})
-
-    status_raw = redis_client.get(f"firmware_sequence:{sequence_id}")
-    if status_raw:
-        status_data = json.loads(status_raw)
-        status_data['success'] = True
-        return JsonResponse(status_data)
-    else:
-        return JsonResponse({'success': False, 'error': 'Status not found for the given sequence_id'})
