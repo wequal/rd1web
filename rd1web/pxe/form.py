@@ -255,39 +255,6 @@ class MultipleFileField(forms.FileField):
             return [super().clean(data, initial)]
 
 
-class FirmwareUploadForm(forms.Form):
-    bmc_ip=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='BMC IP')
-    user=forms.ChoiceField(label='User',widget=forms.Select,choices=[('ADMIN','ADMIN'),('root','root')],required=False)
-    pwd=forms.CharField(widget=forms.TextInput(attrs={'class':'form-control','style': 'width: 500px;',}),label='Unique Password',required=False)
-    firmware_file = MultipleFileField(
-        widget=MultipleFileInput(attrs={
-            'class': 'form-control'
-        }),
-        label='Firmware Files',
-        help_text='Upload multiple firmware files. File names should contain firmware type (BMC/BIOS/CPLD/FPGA)',
-        required=False
-    )
-
-    def __init__(self, *args, **kwargs):
-        rma = kwargs.pop('rma', False)
-        user = kwargs.pop('user', None)
-        super().__init__(*args, **kwargs)
-
-        if rma:
-            # In RMA mode, BMC IP is a manual text input
-            self.fields['bmc_ip'] = forms.CharField(
-                widget=forms.TextInput(attrs={
-                    'class': 'form-control', 
-                    'style': 'width: 500px;',
-                    'placeholder': 'Enter BMC IP address'
-                }),
-                label='BMC IP'
-            )
-            
-            # In RMA mode, Password is a single text input, prefilled
-            self.fields['pwd'].initial = 'Golden@1234'
-        # Standard mode default widget is already TextInput for FirmwareUploadForm, so no else block needed for pwd widget type change
-
 class UniquePasswordForm(forms.Form):
     bmc_mac = forms.CharField(
         widget=forms.Textarea(attrs={

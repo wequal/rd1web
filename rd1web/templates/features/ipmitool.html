@@ -7,7 +7,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="h3 mb-0 text-gray-800">IPMI Management Tool</h1>
-            <p class="mb-0 text-muted">Execute IPMI commands and perform firmware updates</p>
+            <p class="mb-0 text-muted">Execute IPMI commands</p>
         </div>
         <div class="d-flex gap-2">
             <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#commandsModal">
@@ -28,12 +28,6 @@
                         <input class="form-check-input" type="radio" name="operationType" id="ipmiCommand" value="ipmi" checked>
                         <label class="form-check-label" for="ipmiCommand">
                             <i class="fas fa-terminal me-1"></i>IPMI Command
-                        </label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="operationType" id="firmwareUpdate" value="firmware">
-                        <label class="form-check-label" for="firmwareUpdate">
-                            <i class="fas fa-upload me-1"></i>Firmware Update
                         </label>
                     </div>
                     <div class="form-check form-check-inline">
@@ -259,71 +253,6 @@
                 </div>
             </div>
 
-            <!-- Firmware Update Form -->
-            <div class="card shadow mb-4" id="firmwareFormCard" style="display: none;">
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-upload me-2"></i>Firmware Update
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <form method="post" id="firmwareForm" enctype="multipart/form-data">
-                        {% csrf_token %}
-                        <div class="mb-4">
-                            <label for="{{ firmware_form.bmc_ip.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas fa-network-wired me-2 text-primary"></i>BMC IP Address
-                            </label>
-                            {{ firmware_form.bmc_ip }}
-                            <small class="form-text text-muted">
-                                {% if is_rma %}
-                                    <i class="fas fa-info-circle me-1"></i>Enter the BMC IP address manually.
-                                {% endif %}
-                            </small>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="{{ firmware_form.user.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas fa-user me-2 text-success"></i>Username
-                            </label>
-                            {{ firmware_form.user }}
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="{{ firmware_form.pwd.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas fa-key me-2 text-warning"></i>Password
-                            </label>
-                            {{ firmware_form.pwd }}
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="{{ firmware_form.firmware_file.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas fa-file-code me-2 text-danger"></i>Firmware Files
-                            </label>
-                            {{ firmware_form.firmware_file }}
-                            <small class="form-text text-muted">
-                                <i class="fas fa-info-circle me-1"></i>
-                                {{ firmware_form.firmware_file.help_text }}
-                            </small>
-                        </div>
-
-                        <!-- Progress Tracking -->
-                        <div id="updateProgress" style="display: none;">
-                            <div id="updateResults" class="mt-3">
-                                <!-- Results will be populated here -->
-                            </div>
-                        </div>
-
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <button type="reset" class="btn btn-outline-secondary me-md-2" onclick="clearAllDisplays()">
-                                <i class="fas fa-undo me-1"></i>Reset
-                            </button>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-upload me-1"></i>Upload Firmware
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
             <!-- Unique Password Lookup Form -->
             <div class="card shadow mb-4" id="uniquePasswordFormCard" style="display: none;">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
@@ -405,41 +334,24 @@
             <div class="card shadow">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-success">
-                        {% if result.upload_result %}
-                            <i class="fas fa-upload me-2"></i>Firmware Upload Results
-                        {% else %}
-                            <i class="fas fa-terminal me-2"></i>Command Results
-                        {% endif %}
+                        <i class="fas fa-terminal me-2"></i>Command Results
                     </h6>
                 </div>
                 <div class="card-body">
-                    {% if result.upload_result %}
-                        <div class="alert {% if result.error %}alert-danger{% else %}alert-success{% endif %} mb-3">
-                            {% if result.error %}
-                                <i class="fas fa-exclamation-circle me-2"></i>Error: {{ result.error }}
-                            {% else %}
-                                <i class="fas fa-check-circle me-2"></i>Firmware upload initiated successfully
-                            {% endif %}
-                        </div>
-                        <div class="bg-light p-3 rounded">
-                            <pre class="mb-0" style="white-space: pre-wrap;">{{ result.upload_result|pprint }}</pre>
-                        </div>
-                    {% else %}
-                        <div class="row">
-                            {% for ip, output in result.items %}
-                                <div class="col-md-6 mb-3">
-                                    <div class="border rounded p-3">
-                                        <h6 class="text-primary mb-2">
-                                            <i class="fas fa-server me-1"></i>{{ ip }}
-                                        </h6>
-                                        <div class="bg-dark text-light p-3 rounded" style="font-family: 'Courier New', monospace; font-size: 0.85rem;">
-                                            <pre class="mb-0" style="white-space: pre-wrap; color: #00ff00;">{{ output|default:"No output" }}</pre>
-                                        </div>
+                    <div class="row">
+                        {% for ip, output in result.items %}
+                            <div class="col-md-6 mb-3">
+                                <div class="border rounded p-3">
+                                    <h6 class="text-primary mb-2">
+                                        <i class="fas fa-server me-1"></i>{{ ip }}
+                                    </h6>
+                                    <div class="bg-dark text-light p-3 rounded" style="font-family: 'Courier New', monospace; font-size: 0.85rem;">
+                                        <pre class="mb-0" style="white-space: pre-wrap; color: #00ff00;">{{ output|default:"No output" }}</pre>
                                     </div>
                                 </div>
-                            {% endfor %}
-                        </div>
-                    {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </div>
@@ -545,25 +457,6 @@
                     </div>
                     
                     <div class="col-md-6">
-                        <h6 class="text-primary"><i class="fas fa-upload me-2"></i>Firmware Updates</h6>
-                        <p class="small">Upload and install single or multiple firmware files. Updates are applied sequentially with real-time progress tracking.</p>
-                        
-                        <h6 class="text-success mt-3"><i class="fas fa-microchip me-2"></i>Supported Firmware Types</h6>
-                        <ul class="small">
-                            <li><strong>BIOS:</strong> System BIOS/UEFI firmware</li>
-                            <li><strong>BMC:</strong> Baseboard Management Controller firmware</li>
-                            <li><strong>CPLD:</strong> Complex Programmable Logic Device firmware</li>
-                            <li><strong>FPGA:</strong> Field Programmable Gate Array firmware</li>
-                        </ul>
-                        
-                        <h6 class="text-info mt-3"><i class="fas fa-cogs me-2"></i>Update Process for Multiple Files</h6>
-                        <ol class="small">
-                            <li><strong>Select Files:</strong> Choose one or more firmware files to upload at the same time.</li>
-                            <li><strong>Sequential Updates:</strong> Each firmware component is updated one by one in the determined sequence.</li>
-                            <li><strong>Real-Time Tracking:</strong> Monitor the live status and progress for each individual file update.</li>
-                            <li><strong>Automatic System Reset:</strong> A system reset is automatically performed at the end if any component (like BIOS) requires it.</li>
-                        </ol>
-                        
                         <h6 class="text-warning mt-3"><i class="fas fa-key me-2"></i>Unique Password Lookup</h6>
                         <ul class="small">
                             <li><strong>MAC Address Formats:</strong> Accepts 7cc25589011f, 7c-c2-55-89-01-1f, or 7c:c2:55:89:01:1f</li>
@@ -583,9 +476,6 @@
                         <ul class="small">
                             <li><strong>Multiple BMCs:</strong> Commands execute in parallel for efficiency</li>
                             <li><strong>Connection Issues:</strong> Check network connectivity and credentials</li>
-                            <li><strong>Firmware Failures:</strong> Verify file format and BMC compatibility</li>
-                            <li><strong>Progress Stalled:</strong> Some updates may appear stuck but are processing</li>
-                            <li><strong>Reset Required:</strong> System resets are automatic for most firmware types</li>
                         </ul>
                     </div>
                 </div>
@@ -709,16 +599,11 @@
             });
             {% endif %}
             
-            // Clear firmware-related displays when submitting IPMI command
+            // Clear firmware info display when submitting IPMI command
             form.addEventListener('submit', function(e) {
                 const firmwareInfoSection = document.getElementById('firmwareInfoSection');
                 if (firmwareInfoSection) {
                     firmwareInfoSection.style.display = 'none';
-                }
-                
-                const progressSection = document.getElementById('updateProgress');
-                if (progressSection) {
-                    progressSection.style.display = 'none';
                 }
             });
         
@@ -800,12 +685,6 @@
             const credentials = getFirstBmcCredentials();
             if (!credentials) return;
 
-            // Clear progress section when getting firmware info
-            const progressSection = document.getElementById('updateProgress');
-            if (progressSection) {
-                progressSection.style.display = 'none';
-            }
-
             this.disabled = true;
             this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Getting Info...';
 
@@ -842,25 +721,16 @@
         // Form switching
         const operationRadios = document.querySelectorAll('input[name="operationType"]');
         const ipmiFormCard = document.getElementById('ipmiFormCard');
-        const firmwareFormCard = document.getElementById('firmwareFormCard');
         const uniquePasswordFormCard = document.getElementById('uniquePasswordFormCard');
 
         operationRadios.forEach(radio => {
             radio.addEventListener('change', function() {
-                // Clear all previous displays when switching operation types
                 clearAllDisplays();
-                
                 if (this.value === 'ipmi') {
                     ipmiFormCard.style.display = 'block';
-                    firmwareFormCard.style.display = 'none';
-                    uniquePasswordFormCard.style.display = 'none';
-                } else if (this.value === 'firmware') {
-                    ipmiFormCard.style.display = 'none';
-                    firmwareFormCard.style.display = 'block';
                     uniquePasswordFormCard.style.display = 'none';
                 } else if (this.value === 'unique_password') {
                     ipmiFormCard.style.display = 'none';
-                    firmwareFormCard.style.display = 'none';
                     uniquePasswordFormCard.style.display = 'block';
                 }
             });
@@ -868,173 +738,18 @@
 
         // Function to clear all result displays
         function clearAllDisplays() {
-            // Hide firmware info section
             const firmwareInfoSection = document.getElementById('firmwareInfoSection');
             if (firmwareInfoSection) {
                 firmwareInfoSection.style.display = 'none';
             }
-            
-            // Hide progress section
-            const progressSection = document.getElementById('updateProgress');
-            if (progressSection) {
-                progressSection.style.display = 'none';
-            }
-            
-            // Hide password result section
             const passwordResult = document.getElementById('passwordResult');
             if (passwordResult) {
                 passwordResult.style.display = 'none';
             }
-            
-            // Clear update results table
-            const updateResults = document.getElementById('updateResults');
-            if (updateResults) {
-                updateResults.innerHTML = '';
-            }
-            
-            // Re-enable firmware form submit button
-            const firmwareSubmitBtn = firmwareForm.querySelector('button[type="submit"]');
-            if (firmwareSubmitBtn) {
-                firmwareSubmitBtn.disabled = false;
-            }
-            
-            // Re-enable unique password form submit button
             const uniquePasswordSubmitBtn = document.querySelector('#uniquePasswordForm button[type="submit"]');
             if (uniquePasswordSubmitBtn) {
                 uniquePasswordSubmitBtn.disabled = false;
             }
-        }
-
-        // Firmware update progress tracking
-        const firmwareForm = document.getElementById('firmwareForm');
-        const progressSection = document.getElementById('updateProgress');
-        const updateResults = document.getElementById('updateResults');
-
-        firmwareForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            clearAllDisplays();
-            
-            const formData = new FormData(this);
-            formData.append('operation_type', 'firmware');
-
-            try {
-                progressSection.style.display = 'block';
-                this.querySelector('button[type="submit"]').disabled = true;
-                updateResults.innerHTML = `<div class="alert alert-info">Uploading firmware files...</div>`;
-                
-                const response = await fetch(window.location.href, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-                
-                const result = await response.json();
-                
-                if (result.success && result.sequence_id) {
-                    pollSequenceStatus(result.sequence_id);
-                } else {
-                    displayError(result.error || 'Unknown error during upload.');
-                }
-            } catch (error) {
-                displayError('Network error: ' + error.message);
-            }
-        });
-
-        function pollSequenceStatus(sequenceId) {
-            const intervalId = setInterval(async () => {
-                try {
-                    const response = await fetch(`/ipmitool/firmware/sequence_status/?sequence_id=${sequenceId}`);
-                    const status = await response.json();
-
-                    if (!status.success) {
-                        displayError(status.error || 'Failed to get status.');
-                        clearInterval(intervalId);
-                        firmwareForm.querySelector('button[type="submit"]').disabled = false;
-                        return;
-                    }
-
-                    updateDisplay(status);
-                    
-                    // Check if all files are done (Completed or Failed)
-                    const allFiles = Object.values(status.files);
-                    const isFinished = allFiles.every(f => f.status === 'Completed' || f.status === 'Failed' || f.status.includes('reset'));
-
-                    if (isFinished) {
-                        clearInterval(intervalId);
-                        firmwareForm.querySelector('button[type="submit"]').disabled = false;
-                }
-            } catch (error) {
-                    displayError('Error polling for status: ' + error.message);
-                    clearInterval(intervalId);
-                    firmwareForm.querySelector('button[type="submit"]').disabled = false;
-                }
-            }, 3000); // Poll every 3 seconds
-        }
-
-        function updateDisplay(status) {
-            let overallStatusHtml = '';
-            if (status.overall_status) {
-                overallStatusHtml = `<div class="alert alert-info mt-3 fw-bold"><i class="fas fa-info-circle me-2"></i>${status.overall_status}</div>`;
-            }
-
-            let tableHtml = `
-                <table class="table table-sm table-bordered">
-                    <thead class="table-light">
-                        <tr>
-                            <th>File</th>
-                            <th>Status</th>
-                            <th>Progress</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
-            for (const file in status.files) {
-                const details = status.files[file];
-                tableHtml += `
-                    <tr>
-                        <td>${details.original_name}</td>
-                        <td><span class="badge ${getBadgeClass(details.status)}">${details.status}</span></td>
-                        <td>
-                            <div class="progress" style="height: 20px;">
-                                <div class="progress-bar" role="progressbar" style="width: ${details.progress}%;" aria-valuenow="${details.progress}" aria-valuemin="0" aria-valuemax="100">${details.progress}%</div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }
-
-            tableHtml += `</tbody></table>`;
-            updateResults.innerHTML = overallStatusHtml + tableHtml;
-
-            if (status.error) {
-                updateResults.innerHTML += `<div class="alert alert-danger mt-3">Error: ${status.error}</div>`;
-            }
-        }
-        
-        function displayError(errorMessage) {
-            updateResults.innerHTML = `<div class="alert alert-danger">${errorMessage}</div>`;
-            firmwareForm.querySelector('button[type="submit"]').disabled = false;
-        }
-
-        // Helper functions for status badges
-        function getBadgeClass(status) {
-            status = status.toLowerCase();
-            if (status.includes('completed')) return 'bg-success';
-            if (status.includes('failed') || status.includes('error') || status.includes('exception')) return 'bg-danger';
-            if (status.includes('updating') || status.includes('rebooting') || status.includes('starting')) return 'bg-info';
-            if (status.includes('pending')) return 'bg-secondary';
-                    return 'bg-primary';
-        }
-
-        function getMessageBadgeClass(messageId) {
-            if (messageId.includes('Error')) return 'bg-danger';
-            if (messageId.includes('Warning')) return 'bg-warning';
-            if (messageId.includes('Success')) return 'bg-success';
-            return 'bg-info';
         }
 
         // Display firmware information
