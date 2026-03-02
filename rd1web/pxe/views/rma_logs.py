@@ -18,6 +18,7 @@ import asyncio
 import time
 from asgiref.sync import sync_to_async
 from ..remote_config import remote_dict
+from ..utils import render_markdown_as_html
 
 logger = logging.getLogger(__name__)
 
@@ -2274,6 +2275,14 @@ def rma_view_file(request, path, base=None):
             html_content = render_csv_as_html(file_content, filename)
             response = HttpResponse(html_content, content_type='text/html; charset=utf-8')
             response['Cache-Control'] = 'no-cache'
+            return response
+
+        # Handle .md files: render as markdown HTML
+        if ext == '.md':
+            html_content = render_markdown_as_html(file_content, filename)
+            response = HttpResponse(html_content, content_type='text/html; charset=utf-8')
+            response['Cache-Control'] = 'no-cache'
+            response['Content-Disposition'] = f'inline; filename="{filename}"'
             return response
 
         # Determine content type
