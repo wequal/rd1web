@@ -35,6 +35,8 @@ try:
 except ImportError:
     remote_download = None
 
+from ..utils import render_markdown_as_html
+
 # Cache timeout settings
 RMA_GENERAL_CACHE_TIMEOUT = 30  # 30 seconds cache for basic directory listings
 RMA_GENERAL_DETAILS_CACHE_TIMEOUT = 60  # 1 minute cache for directory details
@@ -1024,6 +1026,14 @@ def rma_general_view_file(request, path):
             html_content = render_csv_as_html(file_content, filename)
             response = HttpResponse(html_content, content_type='text/html; charset=utf-8')
             response['Cache-Control'] = 'no-cache'
+            return response
+
+        # Handle .md files: render as markdown HTML
+        if ext == '.md':
+            html_content = render_markdown_as_html(file_content, filename)
+            response = HttpResponse(html_content, content_type='text/html; charset=utf-8')
+            response['Cache-Control'] = 'no-cache'
+            response['Content-Disposition'] = f'inline; filename="{filename}"'
             return response
 
         # Determine content type

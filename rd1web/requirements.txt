@@ -26,5 +26,8 @@ urllib3>=2.0.0
 # System utilities
 psutil>=5.9.0
 
+# Markdown (RMA logs browser .md rendering)
+markdown>=3.5.0
+
 # Remote connections (SSH/remote execution)
 fabric>=3.2.0
