@@ -39,6 +39,8 @@ from .views.rma_logs import (
     rma_collect_mi3xx_alllog,
     rma_collect_mi3xx_alllog_status,
     rma_collect_mi3xx_alllog_from_form,
+    rma_generate_ai_summary,
+    rma_generate_ai_summary_status,
 )
 from .views.rma_general_logs import rma_general_log, rma_general_view_file
 from .views.rma_testing_db import (
@@ -134,6 +136,9 @@ urlpatterns = [
     path('rma/gb-collect-mi3xx-alllog/<path:path>/', rma_collect_mi3xx_alllog, {'base': 'gb'}, name='rma_gb_collect_mi3xx_alllog'),
     path('rma/gb-collect-mi3xx-alllog-status/<str:task_id>/', rma_collect_mi3xx_alllog_status, {'base': 'gb'}, name='rma_gb_collect_mi3xx_alllog_status'),
     path('rma/gb-collect-mi3xx-alllog-from-form/', rma_collect_mi3xx_alllog_from_form, {'base': 'gb'}, name='rma_gb_collect_mi3xx_alllog_from_form'),
+    path('rma/gb-generate-ai-summary/', rma_generate_ai_summary, {'base': 'gb'}, name='rma_gb_generate_ai_summary_root'),
+    path('rma/gb-generate-ai-summary/<path:path>/', rma_generate_ai_summary, {'base': 'gb'}, name='rma_gb_generate_ai_summary'),
+    path('rma/gb-generate-ai-summary-status/<str:task_id>/', rma_generate_ai_summary_status, {'base': 'gb'}, name='rma_gb_generate_ai_summary_status'),
     path('rma/general-logs/', rma_general_log, name='rma_general_log'),
     path('rma/general-logs/<path:path>/', rma_general_log, name='rma_general_log_browse'),
     path('rma/general-view/<path:path>/', rma_general_view_file, name='rma_general_view_file'),
@@ -144,6 +149,9 @@ urlpatterns = [
     path('rma/collect-mi3xx-alllog/<path:path>/', rma_collect_mi3xx_alllog, name='rma_collect_mi3xx_alllog'),
     path('rma/collect-mi3xx-alllog-status/<str:task_id>/', rma_collect_mi3xx_alllog_status, name='rma_collect_mi3xx_alllog_status'),
     path('rma/collect-mi3xx-alllog-from-form/', rma_collect_mi3xx_alllog_from_form, name='rma_collect_mi3xx_alllog_from_form'),
+    path('rma/generate-ai-summary/', rma_generate_ai_summary, name='rma_generate_ai_summary_root'),
+    path('rma/generate-ai-summary/<path:path>/', rma_generate_ai_summary, name='rma_generate_ai_summary'),
+    path('rma/generate-ai-summary-status/<str:task_id>/', rma_generate_ai_summary_status, name='rma_generate_ai_summary_status'),
     path('rma/remote-fw-status/<str:task_id>/', remote_fw_status, name='remote_fw_status'),
     
     # Golden Number Link/Unlink URLs

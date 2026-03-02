@@ -82,6 +82,8 @@ class OptimizedUserActivityMiddleware:
             '/rma/download-folder-status/',
             '/ipmitool/firmware/sequence_status/',
             '/rma/remote-fw-status/',
+            '/rma/generate-ai-summary-status/',
+            '/rma/gb-generate-ai-summary-status/',
         ]
         if any(status_path in request.path for status_path in status_polling_paths):
             return
