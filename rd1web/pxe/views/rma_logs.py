@@ -17,7 +17,6 @@ import threading
 import asyncio
 import time
 import json
-from collections import deque
 from asgiref.sync import sync_to_async
 from ..remote_config import remote_dict
 from ..utils import render_markdown_as_html
@@ -65,57 +64,7 @@ except ImportError:
     remote_download = None
     AI_log_analyzer = False
 
-AI_SUMMARY_VLLM_BASE_URL = "http://172.31.57.161:8000/v1"
-AI_SUMMARY_VLLM_API_KEY = "token"
-AI_SUMMARY_MODEL_NAME = "Qwen3.5-35B"
-AI_SUMMARY_MAX_FILE_SIZE_MB = 200
-AI_SUMMARY_MAX_ERROR_LINES = 200
-AI_SUMMARY_MAX_FILES_TO_LIST = 400
-AI_SUMMARY_REQUEST_TIMEOUT_SEC = 120.0
-AI_SUMMARY_MAX_CONTEXT_CHARS = 180000
-AI_SUMMARY_MAX_TOOL_ITERATIONS = 18
-AI_SUMMARY_MAX_RETRIES = 3
-AI_SUMMARY_RETRY_BACKOFF_BASE_SEC = 1.0
-AI_SUMMARY_ERROR_REGEX = re.compile(r"error|fail|fatal|exception|traceback", re.IGNORECASE)
-
-AI_SUMMARY_TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "list_files_in_folder",
-            "description": "List all files in the given folder path (non-recursive).",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "folder_path": {
-                        "type": "string",
-                        "description": "Absolute or relative path to the folder",
-                    }
-                },
-                "required": ["folder_path"],
-                "additionalProperties": False,
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "read_file_content",
-            "description": "Read important log lines (errors, failures, exceptions) from a file.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "file_path": {
-                        "type": "string",
-                        "description": "Absolute or relative path to the file",
-                    }
-                },
-                "required": ["file_path"],
-                "additionalProperties": False,
-            },
-        },
-    },
-]
+from ..ai_summary import generate_ai_summary_markdown
 
 
 def _resolve_rma_context(base: str | None):
@@ -140,191 +89,6 @@ def _resolve_rma_context(base: str | None):
         'cache_ns': 'rma',
     }
 
-def _ai_summary_list_files_in_folder(folder_path: str):
-    if not os.path.isdir(folder_path):
-        return []
-
-    file_names = []
-    for entry in os.listdir(folder_path):
-        entry_path = os.path.join(folder_path, entry)
-        if os.path.isfile(entry_path):
-            file_names.append(entry)
-
-    file_names.sort()
-    return file_names[:AI_SUMMARY_MAX_FILES_TO_LIST]
-
-def _ai_summary_read_file_content(file_path: str) -> str:
-    if not os.path.isfile(file_path):
-        return f"Error: {file_path} is not a valid file."
-
-    file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
-    if file_size_mb > AI_SUMMARY_MAX_FILE_SIZE_MB:
-        return (
-            f"Skipped {os.path.basename(file_path)}: File too large "
-            f"({file_size_mb:.1f} MB > {AI_SUMMARY_MAX_FILE_SIZE_MB} MB)."
-        )
-
-    important_lines = deque(maxlen=AI_SUMMARY_MAX_ERROR_LINES)
-    try:
-        with open(file_path, "r", encoding="utf-8", errors="ignore") as file_handle:
-            for line in file_handle:
-                if AI_SUMMARY_ERROR_REGEX.search(line):
-                    important_lines.append(line.rstrip())
-    except Exception as exc:
-        return f"Error reading file {os.path.basename(file_path)}: {type(exc).__name__}: {exc}"
-
-    if not important_lines:
-        return f"No critical errors found in {os.path.basename(file_path)}."
-    return "\n".join(important_lines)
-
-def _build_ai_summary_context(folder_path: str):
-    file_names = _ai_summary_list_files_in_folder(folder_path)
-    if not file_names:
-        return [], "No files found in folder."
-
-    summary_blocks = []
-    for file_name in file_names:
-        file_path = os.path.join(folder_path, file_name)
-        content = _ai_summary_read_file_content(file_path)
-        if not content.startswith("No critical errors found"):
-            summary_blocks.append(f"## {file_name}\n{content}")
-
-    if not summary_blocks:
-        summary_text = (
-            "No critical error lines were found in files from this folder based on "
-            "error/fail/fatal/exception/traceback filters."
-        )
-    else:
-        summary_text = "\n\n".join(summary_blocks)
-        summary_text = summary_text[:AI_SUMMARY_MAX_CONTEXT_CHARS]
-
-    return file_names, summary_text
-
-def _ai_summary_tool_list_files(allowed_base: str, folder_path_arg: str):
-    """Tool implementation: list files. Path must be under allowed_base."""
-    full = os.path.abspath(folder_path_arg)
-    if not full.startswith(allowed_base) or not os.path.isdir(full):
-        return f"Error: {folder_path_arg} is not a valid directory under the scan folder."
-    return _ai_summary_list_files_in_folder(full)
-
-
-def _ai_summary_tool_read_file(allowed_base: str, file_path_arg: str):
-    """Tool implementation: read file content. Path must be under allowed_base."""
-    full = os.path.abspath(file_path_arg)
-    if not full.startswith(allowed_base):
-        return f"Error: {file_path_arg} is not under the scan folder."
-    return _ai_summary_read_file_content(full)
-
-
-def _generate_ai_summary_markdown(folder_path: str) -> str:
-    import random
-    from openai import OpenAI
-
-    allowed_base = os.path.abspath(folder_path)
-
-    messages = [
-        {
-            "role": "system",
-            "content": (
-                "You are a senior datacenter GPU and server reliability engineer.\n"
-                "Focus on clarity, precision, and engineering reasoning."
-            ),
-        },
-        {
-            "role": "user",
-            "content": (
-                f"Scan folder {folder_path}\n"
-                "1. Summarize the logs.\n"
-                "2. Hypothesize the root causes.\n"
-                "3. Do not write action plan.\n"
-                "4. For the MI* ADDC Analyzer log: count failed OAM modules ONLY by the number of "
-                "individual modules that have a named fatal error entry (oam: X). Never say \"all 8\" or "
-                "\"0-7\" unless you see 8 separate named entries. If fewer than 8 are explicitly named, "
-                "state the exact confirmed number. Also show how many times the issue occurred and error category."
-            ),
-        },
-    ]
-
-    client = OpenAI(
-        base_url=AI_SUMMARY_VLLM_BASE_URL,
-        api_key=AI_SUMMARY_VLLM_API_KEY,
-        max_retries=0,
-    )
-
-    def parse_tool_args(raw: str):
-        if not raw:
-            return {}
-        try:
-            p = json.loads(raw)
-            return p if isinstance(p, dict) else {}
-        except json.JSONDecodeError:
-            return {}
-
-    def call_api():
-        return client.chat.completions.create(
-            model=AI_SUMMARY_MODEL_NAME,
-            messages=messages,
-            tools=AI_SUMMARY_TOOLS,
-            tool_choice="auto",
-            max_tokens=2048,
-            temperature=0.0,
-            top_p=1.0,
-            seed=2026,
-            timeout=AI_SUMMARY_REQUEST_TIMEOUT_SEC,
-        )
-
-    for turn in range(1, AI_SUMMARY_MAX_TOOL_ITERATIONS + 1):
-        last_exc = None
-        for attempt in range(1, AI_SUMMARY_MAX_RETRIES + 1):
-            try:
-                response = call_api()
-                last_exc = None
-                break
-            except Exception as api_exc:
-                last_exc = api_exc
-                if attempt == AI_SUMMARY_MAX_RETRIES:
-                    raise
-                jitter = random.uniform(0.0, 0.25)
-                wait_s = AI_SUMMARY_RETRY_BACKOFF_BASE_SEC * (2 ** (attempt - 1)) + jitter
-                time.sleep(wait_s)
-        if last_exc is not None:
-            raise last_exc
-
-        choice = response.choices[0] if response.choices else None
-        if not choice:
-            break
-        msg = choice.message
-        msg_dump = msg.model_dump(exclude_none=True)
-        messages.append(msg_dump)
-
-        tool_calls = getattr(msg, "tool_calls", None) or []
-        if not tool_calls:
-            content = getattr(msg, "content", None) or ""
-            return content.strip() or "# AI Summary\n\nNo response content was returned by the AI model."
-
-        for tc in tool_calls:
-            name = getattr(tc, "function", None) and getattr(tc.function, "name", None) or ""
-            args_str = getattr(tc.function, "arguments", None) or "{}"
-            args = parse_tool_args(args_str)
-            tid = getattr(tc, "id", None) or ""
-
-            if name == "list_files_in_folder":
-                result = _ai_summary_tool_list_files(allowed_base, args.get("folder_path", ""))
-            elif name == "read_file_content":
-                result = _ai_summary_tool_read_file(allowed_base, args.get("file_path", ""))
-            else:
-                result = "Error: Requested tool not found."
-
-            if isinstance(result, list):
-                result = "\n".join(result) if result else "No files found in folder."
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tid,
-                "name": name,
-                "content": str(result),
-            })
-
-    return "# AI Summary\n\nMax tool iterations reached without final analysis."
 
 def _generate_ai_summary_task(task_id: str, target_dir: str):
     cache_key = f'ai_summary_task_{task_id}'
@@ -341,7 +105,7 @@ def _generate_ai_summary_task(task_id: str, target_dir: str):
             1800,
         )
 
-        markdown_content = _generate_ai_summary_markdown(target_dir)
+        markdown_content = generate_ai_summary_markdown(target_dir)
 
         cache.set(
             cache_key,
@@ -355,14 +119,30 @@ def _generate_ai_summary_task(task_id: str, target_dir: str):
             1800,
         )
 
-        report_dir = os.path.join(target_dir, "AI_Report")
-        os.makedirs(report_dir, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        report_filename = f"AI_Report_{timestamp}.md"
-        report_full_path = os.path.join(report_dir, report_filename)
+        # Capture parent dir mtime so we can restore it after writing (avoids skewing
+        # RMA statistics and directory listing when AI summary runs).
+        orig_atime = orig_mtime = None
+        try:
+            orig_stat = os.stat(target_dir)
+            orig_atime, orig_mtime = orig_stat.st_atime, orig_stat.st_mtime
+        except OSError:
+            pass
 
-        with open(report_full_path, "w", encoding="utf-8") as out:
-            out.write(markdown_content)
+        try:
+            report_dir = os.path.join(target_dir, "AI_Report")
+            os.makedirs(report_dir, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            report_filename = f"AI_Report_{timestamp}.md"
+            report_full_path = os.path.join(report_dir, report_filename)
+
+            with open(report_full_path, "w", encoding="utf-8") as out:
+                out.write(markdown_content)
+        finally:
+            if orig_mtime is not None:
+                try:
+                    os.utime(target_dir, (orig_atime, orig_mtime))
+                except OSError:
+                    pass
 
         cache.set(
             cache_key,
