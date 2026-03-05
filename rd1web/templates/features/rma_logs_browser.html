@@ -441,7 +441,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         window.AiSummary.startTask(data.task_id, {
                             title: 'Generating AI Summary',
                             message: 'Analyzing current folder logs and creating markdown report...',
-                            reloadOnSuccess: true,
+                            redirectUrlOnSuccess: "{{ ai_summary_redirect_url|default:'' }}",
                             statusUrlBase: "{{ ai_summary_status_base_path }}"
                         });
                     } else {

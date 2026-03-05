@@ -5,6 +5,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.template import Template, Context
 from django.core.cache import cache
 from django.views.decorators.http import require_POST
+from django.urls import reverse
 from urllib.parse import unquote
 from datetime import datetime
 import mimetypes
@@ -2082,6 +2083,15 @@ def rma_log_browser(request, path="", base=None):
         ai_summary_base_path = "/rma/generate-ai-summary/"
         ai_summary_status_base_path = "/rma/generate-ai-summary-status/"
 
+    # AI Summary: show button and redirect URL only in parent folder (one path segment)
+    show_ai_summary_button = bool(AI_log_analyzer) and (len(path_parts) == 1)
+    if len(path_parts) == 1:
+        ai_summary_report_path = (decoded_path.strip("/") + "/AI_Report").replace("//", "/")
+        redirect_path = reverse(browse_url_name, kwargs={"path": ai_summary_report_path})
+        ai_summary_redirect_url = request.build_absolute_uri(redirect_path)
+    else:
+        ai_summary_redirect_url = ""
+
     return render(request, "features/rma_logs_browser.html", {
         "items": items,
         "current_path": "/" + decoded_path.strip("/"),
@@ -2105,9 +2115,10 @@ def rma_log_browser(request, path="", base=None):
         "download_folder_status_base_path": download_folder_status_base_path,
         "collect_mi3xx_alllog_base_path": collect_mi3xx_alllog_base_path,
         "collect_mi3xx_alllog_status_base_path": collect_mi3xx_alllog_status_base_path,
-        "show_ai_summary_button": bool(AI_log_analyzer),
+        "show_ai_summary_button": show_ai_summary_button,
         "ai_summary_base_path": ai_summary_base_path,
         "ai_summary_status_base_path": ai_summary_status_base_path,
+        "ai_summary_redirect_url": ai_summary_redirect_url,
     })
 
 def render_csv_as_html(file_content, filename):

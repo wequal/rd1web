@@ -1,6 +1,8 @@
 (function (window) {
     let aiSummaryModalInstance = null;
     let aiSummaryPollInterval = null;
+    /** When job completes, we store the redirect URL here; redirect happens when user closes the modal */
+    let aiSummaryPendingRedirectUrl = null;
 
     function getElements() {
         return {
@@ -40,6 +42,11 @@
                 if (aiSummaryPollInterval) {
                     clearInterval(aiSummaryPollInterval);
                     aiSummaryPollInterval = null;
+                }
+                if (aiSummaryPendingRedirectUrl) {
+                    const url = aiSummaryPendingRedirectUrl;
+                    aiSummaryPendingRedirectUrl = null;
+                    window.location.href = url;
                 }
             });
         }
@@ -131,10 +138,11 @@
                         aiSummaryPollInterval = null;
                     }
 
-                    if (status === 'completed' && options && options.reloadOnSuccess) {
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 2000);
+                    if (status === 'completed') {
+                        const redirectUrl = (options && (options.redirectUrlOnSuccess || '')).trim();
+                        if (redirectUrl) {
+                            aiSummaryPendingRedirectUrl = redirectUrl;
+                        }
                     }
                 }
             })
@@ -152,6 +160,7 @@
         const els = ensureModal();
         if (!els) return;
 
+        aiSummaryPendingRedirectUrl = null;
         resetUi(els, options && options.title, options && options.message);
         if (aiSummaryModalInstance) {
             aiSummaryModalInstance.show();
