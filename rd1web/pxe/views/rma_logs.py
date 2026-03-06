@@ -2087,8 +2087,7 @@ def rma_log_browser(request, path="", base=None):
     show_ai_summary_button = bool(AI_log_analyzer) and (len(path_parts) == 1)
     if len(path_parts) == 1:
         ai_summary_report_path = (decoded_path.strip("/") + "/AI_Report").replace("//", "/")
-        redirect_path = reverse(browse_url_name, kwargs={"path": ai_summary_report_path})
-        ai_summary_redirect_url = request.build_absolute_uri(redirect_path)
+        ai_summary_redirect_url = reverse(browse_url_name, kwargs={"path": ai_summary_report_path})
     else:
         ai_summary_redirect_url = ""
 

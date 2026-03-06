@@ -1,8 +1,6 @@
 (function (window) {
     let aiSummaryModalInstance = null;
     let aiSummaryPollInterval = null;
-    /** When job completes, we store the redirect URL here; redirect happens when user closes the modal */
-    let aiSummaryPendingRedirectUrl = null;
 
     function getElements() {
         return {
@@ -42,11 +40,6 @@
                 if (aiSummaryPollInterval) {
                     clearInterval(aiSummaryPollInterval);
                     aiSummaryPollInterval = null;
-                }
-                if (aiSummaryPendingRedirectUrl) {
-                    const url = aiSummaryPendingRedirectUrl;
-                    aiSummaryPendingRedirectUrl = null;
-                    window.location.href = url;
                 }
             });
         }
@@ -138,10 +131,17 @@
                         aiSummaryPollInterval = null;
                     }
 
-                    if (status === 'completed') {
-                        const redirectUrl = (options && (options.redirectUrlOnSuccess || '')).trim();
+                    if (status === 'completed' && options) {
+                        const redirectUrl = options.redirectUrlOnSuccess;
+                        const reloadOnSuccess = options.reloadOnSuccess;
                         if (redirectUrl) {
-                            aiSummaryPendingRedirectUrl = redirectUrl;
+                            setTimeout(() => {
+                                window.location.href = redirectUrl;
+                            }, 2000);
+                        } else if (reloadOnSuccess) {
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 2000);
                         }
                     }
                 }
@@ -160,7 +160,6 @@
         const els = ensureModal();
         if (!els) return;
 
-        aiSummaryPendingRedirectUrl = null;
         resetUi(els, options && options.title, options && options.message);
         if (aiSummaryModalInstance) {
             aiSummaryModalInstance.show();
