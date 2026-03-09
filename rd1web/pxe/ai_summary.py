@@ -258,7 +258,7 @@ LOGIC RULES
 - Include error category and occurrence count.
 - If not MI3XX, skip entirely and do not mention.
 
-3. GB* GPUs:
+3. Fail Diagnostic Test:
 - Skip:
     SyslogErrorCheck
     KernLogErrorCheck
@@ -267,6 +267,11 @@ LOGIC RULES
     KernLogAERCheck
     DmesgLogAERCheck
 - Do not mention them.
+
+4. Failed GPU / OAM serial numbers:
+- If the findings mention any failed GPU or OAM serial numbers (SN),
+  include them in the report in a dedicated subsection (e.g. "Failed GPU/OAM serial numbers").
+- List each SN clearly; do not omit them when summarizing failures.
 
 FORMATTING RULES
 
@@ -316,7 +321,7 @@ def generate_ai_summary_markdown(folder_path: str) -> str:
             "content": (
                 "You are a senior datacenter GPU and server reliability engineer. "
                 "Explore the given folder and output raw findings only: list files you read, key errors, "
-                "test results, MI3XX ADDC/OAM notes if applicable, "
+                "test results, MI3XX ADDC/OAM notes and any failed GPU or OAM serial numbers (SN) you find in logs if applicable, "
                 "and any other relevant facts. Output structured notes; do not write the final report."
             ),
         },
