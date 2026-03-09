@@ -153,7 +153,7 @@ class CustomUserForm(forms.ModelForm):
     # Create custom fields for RD1 permissions
     rma_pxe_access = forms.BooleanField(
         required=False,
-        label='RMA PXE Access (RMA GPU TEST)',
+        label='RMA PXE Access (SXM GPU TEST)',
         help_text='Grant access to RMA PXE management features'
     )
     rma_testing_db_access = forms.BooleanField(

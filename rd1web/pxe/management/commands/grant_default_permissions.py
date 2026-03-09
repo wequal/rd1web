@@ -99,5 +99,5 @@ class Command(BaseCommand):
             self.stdout.write(f'    - {perm}')
         self.stdout.write('')
         self.stdout.write('  Admin-Only Permissions (manual approval required):')
-        self.stdout.write('    - can_access_rma_pxe (RMA GPU TEST)')
+        self.stdout.write('    - can_access_rma_pxe (SXM GPU TEST)')
         self.stdout.write('    - can_access_rma_testing_db (RMA Testing DB)')

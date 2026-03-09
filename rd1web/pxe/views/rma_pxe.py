@@ -803,7 +803,7 @@ def rma_pxe(request):
     })
 
 @login_required
-@permission_required('pxe.can_view_golden_test_setting', raise_exception=True)
+@permission_required('pxe.can_access_rma_pxe', raise_exception=True)
 @require_http_methods(["GET"])
 def golden_setting_api(request, entry_id):
     """API endpoint to get PXE setting for a golden unit"""

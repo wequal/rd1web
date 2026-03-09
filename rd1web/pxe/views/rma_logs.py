@@ -3190,7 +3190,7 @@ def rma_collect_mi3xx_alllog(request, path, base=None):
 def rma_collect_mi3xx_alllog_from_form(request, base=None):
     """
     Start async MI3XX ALL LOG collection using Base SN, RMA Number, and BMC IP
-    provided directly from the RMA GPU TEST form instead of an existing RMA
+    provided directly from the SXM GPU TEST form instead of an existing RMA
     logs directory.
     """
     import uuid
