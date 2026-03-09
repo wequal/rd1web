@@ -20,7 +20,6 @@ AI_SUMMARY_REQUEST_TIMEOUT_SEC = 120.0
 # Tuned for --max-model-len 98304 (~4 chars/token: reserve headroom for prompts + response)
 AI_SUMMARY_MAX_CONTEXT_CHARS = 360000   # ~90k tokens context budget
 AI_SUMMARY_MAX_READ_CHARS = 18000       # max chars returned per file (context budget / 20)
-AI_SUMMARY_MAX_TOOL_ITERATIONS = 18
 AI_SUMMARY_MAX_RETRIES = 3
 AI_SUMMARY_RETRY_BACKOFF_BASE_SEC = 1.0
 AI_SUMMARY_ERROR_REGEX = re.compile(r"error|fail|fatal|exception|traceback", re.IGNORECASE)
@@ -340,8 +339,52 @@ def generate_ai_summary_markdown(folder_path: str) -> str:
             timeout=AI_SUMMARY_REQUEST_TIMEOUT_SEC,
         )
 
+    def _total_stage1_chars() -> int:
+        return sum(len(str(m.get("content") or "")) for m in stage1_messages)
+
+    def _compact_stage1_tool_messages(target_chars: int) -> bool:
+        """
+        Compact oldest tool outputs first to keep Stage 1 context manageable.
+        Returns True when total context is <= target_chars.
+        """
+        total_chars = _total_stage1_chars()
+        if total_chars <= target_chars:
+            return True
+
+        # Keep the most recent tool outputs detailed; compact older ones first.
+        tool_indexes = [i for i, m in enumerate(stage1_messages) if m.get("role") == "tool"]
+        if not tool_indexes:
+            return total_chars <= target_chars
+
+        protected_recent_tools = 3
+        compact_indexes = tool_indexes[:-protected_recent_tools] if len(tool_indexes) > protected_recent_tools else tool_indexes
+
+        for idx in compact_indexes:
+            if total_chars <= target_chars:
+                break
+            msg = stage1_messages[idx]
+            content = str(msg.get("content") or "")
+            if not content:
+                continue
+
+            tool_name = msg.get("name") or "tool"
+            line_count = len([ln for ln in content.splitlines() if ln.strip()])
+            head = content[:300].strip()
+            compacted = (
+                f"[compacted:{tool_name}] lines={line_count}. "
+                "Original output shortened to control context growth.\n"
+                f"{head}"
+            ).strip()
+            if len(compacted) >= len(content):
+                continue
+
+            msg["content"] = compacted
+            total_chars -= (len(content) - len(compacted))
+
+        return total_chars <= target_chars
+
     stage1_findings = "No findings extracted."
-    for turn in range(1, AI_SUMMARY_MAX_TOOL_ITERATIONS + 1):
+    while True:
         last_exc = None
         for attempt in range(1, AI_SUMMARY_MAX_RETRIES + 1):
             try:
@@ -400,8 +443,16 @@ def generate_ai_summary_markdown(folder_path: str) -> str:
                 "name": name,
                 "content": content,
             })
-    else:
-        stage1_findings = "Max iterations reached; partial or no findings."
+            if _total_stage1_chars() > AI_SUMMARY_MAX_CONTEXT_CHARS:
+                compact_ok = _compact_stage1_tool_messages(int(AI_SUMMARY_MAX_CONTEXT_CHARS * 0.8))
+                if not compact_ok:
+                    stage1_findings = (
+                        "Stage 1 context budget reached; returning partial findings "
+                        "after compacting older tool outputs."
+                    )
+                    break
+        if stage1_findings.startswith("Stage 1 context budget reached;"):
+            break
 
     # ─── Stage 2: Report via write_report tool (avoids vLLM returning empty message.content) ───
     stage2_messages = [
