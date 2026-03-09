@@ -131,18 +131,10 @@
                         aiSummaryPollInterval = null;
                     }
 
-                    if (status === 'completed' && options) {
-                        const redirectUrl = options.redirectUrlOnSuccess;
-                        const reloadOnSuccess = options.reloadOnSuccess;
-                        if (redirectUrl) {
-                            setTimeout(() => {
-                                window.location.href = redirectUrl;
-                            }, 2000);
-                        } else if (reloadOnSuccess) {
-                            setTimeout(() => {
-                                window.location.reload();
-                            }, 2000);
-                        }
+                    if (status === 'completed') {
+                        setTimeout(function () {
+                            window.location.reload();
+                        }, 2000);
                     }
                 }
             })

@@ -304,22 +304,20 @@ def main():
     print("🛑 Press Ctrl+C to stop all workers")
     print()
     
-    # Monitor worker processes
+    # Monitor worker processes (warn once per dead worker to avoid spam)
+    warned_dead = set()
     try:
         while True:
             time.sleep(5)
-            
-            # Check if any workers have died
             dead_workers = []
             for i, process in enumerate(worker_processes):
                 if process.poll() is not None:
                     dead_workers.append(i)
-            
-            if dead_workers:
-                print(f"⚠ Warning: Worker(s) {[i+1 for i in dead_workers]} have stopped")
-                # Optionally restart dead workers here
-                
-            # If all workers are dead, exit
+            newly_dead = [i for i in dead_workers if i not in warned_dead]
+            if newly_dead:
+                warned_dead.update(newly_dead)
+                labels = [f"Daphne {i+1}" if i < workers else ("Celery" if worker_processes[i] == celery_worker_process else "Celery Beat") for i in newly_dead]
+                print(f"⚠ Warning: Worker(s) {labels} have stopped (port in use or crash; check logs)")
             if len(dead_workers) == len(worker_processes):
                 print("❌ All workers have stopped")
                 break

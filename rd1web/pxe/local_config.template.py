@@ -81,6 +81,15 @@ RMA_DHCP_LEASES_API = {
 }
 
 # ============================================================================
+# AI SUMMARY API
+# ============================================================================
+# Set B31 = True at deploy locations that cannot reach 172.31.57.161; then the
+# app uses AI_PROXY as the vLLM base URL (proxy forwards to 172.31.57.161:8000).
+# When B31 is False or not set, the app calls http://172.31.57.161:8000/v1 directly.
+B31 = False  # Set True to use proxy (AI_PROXY) instead of direct API
+AI_PROXY = "192.168.100.225:8001"  # Proxy host:port when B31 is True
+
+# ============================================================================
 # NETWORK SCANNING CONFIGURATION
 # ============================================================================
 # Configuration for network scanning in different locations

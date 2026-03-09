@@ -25,6 +25,16 @@ AI_SUMMARY_MAX_RETRIES = 3
 AI_SUMMARY_RETRY_BACKOFF_BASE_SEC = 1.0
 AI_SUMMARY_ERROR_REGEX = re.compile(r"error|fail|fatal|exception|traceback", re.IGNORECASE)
 
+# Override base URL when B31 is True: use AI_PROXY (proxy forwards to 172.31.57.161:8000)
+try:
+    from .local_config import B31, AI_PROXY
+    if B31 and AI_PROXY and isinstance(AI_PROXY, str):
+        raw = AI_PROXY.strip().lstrip("http://").lstrip("https://").rstrip("/")
+        if raw:
+            AI_SUMMARY_VLLM_BASE_URL = "http://" + raw + "/v1"
+except (ImportError, AttributeError):
+    pass
+
 AI_SUMMARY_TOOLS = [
     {
         "type": "function",
