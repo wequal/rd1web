@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 {% load static %}
-{% block title %}RMA GPU TEST{% endblock %}
+{% block title %}SXM GPU TEST{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <!-- Page Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="h3 mb-0 text-gray-800">RMA GPU TEST</h1>
+            <h1 class="h3 mb-0 text-gray-800">SXM GPU TEST</h1>
             <p class="mb-0 text-muted">Configure PXE boot settings for RMA systems</p>
         </div>
         <div class="d-flex gap-2">
@@ -25,7 +25,7 @@
                     <div class="form-check form-check-inline">
                         <input class="form-check-input operation-type-radio" type="radio" name="operationType" id="rmaTest" value="rma" {% if operation_type != 'pcie' and operation_type != 'gb' %}checked{% endif %}>
                         <label class="form-check-label" for="rmaTest">
-                            RMA GPU TEST
+                            SXM GPU TEST
                         </label>
                     </div>
                     <div class="form-check form-check-inline">
@@ -48,11 +48,11 @@
     <!-- Main Form Card -->
     <div class="row">
         <div class="col-lg-8">
-            <!-- RMA GPU TEST Form Card -->
+            <!-- SXM GPU TEST Form Card -->
             <div class="card shadow mb-4" id="rmaFormCard" style="display: {% if operation_type != 'pcie' and operation_type != 'gb' %}block{% else %}none{% endif %};">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                     <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas me-2"></i>RMA GPU TEST Configuration
+                        <i class="fas me-2"></i>SXM GPU TEST Configuration
                     </h6>
                 </div>
                 <div class="card-body">
@@ -843,7 +843,7 @@
                                         </div>
                                     </div>
                                     <div>
-                                        {% if perms.pxe.can_view_golden_test_setting %}
+                                        {% if perms.pxe.can_access_rma_pxe %}
                                             <button class="btn btn-sm btn-outline-secondary setting-golden-btn me-1" 
                                                     data-entry-id="{{ entry.id }}"
                                                     data-golden="{{ entry.golden_number }}"
@@ -887,7 +887,7 @@
             <div class="card shadow">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-success">
-                        <i class="fas fa-check-circle me-2"></i>RMA PXE Results
+                        <i class="fas fa-check-circle me-2"></i>SXM PXE Results
                     </h6>
                 </div>
                 <div class="card-body">
@@ -951,7 +951,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="helpModalLabel">
-                    <i class="fas fa-question-circle me-2"></i>RMA GPU TEST Help
+                    <i class="fas fa-question-circle me-2"></i>SXM GPU TEST Help
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>

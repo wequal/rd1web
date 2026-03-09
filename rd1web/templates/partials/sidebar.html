@@ -42,15 +42,26 @@
             {% if request.user.is_authenticated %}
             <div class="sb-sidenav-menu-heading">RMA Management</div>
             
-            {% if perms.pxe.can_view_rma_logs %}
-            <a class="nav-link" href="{% url 'rma_log' %}">
+            {% if request.resolver_match and request.resolver_match.url_name == 'rma_log' or request.resolver_match and request.resolver_match.url_name == 'rma_gb_log' or request.resolver_match and request.resolver_match.url_name == 'rma_log_browse' or request.resolver_match and request.resolver_match.url_name == 'rma_gb_log_browse' %}
+            <a class="nav-link rma-logs-nav-toggle" href="#" data-bs-toggle="collapse" data-bs-target="#collapseRmaLogs" aria-expanded="true" aria-controls="collapseRmaLogs">
                 RMA Logs
+                <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
             </a>
+            <div class="collapse show" id="collapseRmaLogs" aria-labelledby="headingRmaLogs" data-bs-parent="#sidenavAccordion">
+            {% else %}
+            <a class="nav-link collapsed rma-logs-nav-toggle" href="#" data-bs-toggle="collapse" data-bs-target="#collapseRmaLogs" aria-expanded="false" aria-controls="collapseRmaLogs">
+                RMA Logs
+                <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+            </a>
+            <div class="collapse" id="collapseRmaLogs" aria-labelledby="headingRmaLogs" data-bs-parent="#sidenavAccordion">
             {% endif %}
-
-            <a class="nav-link" href="{% url 'rma_gb_log' %}">
-                RMA GB Logs
-            </a>
+                <nav class="sb-sidenav-menu-nested nav">
+                    {% if perms.pxe.can_view_rma_logs %}
+                    <a class="nav-link" href="{% url 'rma_log' %}">Logs</a>
+                    {% endif %}
+                    <a class="nav-link" href="{% url 'rma_gb_log' %}">GB Logs</a>
+                </nav>
+            </div>
 
             {% if False and perms.pxe.can_view_rma_general_logs %}
             <a class="nav-link" href="{% url 'rma_general_log' %}">
