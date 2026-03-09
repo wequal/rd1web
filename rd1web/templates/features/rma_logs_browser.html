@@ -16,9 +16,11 @@
                     <i class="fas fa-file-archive me-1"></i>MI3XX ALL LOG
                 </button>
             {% endif %}
-            <a href="{% url overview_url_name %}" class="btn btn-outline-info">
-                <i class="fas fa-list me-1"></i>RMA Overview
-            </a>
+            {% if show_ai_summary_button %}
+                <button id="aiSummaryBtn" class="btn btn-outline-info" data-path="{{ current_path }}">
+                    <i class="fas fa-robot me-1"></i>AI Summary
+                </button>
+            {% endif %}
             {% if parent %}
                 <a href="{% url browse_url_name path=parent %}" class="btn btn-outline-primary">
                     <i class="fas fa-arrow-up me-2"></i>Back to Parent
@@ -232,9 +234,12 @@
             </div>
         </div>
     </div>
+</div>
 {% include "partials/mi3xx_alllog_modal.html" %}
+{% include "partials/ai_summary_modal.html" %}
 
 <script src="{% static 'js/mi3xx_alllog.js' %}"></script>
+<script src="{% static 'js/ai_summary.js' %}?v=3"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -404,6 +409,48 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Caught error while starting MI3XX ALL LOG collection:', err);
                 alert('Unexpected error starting MI3XX ALL LOG collection.');
             }
+        });
+    }
+
+    // Handle AI Summary button click with async polling
+    const aiSummaryButton = document.getElementById('aiSummaryBtn');
+    if (aiSummaryButton && window.AiSummary) {
+        aiSummaryButton.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const path = this.getAttribute('data-path');
+            const normalizedPath = path && path !== '/' ? `${path.replace(/^\/+/, '')}/` : '';
+            const collectUrl = `{{ ai_summary_base_path }}${normalizedPath}`;
+
+            fetch(collectUrl, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': window.AiSummary.getCsrfToken(),
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success && data.task_id) {
+                        window.AiSummary.startTask(data.task_id, {
+                            title: 'Generating AI Summary',
+                            message: 'Analyzing current folder logs and creating markdown report...',
+                            statusUrlBase: "{{ ai_summary_status_base_path }}"
+                        });
+                    } else {
+                        alert(data.error || 'Failed to start AI Summary generation.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error starting AI Summary generation:', error);
+                    alert('Error starting AI Summary generation. Please try again.');
+                });
         });
     }
 });

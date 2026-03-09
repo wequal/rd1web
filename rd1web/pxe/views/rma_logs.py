@@ -5,6 +5,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.template import Template, Context
 from django.core.cache import cache
 from django.views.decorators.http import require_POST
+from django.urls import reverse
 from urllib.parse import unquote
 from datetime import datetime
 import mimetypes
@@ -16,6 +17,7 @@ import io
 import threading
 import asyncio
 import time
+import json
 from asgiref.sync import sync_to_async
 from ..remote_config import remote_dict
 from ..utils import render_markdown_as_html
@@ -41,6 +43,12 @@ try:
         from ..local_config import remote_download
     except ImportError:
         remote_download = None
+
+    # Optional feature flag
+    try:
+        from ..local_config import AI_log_analyzer
+    except ImportError:
+        AI_log_analyzer = False
         
     logger.info("RMA logs using configuration from local_config.py")
 except ImportError:
@@ -55,6 +63,9 @@ except ImportError:
     RMA_STATS_CACHE_TIMEOUT = 300  # 5 minutes cache for file stats
     ZIP_TASK_TIMEOUT = 3600  # 1 hour timeout for zip creation tasks
     remote_download = None
+    AI_log_analyzer = False
+
+from ..ai_summary import generate_ai_summary_markdown
 
 
 def _resolve_rma_context(base: str | None):
@@ -78,6 +89,87 @@ def _resolve_rma_context(base: str | None):
         'temp_zips_dir': TEMP_ZIPS_DIR,
         'cache_ns': 'rma',
     }
+
+
+def _generate_ai_summary_task(task_id: str, target_dir: str):
+    cache_key = f'ai_summary_task_{task_id}'
+    try:
+        cache.set(
+            cache_key,
+            {
+                'status': 'processing',
+                'progress': 15,
+                'message': 'Analyzing folder logs with AI...',
+                'report_path': None,
+                'error': None,
+            },
+            1800,
+        )
+
+        markdown_content = generate_ai_summary_markdown(target_dir)
+
+        cache.set(
+            cache_key,
+            {
+                'status': 'processing',
+                'progress': 85,
+                'message': 'Writing AI report file...',
+                'report_path': None,
+                'error': None,
+            },
+            1800,
+        )
+
+        # Capture parent dir mtime so we can restore it after writing (avoids skewing
+        # RMA statistics and directory listing when AI summary runs).
+        orig_atime = orig_mtime = None
+        try:
+            orig_stat = os.stat(target_dir)
+            orig_atime, orig_mtime = orig_stat.st_atime, orig_stat.st_mtime
+        except OSError:
+            pass
+
+        try:
+            report_dir = os.path.join(target_dir, "AI_Report")
+            os.makedirs(report_dir, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            report_filename = f"AI_Report_{timestamp}.md"
+            report_full_path = os.path.join(report_dir, report_filename)
+
+            with open(report_full_path, "w", encoding="utf-8") as out:
+                out.write(markdown_content)
+        finally:
+            if orig_mtime is not None:
+                try:
+                    os.utime(target_dir, (orig_atime, orig_mtime))
+                except OSError:
+                    pass
+
+        cache.set(
+            cache_key,
+            {
+                'status': 'completed',
+                'progress': 100,
+                'message': 'AI summary report generated successfully.',
+                'report_path': report_full_path,
+                'error': None,
+            },
+            1800,
+        )
+    except Exception as exc:
+        logger.exception("AI summary generation failed for %s: %s", target_dir, exc)
+        err_msg = str(exc)
+        cache.set(
+            cache_key,
+            {
+                'status': 'failed',
+                'progress': 0,
+                'message': f'Failed to generate AI summary: {err_msg}',
+                'report_path': None,
+                'error': err_msg,
+            },
+            1800,
+        )
 
 class TimeoutError(Exception):
     """Custom timeout exception"""
@@ -1976,6 +2068,8 @@ def rma_log_browser(request, path="", base=None):
         download_folder_status_base_path = "/rma/gb-download-folder-status/"
         collect_mi3xx_alllog_base_path = "/rma/gb-collect-mi3xx-alllog"
         collect_mi3xx_alllog_status_base_path = "/rma/gb-collect-mi3xx-alllog-status/"
+        ai_summary_base_path = "/rma/gb-generate-ai-summary/"
+        ai_summary_status_base_path = "/rma/gb-generate-ai-summary-status/"
     else:
         overview_url_name = "rma_log"
         browse_url_name = "rma_log_browse"
@@ -1986,6 +2080,16 @@ def rma_log_browser(request, path="", base=None):
         download_folder_status_base_path = "/rma/download-folder-status/"
         collect_mi3xx_alllog_base_path = "/rma/collect-mi3xx-alllog"
         collect_mi3xx_alllog_status_base_path = "/rma/collect-mi3xx-alllog-status/"
+        ai_summary_base_path = "/rma/generate-ai-summary/"
+        ai_summary_status_base_path = "/rma/generate-ai-summary-status/"
+
+    # AI Summary: show button and redirect URL only in parent folder (one path segment)
+    show_ai_summary_button = bool(AI_log_analyzer) and (len(path_parts) == 1)
+    if len(path_parts) == 1:
+        ai_summary_report_path = (decoded_path.strip("/") + "/AI_Report").replace("//", "/")
+        ai_summary_redirect_url = reverse(browse_url_name, kwargs={"path": ai_summary_report_path})
+    else:
+        ai_summary_redirect_url = ""
 
     return render(request, "features/rma_logs_browser.html", {
         "items": items,
@@ -2010,6 +2114,10 @@ def rma_log_browser(request, path="", base=None):
         "download_folder_status_base_path": download_folder_status_base_path,
         "collect_mi3xx_alllog_base_path": collect_mi3xx_alllog_base_path,
         "collect_mi3xx_alllog_status_base_path": collect_mi3xx_alllog_status_base_path,
+        "show_ai_summary_button": show_ai_summary_button,
+        "ai_summary_base_path": ai_summary_base_path,
+        "ai_summary_status_base_path": ai_summary_status_base_path,
+        "ai_summary_redirect_url": ai_summary_redirect_url,
     })
 
 def render_csv_as_html(file_content, filename):
@@ -3194,6 +3302,90 @@ def rma_collect_mi3xx_alllog_status(request, task_id, base=None):
     except Exception as e:
         logger.error(f"Error checking task status {task_id}: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@login_required
+def rma_generate_ai_summary(request, path="", base=None):
+    """
+    Start async AI summary generation for the current folder.
+    """
+    import uuid
+
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+    if not AI_log_analyzer:
+        return JsonResponse({'success': False, 'error': 'AI Summary feature is disabled.'}, status=403)
+
+    decoded_path = unquote(path or "").strip("/")
+    ctx = _resolve_rma_context(base)
+    base_dir = ctx["base_dir"]
+    target_dir = os.path.normpath(os.path.join(base_dir, decoded_path))
+    full_log_path = target_dir
+
+    if not full_log_path.startswith(base_dir):
+        raise Http404("Access denied")
+
+    if not os.path.exists(full_log_path) or not os.path.isdir(full_log_path):
+        raise Http404("Directory does not exist")
+
+    try:
+        task_id = str(uuid.uuid4())
+        cache.set(
+            f'ai_summary_task_{task_id}',
+            {
+                'status': 'initializing',
+                'progress': 0,
+                'message': 'Preparing AI summary generation...',
+                'report_path': None,
+                'error': None,
+            },
+            1800,
+        )
+
+        thread = threading.Thread(
+            target=_generate_ai_summary_task,
+            args=(task_id, full_log_path),
+            daemon=True,
+        )
+        thread.start()
+
+        return JsonResponse(
+            {
+                'success': True,
+                'task_id': task_id,
+                'message': 'AI summary generation started.',
+            }
+        )
+    except Exception as exc:
+        logger.error(f"Error starting AI summary generation for {full_log_path}: {exc}")
+        return JsonResponse({'success': False, 'error': str(exc)}, status=500)
+
+@login_required
+def rma_generate_ai_summary_status(request, task_id, base=None):
+    """
+    Check status of AI summary generation task.
+    """
+    try:
+        task_data = cache.get(f'ai_summary_task_{task_id}')
+        if not task_data:
+            return JsonResponse({'success': False, 'error': 'Task not found'}, status=404)
+
+        status = task_data.get('status')
+        error = task_data.get('error')
+
+        return JsonResponse(
+            {
+                'success': True,
+                'status': status,
+                'progress': task_data.get('progress', 0),
+                'message': task_data.get('message', ''),
+                'report_path': task_data.get('report_path'),
+                'error': error,
+            }
+        )
+    except Exception as exc:
+        logger.error("Error checking AI summary task status %s: %s", task_id, exc)
+        return JsonResponse({'success': False, 'error': str(exc)}, status=500)
 
 @login_required
 def rma_download_zip(request, zip_filename, base=None):
