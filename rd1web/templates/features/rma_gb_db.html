@@ -215,7 +215,7 @@
                             <button type="button" class="action-btn btn-edit" onclick="editEntry({{ entry.id }})" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            {% if perms.pxe.can_delete_rma_gb_db %}
+                            {% if can_delete %}
                             <button type="button" class="action-btn btn-delete" onclick="confirmDelete({{ entry.id }}, '{{ entry.bmc_mac }}', '{{ entry.bmc_ip }}')" title="Delete">
                                 <i class="fas fa-trash"></i>
                             </button>
