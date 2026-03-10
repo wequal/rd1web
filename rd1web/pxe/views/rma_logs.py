@@ -6,7 +6,7 @@ from django.template import Template, Context
 from django.core.cache import cache
 from django.views.decorators.http import require_POST
 from django.urls import reverse
-from urllib.parse import unquote
+from urllib.parse import quote, unquote
 from datetime import datetime
 import mimetypes
 import csv
@@ -91,7 +91,7 @@ def _resolve_rma_context(base: str | None):
     }
 
 
-def _generate_ai_summary_task(task_id: str, target_dir: str):
+def _generate_ai_summary_task(task_id: str, target_dir: str, analysis_url: str | None = None):
     cache_key = f'ai_summary_task_{task_id}'
     try:
         cache.set(
@@ -106,7 +106,7 @@ def _generate_ai_summary_task(task_id: str, target_dir: str):
             1800,
         )
 
-        markdown_content = generate_ai_summary_markdown(target_dir)
+        markdown_content = generate_ai_summary_markdown(target_dir, analysis_url=analysis_url)
 
         cache.set(
             cache_key,
@@ -3318,6 +3318,12 @@ def rma_generate_ai_summary(request, path="", base=None):
 
     decoded_path = unquote(path or "").strip("/")
     ctx = _resolve_rma_context(base)
+    log_base_path = "rma/gb-logs" if ctx["base"] == "gb" else "rma/logs"
+    quoted_path = quote(decoded_path, safe="/")
+    if quoted_path:
+        analysis_url = f"{request.scheme}://{request.get_host()}/{log_base_path}/{quoted_path}/"
+    else:
+        analysis_url = f"{request.scheme}://{request.get_host()}/{log_base_path}/"
     base_dir = ctx["base_dir"]
     target_dir = os.path.normpath(os.path.join(base_dir, decoded_path))
     full_log_path = target_dir
@@ -3344,7 +3350,7 @@ def rma_generate_ai_summary(request, path="", base=None):
 
         thread = threading.Thread(
             target=_generate_ai_summary_task,
-            args=(task_id, full_log_path),
+            args=(task_id, full_log_path, analysis_url),
             daemon=True,
         )
         thread.start()

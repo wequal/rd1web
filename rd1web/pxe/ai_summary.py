@@ -294,10 +294,12 @@ FORMATTING RULES
 """
 
 
-def generate_ai_summary_markdown(folder_path: str) -> str:
+def generate_ai_summary_markdown(folder_path: str, analysis_url: str | None = None) -> str:
     """
-    Build local findings from folder logs, then send a single OpenClaw
-    chat-completions request for final markdown report generation.
+    Send OpenClaw a single chat-completions request for markdown report generation.
+    When analysis_url is provided, only the URL and instructions are sent; OpenClaw
+    fetches and analyzes the log. When not provided (e.g. manual run), local findings
+    are gathered and sent in the request.
     Returns markdown string for the report.
     """
     allowed_base = os.path.abspath(folder_path)
@@ -314,54 +316,60 @@ def generate_ai_summary_markdown(folder_path: str) -> str:
     raw_host = host.lstrip("http://").lstrip("https://").rstrip("/")
     endpoint = f"http://{raw_host}/v1/chat/completions"
 
-    rel_files = _list_files_in_folder(allowed_base, recursive=True)
-    findings_lines = [
-        f"Target folder: {allowed_base}",
-        f"Files discovered: {len(rel_files)}",
-    ]
-    if rel_files:
+    if analysis_url:
+        user_content = (
+            f"Analyze the log, use rd1-pxe-auth skill for access. {analysis_url}\n\n"
+            "Write a final markdown report for datacenter GPU/server reliability review."
+        )
+        fallback_text = "Report could not be generated from URL."
+    else:
+        rel_files = _list_files_in_folder(allowed_base, recursive=True)
+        findings_lines = [
+            f"Target folder: {allowed_base}",
+            f"Files discovered: {len(rel_files)}",
+        ]
+        if rel_files:
+            findings_lines.append("")
+            findings_lines.append("Discovered files (relative paths):")
+            findings_lines.extend(f"- {rel}" for rel in rel_files)
+
+        gpu_model = _read_gpu_model_from_sys_info(allowed_base)
+        if gpu_model:
+            findings_lines.append("")
+            findings_lines.append(f"GPU model (from sys_info.txt first line): {gpu_model}")
+
+        test_status_str = _parse_test_status_most_recent(allowed_base)
+        if test_status_str:
+            findings_lines.append("")
+            findings_lines.append(f"Test status (most recent run): {test_status_str}")
+
         findings_lines.append("")
-        findings_lines.append("Discovered files (relative paths):")
-        findings_lines.extend(f"- {rel}" for rel in rel_files)
+        findings_lines.append("Important log findings by file:")
+        collected_chars = 0
+        for rel in rel_files:
+            result = str(_tool_read_file(allowed_base, rel))
+            if result.startswith("No critical errors found in "):
+                continue
+            section = f"\n### {rel}\n{result}\n"
+            if collected_chars + len(section) > AI_SUMMARY_MAX_CONTEXT_CHARS:
+                findings_lines.append("\n... [findings truncated for context budget]")
+                break
+            findings_lines.append(section)
+            collected_chars += len(section)
 
-    gpu_model = _read_gpu_model_from_sys_info(allowed_base)
-    if gpu_model:
-        findings_lines.append("")
-        findings_lines.append(f"GPU model (from sys_info.txt first line): {gpu_model}")
-
-    test_status_str = _parse_test_status_most_recent(allowed_base)
-    if test_status_str:
-        findings_lines.append("")
-        findings_lines.append(f"Test status (most recent run): {test_status_str}")
-
-    findings_lines.append("")
-    findings_lines.append("Important log findings by file:")
-    collected_chars = 0
-    for rel in rel_files:
-        result = str(_tool_read_file(allowed_base, rel))
-        if result.startswith("No critical errors found in "):
-            continue
-        section = f"\n### {rel}\n{result}\n"
-        if collected_chars + len(section) > AI_SUMMARY_MAX_CONTEXT_CHARS:
-            findings_lines.append("\n... [findings truncated for context budget]")
-            break
-        findings_lines.append(section)
-        collected_chars += len(section)
-
-    findings_text = "\n".join(findings_lines).strip() or "No findings extracted."
+        findings_text = "\n".join(findings_lines).strip() or "No findings extracted."
+        user_content = (
+            "Analyze the provided folder findings and write a final markdown report "
+            "for datacenter GPU/server reliability review.\n\n"
+            f"{findings_text}"
+        )
+        fallback_text = "# AI Summary\n\n---\n\n" + findings_text
 
     request_payload = {
         "model": AI_SUMMARY_OPENCLAW_MODEL,
         "messages": [
             {"role": "system", "content": AI_SUMMARY_STAGE2_SYSTEM_PROMPT.strip()},
-            {
-                "role": "user",
-                "content": (
-                    "Analyze the provided folder findings and write a final markdown report "
-                    "for datacenter GPU/server reliability review.\n\n"
-                    f"{findings_text}"
-                ),
-            },
+            {"role": "user", "content": user_content},
         ],
     }
 
@@ -418,4 +426,4 @@ def generate_ai_summary_markdown(folder_path: str) -> str:
 
     if last_exc is not None:
         raise last_exc
-    return "# AI Summary\n\n---\n\n" + findings_text
+    return fallback_text
