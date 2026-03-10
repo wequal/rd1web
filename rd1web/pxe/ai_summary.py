@@ -1,6 +1,6 @@
 """
-AI summary generation for RMA/GB log folders: OpenAI-compatible API calls
-(two-stage: discovery with tools, then report). Used by rma_logs views.
+AI summary generation for RMA/GB log folders via OpenClaw agent call.
+Used by rma_logs views.
 """
 import json
 import os
@@ -8,30 +8,41 @@ import random
 import re
 import time
 from collections import deque
+from urllib import error as urllib_error
+from urllib import request as urllib_request
 
 # Config (can be overridden from local_config later)
-AI_SUMMARY_VLLM_BASE_URL = "http://172.31.57.161:8000/v1"
-AI_SUMMARY_VLLM_API_KEY = "token"
-AI_SUMMARY_MODEL_NAME = "Qwen3.5-35B"
+AI_SUMMARY_OPENCLAW_HOST = ""
+AI_SUMMARY_OPENCLAW_TOKEN = ""
+AI_SUMMARY_OPENCLAW_MODEL = "openclaw"
+AI_SUMMARY_OPENCLAW_AGENT_ID = "main"
 AI_SUMMARY_MAX_FILE_SIZE_MB = 200
 AI_SUMMARY_MAX_ERROR_LINES = 200
 AI_SUMMARY_MAX_FILES_TO_LIST = 400
 AI_SUMMARY_REQUEST_TIMEOUT_SEC = 120.0
-# Tuned for --max-model-len 98304 (~4 chars/token: reserve headroom for prompts + response)
 AI_SUMMARY_MAX_CONTEXT_CHARS = 360000   # ~90k tokens context budget
 AI_SUMMARY_MAX_READ_CHARS = 18000       # max chars returned per file (context budget / 20)
 AI_SUMMARY_MAX_RETRIES = 3
 AI_SUMMARY_RETRY_BACKOFF_BASE_SEC = 1.0
 AI_SUMMARY_ERROR_REGEX = re.compile(r"error|fail|fatal|exception|traceback", re.IGNORECASE)
 
-# Override base URL when B31 is True: use AI_PROXY (proxy forwards to 172.31.57.161:8000)
+# Override from local_config.py
+# If B31 is True and AI_PROXY is set, use proxy; otherwise use openclaw.
 try:
-    from .local_config import B31, AI_PROXY
-    if B31 and AI_PROXY and isinstance(AI_PROXY, str):
-        raw = AI_PROXY.strip().lstrip("http://").lstrip("https://").rstrip("/")
+    from . import local_config as _local_config
+    local_host = getattr(_local_config, "openclaw", "")
+    local_token = getattr(_local_config, "openclaw_token", "")
+    if isinstance(local_host, str):
+        AI_SUMMARY_OPENCLAW_HOST = local_host.strip()
+    if isinstance(local_token, str):
+        AI_SUMMARY_OPENCLAW_TOKEN = local_token.strip()
+    b31 = getattr(_local_config, "B31", False)
+    ai_proxy = getattr(_local_config, "AI_PROXY", None)
+    if b31 and ai_proxy and isinstance(ai_proxy, str):
+        raw = ai_proxy.strip().lstrip("http://").lstrip("https://").rstrip("/")
         if raw:
-            AI_SUMMARY_VLLM_BASE_URL = "http://" + raw + "/v1"
-except (ImportError, AttributeError):
+            AI_SUMMARY_OPENCLAW_HOST = raw
+except ImportError:
     pass
 
 AI_SUMMARY_TOOLS = [
@@ -285,237 +296,126 @@ FORMATTING RULES
 
 def generate_ai_summary_markdown(folder_path: str) -> str:
     """
-    Run two-stage AI summary: Stage 1 discovery (tool loop), Stage 2 report.
+    Build local findings from folder logs, then send a single OpenClaw
+    chat-completions request for final markdown report generation.
     Returns markdown string for the report.
     """
-    from openai import OpenAI
-
     allowed_base = os.path.abspath(folder_path)
-    client = OpenAI(
-        base_url=AI_SUMMARY_VLLM_BASE_URL,
-        api_key=AI_SUMMARY_VLLM_API_KEY,
-        max_retries=0,
-    )
+    if not os.path.isdir(allowed_base):
+        raise ValueError(f"AI summary target directory not found: {allowed_base}")
 
-    def parse_tool_args(raw: str):
-        if not raw:
-            return {}
-        try:
-            p = json.loads(raw)
-            return p if isinstance(p, dict) else {}
-        except json.JSONDecodeError:
-            return {}
+    host = AI_SUMMARY_OPENCLAW_HOST.strip()
+    token = AI_SUMMARY_OPENCLAW_TOKEN.strip()
+    if not host:
+        raise ValueError("Missing OpenClaw host. Set `openclaw` in local_config.py.")
+    if not token:
+        raise ValueError("Missing OpenClaw token. Set `openclaw_token` in local_config.py.")
 
-    # ─── Stage 1: Discovery (tool loop, raw findings only) ───
-    stage1_user_content = f"Scan folder {folder_path} and output your raw findings and notes. Do not write the final report yet."
+    raw_host = host.lstrip("http://").lstrip("https://").rstrip("/")
+    endpoint = f"http://{raw_host}/v1/chat/completions"
+
+    rel_files = _list_files_in_folder(allowed_base, recursive=True)
+    findings_lines = [
+        f"Target folder: {allowed_base}",
+        f"Files discovered: {len(rel_files)}",
+    ]
+    if rel_files:
+        findings_lines.append("")
+        findings_lines.append("Discovered files (relative paths):")
+        findings_lines.extend(f"- {rel}" for rel in rel_files)
+
     gpu_model = _read_gpu_model_from_sys_info(allowed_base)
     if gpu_model:
-        stage1_user_content += f"\n\nGPU model (from sys_info.txt first line): {gpu_model}"
+        findings_lines.append("")
+        findings_lines.append(f"GPU model (from sys_info.txt first line): {gpu_model}")
+
     test_status_str = _parse_test_status_most_recent(allowed_base)
     if test_status_str:
-        stage1_user_content += f"\n\nTest status (most recent run): {test_status_str}"
+        findings_lines.append("")
+        findings_lines.append(f"Test status (most recent run): {test_status_str}")
 
-    stage1_messages = [
-        {
-            "role": "system",
-            "content": (
-                "You are a senior datacenter GPU and server reliability engineer. "
-                "Explore the given folder and output raw findings only: list files you read, key errors, "
-                "test results, MI3XX ADDC/OAM notes and any failed GPU or OAM serial numbers (SN) you find in logs if applicable, "
-                "and any other relevant facts. Output structured notes; do not write the final report."
-            ),
-        },
-        {
-            "role": "user",
-            "content": stage1_user_content,
-        },
-    ]
-
-    def stage1_call():
-        return client.chat.completions.create(
-            model=AI_SUMMARY_MODEL_NAME,
-            messages=stage1_messages,
-            tools=AI_SUMMARY_TOOLS,
-            tool_choice="auto",
-            max_tokens=2048,
-            temperature=0.0,
-            top_p=1.0,
-            seed=2026,
-            timeout=AI_SUMMARY_REQUEST_TIMEOUT_SEC,
-        )
-
-    def _total_stage1_chars() -> int:
-        return sum(len(str(m.get("content") or "")) for m in stage1_messages)
-
-    def _compact_stage1_tool_messages(target_chars: int) -> bool:
-        """
-        Compact oldest tool outputs first to keep Stage 1 context manageable.
-        Returns True when total context is <= target_chars.
-        """
-        total_chars = _total_stage1_chars()
-        if total_chars <= target_chars:
-            return True
-
-        # Keep the most recent tool outputs detailed; compact older ones first.
-        tool_indexes = [i for i, m in enumerate(stage1_messages) if m.get("role") == "tool"]
-        if not tool_indexes:
-            return total_chars <= target_chars
-
-        protected_recent_tools = 3
-        compact_indexes = tool_indexes[:-protected_recent_tools] if len(tool_indexes) > protected_recent_tools else tool_indexes
-
-        for idx in compact_indexes:
-            if total_chars <= target_chars:
-                break
-            msg = stage1_messages[idx]
-            content = str(msg.get("content") or "")
-            if not content:
-                continue
-
-            tool_name = msg.get("name") or "tool"
-            line_count = len([ln for ln in content.splitlines() if ln.strip()])
-            head = content[:300].strip()
-            compacted = (
-                f"[compacted:{tool_name}] lines={line_count}. "
-                "Original output shortened to control context growth.\n"
-                f"{head}"
-            ).strip()
-            if len(compacted) >= len(content):
-                continue
-
-            msg["content"] = compacted
-            total_chars -= (len(content) - len(compacted))
-
-        return total_chars <= target_chars
-
-    stage1_findings = "No findings extracted."
-    while True:
-        last_exc = None
-        for attempt in range(1, AI_SUMMARY_MAX_RETRIES + 1):
-            try:
-                response = stage1_call()
-                last_exc = None
-                break
-            except Exception as api_exc:
-                last_exc = api_exc
-                if attempt == AI_SUMMARY_MAX_RETRIES:
-                    raise
-                jitter = random.uniform(0.0, 0.25)
-                wait_s = AI_SUMMARY_RETRY_BACKOFF_BASE_SEC * (2 ** (attempt - 1)) + jitter
-                time.sleep(wait_s)
-        if last_exc is not None:
-            raise last_exc
-
-        choice = response.choices[0] if response.choices else None
-        if not choice:
+    findings_lines.append("")
+    findings_lines.append("Important log findings by file:")
+    collected_chars = 0
+    for rel in rel_files:
+        result = str(_tool_read_file(allowed_base, rel))
+        if result.startswith("No critical errors found in "):
+            continue
+        section = f"\n### {rel}\n{result}\n"
+        if collected_chars + len(section) > AI_SUMMARY_MAX_CONTEXT_CHARS:
+            findings_lines.append("\n... [findings truncated for context budget]")
             break
-        msg = choice.message
-        stage1_messages.append(msg.model_dump(exclude_none=True))
+        findings_lines.append(section)
+        collected_chars += len(section)
 
-        tool_calls = getattr(msg, "tool_calls", None) or []
-        if not tool_calls:
-            content = getattr(msg, "content", None) or ""
-            stage1_findings = (content or "").strip() or "No findings extracted."
-            break
+    findings_text = "\n".join(findings_lines).strip() or "No findings extracted."
 
-        for tc in tool_calls:
-            name = getattr(tc, "function", None) and getattr(tc.function, "name", None) or ""
-            args_str = getattr(tc.function, "arguments", None) or "{}"
-            args = parse_tool_args(args_str)
-            tid = getattr(tc, "id", None) or ""
-            if name == "list_files_in_folder":
-                result = _tool_list_files(
-                    allowed_base,
-                    args.get("folder_path", ""),
-                    recursive=bool(args.get("recursive", False)),
-                )
-            elif name == "read_file_content":
-                result = _tool_read_file(allowed_base, args.get("file_path", ""))
-            else:
-                result = "Error: Requested tool not found."
-            if isinstance(result, list):
-                result = "\n".join(result) if result else "No files found in folder."
-            content = str(result)
-            # Smart trim: keep total Stage 1 context under limit
-            trunc_suffix = "\n[truncated for context limit]"
-            current_total = sum(len((m.get("content") or "")) for m in stage1_messages)
-            if current_total + len(content) > AI_SUMMARY_MAX_CONTEXT_CHARS:
-                max_content = max(0, AI_SUMMARY_MAX_CONTEXT_CHARS - current_total - len(trunc_suffix))
-                content = content[:max_content] + trunc_suffix
-            stage1_messages.append({
-                "role": "tool",
-                "tool_call_id": tid,
-                "name": name,
-                "content": content,
-            })
-            if _total_stage1_chars() > AI_SUMMARY_MAX_CONTEXT_CHARS:
-                compact_ok = _compact_stage1_tool_messages(int(AI_SUMMARY_MAX_CONTEXT_CHARS * 0.8))
-                if not compact_ok:
-                    stage1_findings = (
-                        "Stage 1 context budget reached; returning partial findings "
-                        "after compacting older tool outputs."
-                    )
-                    break
-        if stage1_findings.startswith("Stage 1 context budget reached;"):
-            break
-
-    # ─── Stage 2: Report via write_report tool (avoids vLLM returning empty message.content) ───
-    stage2_messages = [
-        {"role": "system", "content": AI_SUMMARY_STAGE2_SYSTEM_PROMPT.strip()},
-        {
-            "role": "user",
-            "content": f"Using the following findings, write the final markdown report. You must call the write_report tool once with the complete report in the markdown_report argument.\n\n---\n\n{stage1_findings}",
-        },
-    ]
+    request_payload = {
+        "model": AI_SUMMARY_OPENCLAW_MODEL,
+        "messages": [
+            {"role": "system", "content": AI_SUMMARY_STAGE2_SYSTEM_PROMPT.strip()},
+            {
+                "role": "user",
+                "content": (
+                    "Analyze the provided folder findings and write a final markdown report "
+                    "for datacenter GPU/server reliability review.\n\n"
+                    f"{findings_text}"
+                ),
+            },
+        ],
+    }
 
     last_exc = None
     for attempt in range(1, AI_SUMMARY_MAX_RETRIES + 1):
         try:
-            response = client.chat.completions.create(
-                model=AI_SUMMARY_MODEL_NAME,
-                messages=stage2_messages,
-                tools=AI_SUMMARY_STAGE2_TOOL,
-                tool_choice={"type": "function", "function": {"name": "write_report"}},
-                max_tokens=4096,
-                temperature=0.0,
-                top_p=1.0,
-                seed=2026,
-                timeout=AI_SUMMARY_REQUEST_TIMEOUT_SEC,
+            body = json.dumps(request_payload).encode("utf-8")
+            req = urllib_request.Request(
+                endpoint,
+                data=body,
+                method="POST",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                    "x-openclaw-agent-id": AI_SUMMARY_OPENCLAW_AGENT_ID,
+                },
             )
-            last_exc = None
+            with urllib_request.urlopen(req, timeout=AI_SUMMARY_REQUEST_TIMEOUT_SEC) as resp:
+                raw = resp.read().decode("utf-8", errors="ignore")
+            data = json.loads(raw) if raw else {}
+            content = (
+                data.get("choices", [{}])[0]
+                .get("message", {})
+                .get("content", "")
+            )
+            if isinstance(content, list):
+                content = "".join(
+                    part.get("text", "")
+                    for part in content
+                    if isinstance(part, dict)
+                )
+            content = (content or "").strip()
+            if content:
+                return content
             break
-        except Exception as api_exc:
-            last_exc = api_exc
-            if attempt == AI_SUMMARY_MAX_RETRIES:
-                raise
+        except urllib_error.HTTPError as exc:
+            detail = ""
+            try:
+                detail = exc.read().decode("utf-8", errors="ignore")[:500]
+            except Exception:
+                detail = str(exc)
+            last_exc = RuntimeError(
+                f"OpenClaw request failed ({exc.code}): {detail or exc.reason}"
+            )
+        except urllib_error.URLError as exc:
+            last_exc = RuntimeError(f"OpenClaw connection failed: {exc.reason}")
+        except Exception as exc:
+            last_exc = exc
+
+        if attempt < AI_SUMMARY_MAX_RETRIES:
             jitter = random.uniform(0.0, 0.25)
             wait_s = AI_SUMMARY_RETRY_BACKOFF_BASE_SEC * (2 ** (attempt - 1)) + jitter
             time.sleep(wait_s)
+
     if last_exc is not None:
         raise last_exc
-
-    content = ""
-    if response.choices:
-        msg = response.choices[0].message
-        tool_calls = getattr(msg, "tool_calls", None) or []
-        for tc in tool_calls:
-            name = getattr(tc, "function", None) and getattr(tc.function, "name", None) or ""
-            if name == "write_report":
-                args_str = getattr(tc.function, "arguments", None) or "{}"
-                args = parse_tool_args(args_str)
-                content = args.get("markdown_report") or ""
-                break
-        if not (content or "").strip():
-            content = getattr(msg, "content", None)
-            if content is None and hasattr(msg, "model_dump"):
-                try:
-                    d = msg.model_dump() or {}
-                    content = d.get("content") or d.get("reasoning_content")
-                except Exception:
-                    pass
-            if not (content or "").strip() and getattr(msg, "reasoning_content", None):
-                content = msg.reasoning_content
-    content = (content or "").strip()
-    if not content:
-        content = "# AI Summary\n\n---\n\n" + stage1_findings
-    return content
+    return "# AI Summary\n\n---\n\n" + findings_text

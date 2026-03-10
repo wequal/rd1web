@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Manual run script for AI Summary: uses the same two-stage flow as the Django app
-(Stage 1 discovery + Stage 2 report via write_report tool) and writes the
-report to the script's directory as AI_Report_<timestamp>.md.
+Manual run script for AI Summary: uses the same OpenClaw single-call flow as
+the Django app and writes the report to this script's directory as
+AI_Report_<timestamp>.md.
 
 Usage (from project root /home/devin/rd1web-dev):
   source venv/bin/activate
@@ -34,14 +34,17 @@ def main():
 
     from rd1web.pxe.ai_summary import (
         generate_ai_summary_markdown,
-        AI_SUMMARY_VLLM_BASE_URL,
-        AI_SUMMARY_MODEL_NAME,
+        AI_SUMMARY_OPENCLAW_HOST,
+        AI_SUMMARY_OPENCLAW_MODEL,
         AI_SUMMARY_REQUEST_TIMEOUT_SEC,
     )
 
     print(f"Folder: {folder}")
-    print(f"API:   {AI_SUMMARY_VLLM_BASE_URL}  model={AI_SUMMARY_MODEL_NAME}  timeout={AI_SUMMARY_REQUEST_TIMEOUT_SEC}s")
-    print("Running two-stage AI summary (Stage 1 discovery, Stage 2 write_report)...")
+    print(
+        f"OpenClaw: http://{AI_SUMMARY_OPENCLAW_HOST}/v1/chat/completions  "
+        f"model={AI_SUMMARY_OPENCLAW_MODEL}  timeout={AI_SUMMARY_REQUEST_TIMEOUT_SEC}s"
+    )
+    print("Running AI summary with OpenClaw agent...")
     print()
 
     try:
