@@ -1,7 +1,7 @@
 from django import forms
 import re
 from django.core.exceptions import ValidationError
-from .models import RmaTestingDb, RmaGbDb, RmaPcieDb
+from .models import RmaTestingDb, RmaGbDb, RmaPcieDb, FirmwareFile
 
 BLANK_BMC_CHOICE = [('', '-- Select BMC IP --')]
 ###
@@ -511,6 +511,11 @@ class GbGpuForm(forms.Form):
         ],
         label='Image',
     )
+    eco_number = forms.CharField(
+        required=False,
+        label='ECO Number',
+        widget=forms.Select(attrs={'class': 'form-control eco-select', 'style': 'width: 500px;'}),
+    )
     tests = forms.MultipleChoiceField(
         choices=[
             ('default', 'Default'),
@@ -519,6 +524,7 @@ class GbGpuForm(forms.Form):
             ('fd2', 'FD2'),
             ('hmc_log', 'HMC Log'),
             ('nvlink', 'NVLINK'),
+            ('bios_update', 'BIOS Update'),
         ],
         widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
         label='Tests',
@@ -538,8 +544,18 @@ class GbGpuForm(forms.Form):
         else:
             self.fields['bmc_ip'].choices = BLANK_BMC_CHOICE
 
+        eco_numbers = list(
+            FirmwareFile.objects.filter(product_type='GB300', file_type='BIOS')
+            .values_list('eco_number', flat=True)
+            .distinct()
+            .order_by('eco_number')
+        )
+        self.fields['eco_number'].widget.choices = [('', '-- Select ECO Number --')] + [
+            (eco, eco) for eco in eco_numbers
+        ]
+
     def clean_tests(self):
-        """Validate that Default and HMC Log are exclusive selections."""
+        """Validate that special GB actions are exclusive selections."""
         tests = self.cleaned_data.get('tests', [])
 
         if 'default' in tests and len(tests) > 1:
@@ -553,7 +569,29 @@ class GbGpuForm(forms.Form):
                 "HMC Log cannot be combined with other tests. Please select only the HMC Log option."
             )
 
+        if 'bios_update' in tests and len(tests) > 1:
+            raise ValidationError(
+                "BIOS Update cannot be combined with other tests. Please select only the BIOS Update option."
+            )
+
         return tests
+
+    def clean_eco_number(self):
+        return (self.cleaned_data.get('eco_number') or '').strip()
+
+    def clean(self):
+        cleaned_data = super().clean()
+        tests = cleaned_data.get('tests') or []
+        image = cleaned_data.get('image') or ''
+        eco_number = (cleaned_data.get('eco_number') or '').strip()
+
+        if 'bios_update' in tests:
+            if image != 'ubuntu2204-gb300':
+                self.add_error('tests', 'BIOS Update is only available when the GB300 image is selected.')
+            if not eco_number:
+                self.add_error('eco_number', 'ECO Number is required for BIOS Update.')
+
+        return cleaned_data
 
     def _clean_sn_token(self, field_name: str, label: str) -> str:
         """
@@ -908,12 +946,31 @@ class FirmwareInventoryUploadForm(forms.Form):
         help_text='Upload firmware file for Retimers 0, 1, 2, 3, 4, 6, and 7 (same file will be used for all seven)'
     )
     
+    # BIOS field (only for GB300)
+    bios_file = forms.FileField(
+        required=False,
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': '.bin,.rom,.fw,.img',
+        }),
+        label='BIOS Firmware',
+        help_text='Upload BIOS firmware file'
+    )
+    
     def __init__(self, *args, product_type=None, **kwargs):
-        """Initialize form and hide retimer fields for B200/B300 products"""
+        """Initialize form and hide retimer fields for B200/B300; for GB300 show only BIOS."""
         super().__init__(*args, **kwargs)
         
-        # Hide retimer fields for B200/B300 products
-        if product_type and product_type.startswith(('B200', 'B300')):
+        # GB300: only BIOS firmware (remove GPU and retimer fields)
+        if product_type == 'GB300':
+            if 'gpu_file' in self.fields:
+                del self.fields['gpu_file']
+            if 'retimer_5_file' in self.fields:
+                del self.fields['retimer_5_file']
+            if 'retimer_0_1_2_3_4_6_7_file' in self.fields:
+                del self.fields['retimer_0_1_2_3_4_6_7_file']
+        # B200/B300: hide retimer fields only
+        elif product_type and product_type.startswith(('B200', 'B300')):
             if 'retimer_5_file' in self.fields:
                 del self.fields['retimer_5_file']
             if 'retimer_0_1_2_3_4_6_7_file' in self.fields:

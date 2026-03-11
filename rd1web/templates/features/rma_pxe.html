@@ -543,10 +543,33 @@
                                         <label class="form-check-label" for="id_gb-tests_5">NVLINK</label>
                                     </div>
                                 </div>
+                                <div class="col-md-3" id="gbBiosUpdateOption" style="display: none;">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input gb-test-checkbox" name="gb-tests" value="bios_update" id="id_gb-tests_6" {% if 'bios_update' in gb_form.tests.value %}checked{% endif %}>
+                                        <label class="form-check-label" for="id_gb-tests_6">BIOS Update</label>
+                                    </div>
+                                </div>
                             </div>
                             {% if gb_form.tests.errors %}
                                 <div class="text-danger mt-1">
                                     {% for error in gb_form.tests.errors %}
+                                        <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div id="gb-eco-number-section" class="mb-4" style="display: none;">
+                            <label for="{{ gb_form.eco_number.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-microchip me-2 text-info"></i>{{ gb_form.eco_number.label }}
+                            </label>
+                            <small class="form-text text-muted d-block mb-2">
+                                Select the GB300 BIOS ECO from Firmware Inventory.
+                            </small>
+                            {{ gb_form.eco_number }}
+                            {% if gb_form.eco_number.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in gb_form.eco_number.errors %}
                                         <small><i class="fas fa-exclamation-triangle me-1"></i>{{ error }}</small><br>
                                     {% endfor %}
                                 </div>
@@ -1024,6 +1047,35 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" disabled id="remoteFwCloseFooterBtn">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GB BIOS Update Status Modal -->
+<div class="modal fade" id="gbBiosUpdateStatusModal" tabindex="-1" aria-labelledby="gbBiosUpdateStatusModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="gbBiosUpdateStatusModalLabel">
+                    <i class="fas fa-microchip me-2"></i>GB BIOS Update Status
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="display: none;" id="gbBiosUpdateCloseBtn"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-4">
+                    <h4 id="gbBiosUpdateStatusText">Initializing...</h4>
+                    <p id="gbBiosUpdateMessage" class="text-muted">Preparing BIOS update task.</p>
+                </div>
+                <div class="progress mb-3" style="height: 25px;">
+                    <div id="gbBiosUpdateProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                </div>
+                <div class="alert alert-info small mb-0" role="alert">
+                    <i class="fas fa-info-circle me-1"></i> Please keep this page open until the BIOS update flow completes.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" disabled id="gbBiosUpdateCloseFooterBtn">Close</button>
             </div>
         </div>
     </div>
@@ -2233,6 +2285,69 @@
         }
         {% endif %}
 
+        {% if gb_bios_update_task_id %}
+        const gbBiosUpdateTaskId = "{{ gb_bios_update_task_id }}";
+        if (gbBiosUpdateTaskId) {
+            const gbStatusModal = new bootstrap.Modal(document.getElementById('gbBiosUpdateStatusModal'));
+            gbStatusModal.show();
+
+            const gbStatusText = document.getElementById('gbBiosUpdateStatusText');
+            const gbMessageText = document.getElementById('gbBiosUpdateMessage');
+            const gbProgressBar = document.getElementById('gbBiosUpdateProgressBar');
+            const gbCloseHeaderBtn = document.getElementById('gbBiosUpdateCloseBtn');
+            const gbCloseFooterBtn = document.getElementById('gbBiosUpdateCloseFooterBtn');
+            let gbRedirectScheduled = false;
+
+            function pollGbBiosUpdateStatus() {
+                fetch(`/rma/gb-bios-update-status/${gbBiosUpdateTaskId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const percent = data.progress || 0;
+                        const status = data.status || 'Unknown';
+                        const message = data.message || '';
+                        const browseUrl = data.browse_url || '';
+
+                        gbProgressBar.style.width = `${percent}%`;
+                        gbProgressBar.textContent = `${percent}%`;
+                        gbProgressBar.setAttribute('aria-valuenow', percent);
+
+                        gbStatusText.textContent = status;
+                        gbMessageText.textContent = message;
+
+                        if (status === 'Completed' || status === 'Failed') {
+                            gbProgressBar.classList.remove('progress-bar-animated');
+                            if (status === 'Completed') {
+                                gbProgressBar.classList.add('bg-success');
+                                gbStatusText.className = 'text-success';
+                                if (browseUrl && !gbRedirectScheduled) {
+                                    gbRedirectScheduled = true;
+                                    gbMessageText.textContent = message ? `${message} Redirecting to log folder...` : 'Redirecting to log folder...';
+                                    setTimeout(() => {
+                                        window.location.href = browseUrl;
+                                    }, 1200);
+                                }
+                            } else {
+                                gbProgressBar.classList.add('bg-danger');
+                                gbStatusText.className = 'text-danger';
+                            }
+
+                            gbCloseHeaderBtn.style.display = 'block';
+                            gbCloseFooterBtn.disabled = false;
+                        } else {
+                            setTimeout(pollGbBiosUpdateStatus, 5000);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error polling GB BIOS update status:', error);
+                        gbMessageText.textContent = 'Error polling BIOS update status. Retrying...';
+                        setTimeout(pollGbBiosUpdateStatus, 5000);
+                    });
+            }
+
+            pollGbBiosUpdateStatus();
+        }
+        {% endif %}
+
         // Operation switching logic (RMA / GB / PCIE)
         const opRadios = document.querySelectorAll('.operation-type-radio');
         const rmaFormCard = document.getElementById('rmaFormCard');
@@ -2386,9 +2501,14 @@
         const gbTestCheckboxes = document.querySelectorAll('.gb-test-checkbox');
         const gbDefaultCb = document.getElementById('id_gb-tests_0');
         const gbHmcCb = document.getElementById('id_gb-tests_4');
+        const gbBiosUpdateCb = document.getElementById('id_gb-tests_6');
+        const gbBiosUpdateOption = document.getElementById('gbBiosUpdateOption');
         const gbDcgmR4Cb = document.getElementById('id_gb-tests_2');
         const gbDcgmR4LoopContainer = document.getElementById('gbDcgmR4LoopContainer');
         const gbDcgmR4LoopInput = document.getElementById('id_gb-dcgmr4_loop');
+        const gbImageSelect = document.getElementById('id_gb-image');
+        const gbEcoNumberSection = document.getElementById('gb-eco-number-section');
+        const gbEcoNumberSelect = document.getElementById('id_gb-eco_number');
 
         function updateGbDcgmR4LoopVisibility() {
             if (!gbDcgmR4LoopContainer) return;
@@ -2404,20 +2524,49 @@
             }
         }
 
+        function updateGbBiosUpdateVisibility() {
+            const isGb300Image = !!(gbImageSelect && gbImageSelect.value === 'ubuntu2204-gb300');
+
+            if (gbBiosUpdateOption) {
+                gbBiosUpdateOption.style.display = isGb300Image ? '' : 'none';
+            }
+
+            if (!isGb300Image) {
+                if (gbBiosUpdateCb) {
+                    gbBiosUpdateCb.checked = false;
+                }
+                if (gbEcoNumberSelect) {
+                    gbEcoNumberSelect.value = '';
+                }
+            }
+
+            if (gbEcoNumberSection) {
+                gbEcoNumberSection.style.display = isGb300Image && gbBiosUpdateCb && gbBiosUpdateCb.checked ? 'block' : 'none';
+            }
+        }
+
         gbTestCheckboxes.forEach(cb => {
             cb.addEventListener('change', function() {
                 if (this === gbDefaultCb && this.checked) {
                     gbTestCheckboxes.forEach(ocb => { if (ocb !== gbDefaultCb) ocb.checked = false; });
                 } else if (this === gbHmcCb && this.checked) {
                     gbTestCheckboxes.forEach(ocb => { if (ocb !== gbHmcCb) ocb.checked = false; });
+                } else if (this === gbBiosUpdateCb && this.checked) {
+                    gbTestCheckboxes.forEach(ocb => { if (ocb !== gbBiosUpdateCb) ocb.checked = false; });
                 } else if (this.checked) {
                     if (gbDefaultCb) gbDefaultCb.checked = false;
                     if (gbHmcCb) gbHmcCb.checked = false;
+                    if (gbBiosUpdateCb) gbBiosUpdateCb.checked = false;
                 }
                 updateGbDcgmR4LoopVisibility();
+                updateGbBiosUpdateVisibility();
             });
         });
+        if (gbImageSelect) {
+            gbImageSelect.addEventListener('change', updateGbBiosUpdateVisibility);
+        }
         updateGbDcgmR4LoopVisibility();
+        updateGbBiosUpdateVisibility();
 
         // PCIE form validation
         const pciePxeForm = document.getElementById('pciePxeForm');
@@ -2458,10 +2607,13 @@
                 const removeCb = document.getElementById('id_gb-remove');
                 const checkCb = document.getElementById('id_gb-check');
                 const hmcCb = document.getElementById('id_gb-tests_4');
+                const biosUpdateCb = document.getElementById('id_gb-tests_6');
+                const ecoNumberSelect = document.getElementById('id_gb-eco_number');
 
                 const isRemove = !!(removeCb && removeCb.checked);
                 const isCheck = !!(checkCb && checkCb.checked);
                 const isHmc = !!(hmcCb && hmcCb.checked);
+                const isBiosUpdate = !!(biosUpdateCb && biosUpdateCb.checked);
 
                 if (!isRemove && !isCheck) {
                     if (!baseSn1 || !baseSn1.value.trim()) {
@@ -2493,6 +2645,18 @@
                         alert('Image selection is required.');
                         e.preventDefault();
                         return;
+                    }
+                    if (isBiosUpdate) {
+                        if (!image || image.value !== 'ubuntu2204-gb300') {
+                            alert('BIOS Update is only available when the GB300 image is selected.');
+                            e.preventDefault();
+                            return;
+                        }
+                        if (!ecoNumberSelect || !ecoNumberSelect.value) {
+                            alert('ECO Number is required for BIOS Update.');
+                            e.preventDefault();
+                            return;
+                        }
                     }
                 }
             });

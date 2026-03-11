@@ -25,7 +25,8 @@ from .views.rma_pxe import (
     get_rma_info_by_bmc, 
     golden_setting_api,
     get_pcie_models_api,
-    get_pcie_eco_numbers_api
+    get_pcie_eco_numbers_api,
+    gb_bios_update_status,
 )
 from .views.rma_general_test import rma_general_test
 from .views.rma_logs import (
@@ -140,6 +141,7 @@ urlpatterns = [
     path('rma/gb-collect-mi3xx-alllog/<path:path>/', rma_collect_mi3xx_alllog, {'base': 'gb'}, name='rma_gb_collect_mi3xx_alllog'),
     path('rma/gb-collect-mi3xx-alllog-status/<str:task_id>/', rma_collect_mi3xx_alllog_status, {'base': 'gb'}, name='rma_gb_collect_mi3xx_alllog_status'),
     path('rma/gb-collect-mi3xx-alllog-from-form/', rma_collect_mi3xx_alllog_from_form, {'base': 'gb'}, name='rma_gb_collect_mi3xx_alllog_from_form'),
+    path('rma/gb-bios-update-status/<str:task_id>/', gb_bios_update_status, name='rma_gb_bios_update_status'),
     path('rma/gb-generate-ai-summary/', rma_generate_ai_summary, {'base': 'gb'}, name='rma_gb_generate_ai_summary_root'),
     path('rma/gb-generate-ai-summary/<path:path>/', rma_generate_ai_summary, {'base': 'gb'}, name='rma_gb_generate_ai_summary'),
     path('rma/gb-generate-ai-summary-status/<str:task_id>/', rma_generate_ai_summary_status, {'base': 'gb'}, name='rma_gb_generate_ai_summary_status'),

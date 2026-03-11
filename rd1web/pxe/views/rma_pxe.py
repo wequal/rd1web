@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.urls import reverse
+from django.core.cache import cache
 from ..form import RmaForm, PcieGpuForm, GbGpuForm
 from fabric import Connection
 from django.contrib.auth.decorators import login_required, permission_required
@@ -15,10 +16,29 @@ import uuid
 import threading
 import os
 import subprocess
+import time
 from datetime import datetime
+import requests
 from .remote_fw_update import run_remote_fw_update_task
 
 logger = logging.getLogger(__name__)
+
+GB_BIOS_UPDATE_TASK_TIMEOUT = 21600
+GB_BIOS_UPDATE_POLL_INTERVAL = 180
+GB_BIOS_CAK_INSTALL_KEY = (
+    "-----BEGIN PUBLIC KEY-----\n"
+    "MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEEy1X1lerSejteydeqlZDe3iXEyBNlXUW\n"
+    "2m8tW1VvDYL1W7t2L3Tg220oTdgIbV5g1PARpv5Q/F/wbdj9kAUMHBpPeb3Uq7mV\n"
+    "MocBsPtIkh9/Qt5bK9hkxIfZGKJTsCD6\n"
+    "-----END PUBLIC KEY-----"
+)
+GB_BIOS_CAK_LOCK_KEY = (
+    "-----BEGIN PUBLIC KEY-----\n"
+    "MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEpicPy1FJBD+Sx+n3TXyVUZ9MVB3ECspg\n"
+    "JuZ+MqA+A2bw12EBJdjkO8LtrblXocLT8tTKUXGQfrTlMmWYoy+HuxPFRI0+XYvm\n"
+    "Wg+WWKyFnycF0BmYMfK2puwjYXbOsjUC\n"
+    "-----END PUBLIC KEY-----"
+)
 
 # Import configuration from local_config
 try:
@@ -57,6 +77,283 @@ def get_bmc_password_for_hmc_log(bmc_ip: str, bmc_user: str = "root", operation_
             f"BMC IP {bmc_ip} has no password set in {not_found_msg}. Please update the entry."
         )
     return entry.bmc_password.strip()
+
+
+def _gb_bios_task_cache_key(task_id: str) -> str:
+    return f"gb_bios_update_task_{task_id}"
+
+
+def _set_gb_bios_task_status(
+    task_id: str,
+    status: str,
+    progress: int,
+    message: str,
+    *,
+    browse_path: str | None = None,
+    error: str | None = None,
+) -> None:
+    cache_key = _gb_bios_task_cache_key(task_id)
+    task_data = cache.get(cache_key) or {}
+    task_data.update(
+        {
+            "status": status,
+            "progress": progress,
+            "message": message,
+            "browse_path": browse_path or task_data.get("browse_path"),
+            "error": error,
+        }
+    )
+    cache.set(cache_key, task_data, GB_BIOS_UPDATE_TASK_TIMEOUT)
+
+
+def _append_bios_update_log(log_path: str, title: str, body: str) -> None:
+    with open(log_path, "a", encoding="utf-8") as log_file:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_file.write(f"\n[{timestamp}] {title}\n")
+        log_file.write(body.rstrip() + "\n")
+
+
+def _log_http_response(log_path: str, title: str, response) -> None:
+    body = [
+        f"HTTP {response.status_code}",
+        response.text if response.text else "(empty response body)",
+    ]
+    _append_bios_update_log(log_path, title, "\n".join(body))
+
+
+def _resolve_gb300_bios_file(eco_number: str) -> FirmwareFile:
+    firmware_file = (
+        FirmwareFile.objects.filter(
+            product_type="GB300",
+            file_type="BIOS",
+            eco_number=eco_number,
+        )
+        .order_by("-uploaded_at")
+        .first()
+    )
+    if firmware_file is None:
+        raise ValueError(f"No GB300 BIOS firmware file found for ECO Number: {eco_number}")
+    if not os.path.exists(firmware_file.file_path):
+        raise ValueError(f"Firmware file not found on disk: {firmware_file.file_path}")
+    return firmware_file
+
+
+def _run_gb_bios_ssh_command(
+    bmc_ip: str,
+    bmc_password: str,
+    remote_command: str,
+    log_path: str,
+    title: str,
+) -> None:
+    cmd = [
+        "sshpass", "-p", bmc_password,
+        "ssh",
+        "-o", "StrictHostKeyChecking=no",
+        "-o", "UserKnownHostsFile=/dev/null",
+        f"root@{bmc_ip}",
+        remote_command,
+    ]
+    completed = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=False,
+    )
+    body = [
+        f"Command: {remote_command}",
+        f"Exit Code: {completed.returncode}",
+        "STDOUT:",
+        completed.stdout.strip() or "(empty)",
+        "STDERR:",
+        completed.stderr.strip() or "(empty)",
+    ]
+    _append_bios_update_log(log_path, title, "\n".join(body))
+    if completed.returncode != 0:
+        raise RuntimeError(f"{remote_command} failed with exit code {completed.returncode}")
+
+
+def run_gb_bios_update_task(
+    task_id: str,
+    base_sn_1: str,
+    base_sn_2: str,
+    rma_number: str,
+    bmc_ip: str,
+    eco_number: str,
+) -> None:
+    dir_name = f"{base_sn_1}-{base_sn_2}_{rma_number}"
+    browse_path = dir_name
+    target_dir = os.path.join(RMA_GB_BASE_DIR, dir_name)
+    os.makedirs(target_dir, exist_ok=True)
+    log_path = os.path.join(target_dir, "BIOS_Update.txt")
+    bmc_username = "root"
+
+    try:
+        firmware_file = _resolve_gb300_bios_file(eco_number)
+        bmc_password = get_bmc_password_for_hmc_log(bmc_ip=bmc_ip, bmc_user=bmc_username, operation_type="gb")
+        _set_gb_bios_task_status(task_id, "Running", 5, "Logging into BMC...", browse_path=browse_path)
+
+        _append_bios_update_log(
+            log_path,
+            "GB BIOS Update Started",
+            "\n".join(
+                [
+                    f"BMC IP: {bmc_ip}",
+                    f"ECO Number: {eco_number}",
+                    f"Firmware File: {firmware_file.filename}",
+                    f"Firmware Path: {firmware_file.file_path}",
+                ]
+            ),
+        )
+
+        login_response = requests.post(
+            f"https://{bmc_ip}/login",
+            json={"username": bmc_username, "password": bmc_password},
+            headers={"Content-Type": "application/json"},
+            verify=False,
+            timeout=60,
+        )
+        _log_http_response(log_path, "BMC Login", login_response)
+        if login_response.status_code not in [200, 201]:
+            raise RuntimeError(f"BMC login failed with status {login_response.status_code}")
+
+        try:
+            login_data = login_response.json()
+        except ValueError as exc:
+            raise RuntimeError("BMC login response was not valid JSON") from exc
+
+        token = (
+            login_data.get("token")
+            or login_data.get("Token")
+            or login_response.headers.get("X-Auth-Token")
+        )
+        if not token:
+            raise RuntimeError("Token not found in BMC login response")
+
+        cak_requests = [
+            (
+                "CAK Install CPU 0",
+                f"https://{bmc_ip}/redfish/v1/Chassis/HGX_ERoT_CPU_0/Actions/Oem/CAKInstall",
+                {"CAKKey": GB_BIOS_CAK_INSTALL_KEY, "LockDisable": False},
+            ),
+            (
+                "CAK Install CPU 1",
+                f"https://{bmc_ip}/redfish/v1/Chassis/HGX_ERoT_CPU_1/Actions/Oem/CAKInstall",
+                {"CAKKey": GB_BIOS_CAK_INSTALL_KEY, "LockDisable": False},
+            ),
+            (
+                "CAK Lock CPU 0",
+                f"https://{bmc_ip}/redfish/v1/Chassis/HGX_ERoT_CPU_0/Actions/Oem/CAKLock",
+                {"Key": GB_BIOS_CAK_LOCK_KEY},
+            ),
+            (
+                "CAK Lock CPU 1",
+                f"https://{bmc_ip}/redfish/v1/Chassis/HGX_ERoT_CPU_1/Actions/Oem/CAKLock",
+                {"Key": GB_BIOS_CAK_LOCK_KEY},
+            ),
+        ]
+        _set_gb_bios_task_status(task_id, "Running", 10, "Installing CAK keys...", browse_path=browse_path)
+        for title, url, payload in cak_requests:
+            try:
+                response = requests.post(
+                    url,
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                    auth=(bmc_username, bmc_password),
+                    verify=False,
+                    timeout=120,
+                )
+                _log_http_response(log_path, title, response)
+            except Exception as exc:  # noqa: BLE001
+                _append_bios_update_log(log_path, title, f"Request failed: {exc}")
+
+        _set_gb_bios_task_status(task_id, "Running", 20, "Uploading BIOS firmware...", browse_path=browse_path)
+        update_parameters = json.dumps(
+            {
+                "Targets": [
+                    "/redfish/v1/UpdateService/FirmwareInventory/HGX_FW_CPU_0",
+                    "/redfish/v1/UpdateService/FirmwareInventory/HGX_FW_CPU_1",
+                ],
+                "ForceUpdate": True,
+            }
+        )
+        with open(firmware_file.file_path, "rb") as bios_handle:
+            upload_response = requests.post(
+                f"https://{bmc_ip}/redfish/v1/UpdateService/update-multipart",
+                headers={"X-Auth-Token": token},
+                files={
+                    "UpdateFile": (os.path.basename(firmware_file.file_path), bios_handle, "application/octet-stream"),
+                },
+                data={"UpdateParameters": update_parameters},
+                verify=False,
+                timeout=1800,
+            )
+        _log_http_response(log_path, "BIOS Upload", upload_response)
+        if upload_response.status_code not in [200, 202]:
+            raise RuntimeError(f"BIOS upload failed with status {upload_response.status_code}")
+
+        try:
+            upload_data = upload_response.json()
+        except ValueError as exc:
+            raise RuntimeError("BIOS upload response was not valid JSON") from exc
+
+        task_uri = upload_data.get("@odata.id") or upload_response.headers.get("Location")
+        if not task_uri and upload_data.get("Id"):
+            task_uri = f"/redfish/v1/TaskService/Tasks/{upload_data['Id']}"
+        if not task_uri:
+            raise RuntimeError("Firmware update task ID was not returned by the BMC")
+
+        task_url = task_uri if task_uri.startswith("https://") else f"https://{bmc_ip}{task_uri}"
+        while True:
+            task_response = requests.get(
+                task_url,
+                auth=(bmc_username, bmc_password),
+                verify=False,
+                timeout=60,
+            )
+            _log_http_response(log_path, "Task Monitor Poll", task_response)
+            if task_response.status_code != 200:
+                raise RuntimeError(f"Task monitor failed with status {task_response.status_code}")
+
+            try:
+                task_data = task_response.json()
+            except ValueError as exc:
+                raise RuntimeError("Task monitor response was not valid JSON") from exc
+
+            percent = int(task_data.get("PercentComplete", 0) or 0)
+            task_state = task_data.get("TaskState", "Unknown")
+            _set_gb_bios_task_status(
+                task_id,
+                "Running",
+                min(90, 20 + int(percent * 0.7)),
+                f"TaskState: {task_state}, PercentComplete: {percent}%",
+                browse_path=browse_path,
+            )
+
+            if task_state == "Completed":
+                break
+            if task_state in ["Exception", "Killed", "Cancelled"]:
+                raise RuntimeError(f"BIOS update failed with TaskState: {task_state}")
+            time.sleep(GB_BIOS_UPDATE_POLL_INTERVAL)
+
+        _set_gb_bios_task_status(task_id, "Running", 95, "Running powerctrl.sh power_off...", browse_path=browse_path)
+        _run_gb_bios_ssh_command(bmc_ip, bmc_password, "powerctrl.sh power_off", log_path, "Power Off")
+
+        _set_gb_bios_task_status(task_id, "Running", 98, "Running stbypowerctrl.sh aux_cycle...", browse_path=browse_path)
+        _run_gb_bios_ssh_command(bmc_ip, bmc_password, "stbypowerctrl.sh aux_cycle", log_path, "Aux Cycle")
+
+        _set_gb_bios_task_status(task_id, "Completed", 100, "GB BIOS update completed.", browse_path=browse_path)
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"GB BIOS update task failed for {bmc_ip}: {exc}")
+        _append_bios_update_log(log_path, "GB BIOS Update Failed", str(exc))
+        _set_gb_bios_task_status(
+            task_id,
+            "Failed",
+            100,
+            f"GB BIOS update failed: {exc}",
+            browse_path=browse_path,
+            error=str(exc),
+        )
 
 
 def collect_hmc_log_to_rma_folder(base_sn: str, rma_number: str, bmc_ip: str, operation_type: str = "gb") -> str:
@@ -479,6 +776,7 @@ def get_eco_numbers_api(request, image_type):
 @permission_required('pxe.can_access_rma_pxe', raise_exception=True)
 def rma_pxe(request):
     result = {}
+    gb_bios_update_task_id = None
     # Get operation_type from POST (form submission) or GET (page navigation) or default to 'rma'
     if request.method == "POST":
         operation_type = request.POST.get('operation_type', 'rma')
@@ -574,6 +872,7 @@ def rma_pxe(request):
                 bmc_ip = bound_form.cleaned_data.get('bmc_ip', '')
                 tests = bound_form.cleaned_data.get('tests', [])
                 image = bound_form.cleaned_data.get('image', '')
+                eco_number = bound_form.cleaned_data.get('eco_number', '').strip()
                 remove = bound_form.cleaned_data.get('remove', False)
                 check = bound_form.cleaned_data.get('check', False)
                 notice = bound_form.cleaned_data.get('notice', '').strip().replace(' ', '_')
@@ -615,6 +914,33 @@ def rma_pxe(request):
                             result['check'].append(f"MAC: {entry.mac} | Image: {entry.image} | Parameters: {entry.parameters}")
                         except PxeEntry.DoesNotExist:
                             result['check'].append(f"MAC: {x} not found in database")
+                elif 'bios_update' in tests:
+                    try:
+                        # Validate early so the user gets immediate feedback before the thread starts.
+                        _resolve_gb300_bios_file(eco_number)
+                        task_id = str(uuid.uuid4())
+                        cache.set(
+                            _gb_bios_task_cache_key(task_id),
+                            {
+                                'status': 'Initializing',
+                                'progress': 0,
+                                'message': 'Preparing GB BIOS update task...',
+                                'browse_path': None,
+                                'error': None,
+                            },
+                            GB_BIOS_UPDATE_TASK_TIMEOUT,
+                        )
+                        thread = threading.Thread(
+                            target=run_gb_bios_update_task,
+                            args=(task_id, base_sn_1, base_sn_2, rma_number, bmc_ip, eco_number),
+                            daemon=True,
+                        )
+                        thread.start()
+                        gb_bios_update_task_id = task_id
+                        result['actions'] = [f"GB BIOS update task started for {bmc_ip}."]
+                    except Exception as e:
+                        logger.error(f"Failed to start GB BIOS update task: {e}")
+                        result['actions'] = [f"GB BIOS update could not start: {e}"]
                 elif base_sn_1 and base_sn_2 and system_sn and rma_number and macs:
                     # Build tests parameter for GB
                     tests_list = list(tests) if tests else []
@@ -722,6 +1048,7 @@ def rma_pxe(request):
                     return render(request,'features/rma_pxe.html',{
                         'form':form, 'pcie_form': pcie_form, 'operation_type': operation_type,
                         'gb_form': gb_form,
+                        'gb_bios_update_task_id': gb_bios_update_task_id,
                         'result':result, 'golden_entries': golden_entries, 'can_force_unlink': can_force_unlink
                     })
             
@@ -798,8 +1125,29 @@ def rma_pxe(request):
         'gb_form': gb_form,
         'operation_type': operation_type,
         'result':result,
+        'gb_bios_update_task_id': gb_bios_update_task_id,
         'golden_entries': golden_entries,
         'can_force_unlink': can_force_unlink
+    })
+
+
+@login_required
+@permission_required('pxe.can_access_rma_pxe', raise_exception=True)
+@require_http_methods(["GET"])
+def gb_bios_update_status(request, task_id):
+    task_data = cache.get(_gb_bios_task_cache_key(task_id))
+    if not task_data:
+        return JsonResponse({'success': False, 'error': 'Task not found'}, status=404)
+
+    browse_path = task_data.get('browse_path')
+    browse_url = reverse('rma_gb_log_browse', kwargs={'path': browse_path}) if browse_path else ''
+    return JsonResponse({
+        'success': True,
+        'status': task_data.get('status', 'Unknown'),
+        'progress': task_data.get('progress', 0),
+        'message': task_data.get('message', ''),
+        'error': task_data.get('error'),
+        'browse_url': browse_url,
     })
 
 @login_required
