@@ -1,0 +1,32 @@
+<div class="modal fade" id="aiAnalyzerModal" tabindex="-1" aria-labelledby="aiAnalyzerModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-5">
+                <div id="aiAnalyzerSpinner" class="spinner-border text-info mb-3" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <div id="aiAnalyzerSuccess" class="d-none mb-3">
+                    <i class="fas fa-check-circle text-success" style="font-size: 3rem;"></i>
+                </div>
+                <div id="aiAnalyzerError" class="d-none mb-3">
+                    <i class="fas fa-exclamation-circle text-danger" style="font-size: 3rem;"></i>
+                </div>
+                <h5 class="mb-2" id="aiAnalyzerModalTitle">Running AI Analyzer</h5>
+                <p class="text-muted mb-3" id="aiAnalyzerModalMessage">OpenClaw is analyzing the submitted URL...</p>
+
+                <div id="aiAnalyzerProgressContainer" class="mb-3">
+                    <div class="progress" style="height: 25px;">
+                        <div id="aiAnalyzerProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                            <span id="aiAnalyzerProgressText">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <small class="text-muted d-block mt-2" id="aiAnalyzerModalInfo">0%</small>
+            </div>
+            <div class="modal-footer d-none" id="aiAnalyzerModalFooter">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>

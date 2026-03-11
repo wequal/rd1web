@@ -24,9 +24,14 @@
             {% endif %}
 
             <!-- Tools & Utilities -->
-            {% if perms.pxe.can_use_tools %}
+            {% if request.user.is_authenticated %}
             <div class="sb-sidenav-menu-heading">Tools & Utilities</div>
             
+            <a class="nav-link" href="{% url 'ai_analyzer' %}">
+                AI Analyzer
+            </a>
+
+            {% if perms.pxe.can_use_tools %}
             <a class="nav-link" href="{% url 'ipmitool' %}">
                 IPMI Tool
             </a>
@@ -35,6 +40,7 @@
             <a class="nav-link" href="{% url 'mac_ip_results' %}">
                 MAC to IP
             </a>
+            {% endif %}
             {% endif %}
             {% endif %}
 

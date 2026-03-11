@@ -934,4 +934,36 @@ class FirmwareInventoryUploadForm(forms.Form):
             raise forms.ValidationError('Please upload at least one firmware file')
         
         return cleaned_data
-    
+
+
+class AiAnalyzerForm(forms.Form):
+    rburn_link = forms.URLField(
+        required=False,
+        widget=forms.URLInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'https://example.com/rburn-log',
+        }),
+        label='Rburn link',
+    )
+    cburn_link = forms.URLField(
+        required=False,
+        widget=forms.URLInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'https://example.com/cburn-log',
+        }),
+        label='Cburn link',
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        rburn_link = (cleaned_data.get('rburn_link') or '').strip()
+        cburn_link = (cleaned_data.get('cburn_link') or '').strip()
+
+        if not rburn_link and not cburn_link:
+            raise ValidationError('Please provide either Rburn link or Cburn link.')
+        if rburn_link and cburn_link:
+            raise ValidationError('Please provide only one link: Rburn or Cburn.')
+
+        cleaned_data['selected_link'] = rburn_link or cburn_link
+        cleaned_data['selected_link_type'] = 'rburn' if rburn_link else 'cburn'
+        return cleaned_data
