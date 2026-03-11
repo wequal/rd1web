@@ -452,7 +452,7 @@ def generate_ai_summary_markdown(folder_path: str, analysis_url: str | None = No
         if test_status_str:
             findings_lines.append("")
             findings_lines.append(f"Test status (most recent run): {test_status_str}")
-
+#
         findings_lines.append("")
         findings_lines.append("Important log findings by file:")
         collected_chars = 0
