@@ -480,11 +480,13 @@ class FirmwareFile(models.Model):
         ('B200_LC', 'B200_LC'),
         ('B300_AC', 'B300_AC'),
         ('B300_LC', 'B300_LC'),
+        ('GB300', 'GB300'),
         ('pcie', 'pcie'),
     ]
     
     FILE_TYPE_CHOICES = [
         ('GPU', 'GPU'),
+        ('BIOS', 'BIOS'),
         ('retimer_0', 'Retimer 0'),
         ('retimer_1', 'Retimer 1'),
         ('retimer_2', 'Retimer 2'),

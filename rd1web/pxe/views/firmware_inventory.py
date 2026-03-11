@@ -83,6 +83,14 @@ PRODUCT_TYPES = [
         'color': 'primary'
     },
     {
+        'code': 'GB300',
+        'name': 'GB300',
+        'description': 'GB300 BIOS Firmware',
+        'has_retimers': False,
+        'icon': 'fas fa-server',
+        'color': 'info'
+    },
+    {
         'code': 'pcie',
         'name': 'PCIe GPU',
         'description': 'PCIe GPU Firmware (organized by model)',
@@ -527,6 +535,7 @@ def firmware_inventory_file_upload(request, product_type=None, eco_number=None, 
         # Define file type mapping
         file_type_mapping = {
             'gpu_file': ['GPU'],
+            'bios_file': ['BIOS'],
             'retimer_5_file': ['retimer_5'],
         }
         
