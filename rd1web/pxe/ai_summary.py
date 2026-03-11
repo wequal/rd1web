@@ -26,24 +26,36 @@ AI_SUMMARY_MAX_RETRIES = 3
 AI_SUMMARY_RETRY_BACKOFF_BASE_SEC = 1.0
 AI_SUMMARY_ERROR_REGEX = re.compile(r"error|fail|fatal|exception|traceback", re.IGNORECASE)
 
-# Override from local_config.py
-# If B31 is True and AI_PROXY is set, use proxy; otherwise use openclaw.
-try:
-    from . import local_config as _local_config
-    local_host = getattr(_local_config, "openclaw", "")
-    local_token = getattr(_local_config, "openclaw_token", "")
-    if isinstance(local_host, str):
-        AI_SUMMARY_OPENCLAW_HOST = local_host.strip()
-    if isinstance(local_token, str):
-        AI_SUMMARY_OPENCLAW_TOKEN = local_token.strip()
-    b31 = getattr(_local_config, "B31", False)
-    ai_proxy = getattr(_local_config, "AI_PROXY", None)
-    if b31 and ai_proxy and isinstance(ai_proxy, str):
-        raw = ai_proxy.strip().lstrip("http://").lstrip("https://").rstrip("/")
-        if raw:
-            AI_SUMMARY_OPENCLAW_HOST = raw
-except ImportError:
-    pass
+
+def resolve_openclaw_settings() -> tuple[str, str]:
+    """
+    Resolve OpenClaw host/token from local_config while preserving proxy behavior.
+    If B31 is enabled and AI_PROXY is set, host is overridden by AI_PROXY.
+    """
+    host = ""
+    token = ""
+    try:
+        from . import local_config as _local_config
+
+        local_host = getattr(_local_config, "openclaw", "")
+        local_token = getattr(_local_config, "openclaw_token", "")
+        if isinstance(local_host, str):
+            host = local_host.strip()
+        if isinstance(local_token, str):
+            token = local_token.strip()
+
+        b31 = getattr(_local_config, "B31", False)
+        ai_proxy = getattr(_local_config, "AI_PROXY", None)
+        if b31 and ai_proxy and isinstance(ai_proxy, str):
+            raw = ai_proxy.strip().lstrip("http://").lstrip("https://").rstrip("/")
+            if raw:
+                host = raw
+    except ImportError:
+        pass
+    return host, token
+
+
+AI_SUMMARY_OPENCLAW_HOST, AI_SUMMARY_OPENCLAW_TOKEN = resolve_openclaw_settings()
 
 AI_SUMMARY_TOOLS = [
     {
@@ -294,18 +306,26 @@ FORMATTING RULES
 """
 
 
-def generate_ai_summary_markdown(folder_path: str, analysis_url: str | None = None) -> str:
-    """
-    Send OpenClaw a single chat-completions request for markdown report generation.
-    When analysis_url is provided, only the URL and instructions are sent; OpenClaw
-    fetches and analyzes the log. When not provided (e.g. manual run), local findings
-    are gathered and sent in the request.
-    Returns markdown string for the report.
-    """
-    allowed_base = os.path.abspath(folder_path)
-    if not os.path.isdir(allowed_base):
-        raise ValueError(f"AI summary target directory not found: {allowed_base}")
+AI_ANALYZER_SYSTEM_PROMPT = """
+You are a senior datacenter GPU and server reliability engineer.
 
+TASK
+- Analyze the provided log URL and produce a concise markdown report.
+- Focus on key failures, likely root causes, and supporting evidence.
+- Include actionable recommendations and a brief confidence level.
+
+FORMAT
+- Use clean, professional markdown.
+- Use section headers and bullet points for readability.
+- Keep the report concise and easy to scan.
+"""
+
+
+def _call_openclaw_markdown(
+    user_content: str,
+    system_prompt: str,
+    fallback_text: str,
+) -> str:
     host = AI_SUMMARY_OPENCLAW_HOST.strip()
     token = AI_SUMMARY_OPENCLAW_TOKEN.strip()
     if not host:
@@ -315,60 +335,10 @@ def generate_ai_summary_markdown(folder_path: str, analysis_url: str | None = No
 
     raw_host = host.lstrip("http://").lstrip("https://").rstrip("/")
     endpoint = f"http://{raw_host}/v1/chat/completions"
-
-    if analysis_url:
-        user_content = (
-            f"Analyze the log, use rd1-pxe-auth skill for access. {analysis_url}\n\n"
-            "Write a final markdown report for datacenter GPU/server reliability review."
-        )
-        fallback_text = "Report could not be generated from URL."
-    else:
-        rel_files = _list_files_in_folder(allowed_base, recursive=True)
-        findings_lines = [
-            f"Target folder: {allowed_base}",
-            f"Files discovered: {len(rel_files)}",
-        ]
-        if rel_files:
-            findings_lines.append("")
-            findings_lines.append("Discovered files (relative paths):")
-            findings_lines.extend(f"- {rel}" for rel in rel_files)
-
-        gpu_model = _read_gpu_model_from_sys_info(allowed_base)
-        if gpu_model:
-            findings_lines.append("")
-            findings_lines.append(f"GPU model (from sys_info.txt first line): {gpu_model}")
-
-        test_status_str = _parse_test_status_most_recent(allowed_base)
-        if test_status_str:
-            findings_lines.append("")
-            findings_lines.append(f"Test status (most recent run): {test_status_str}")
-
-        findings_lines.append("")
-        findings_lines.append("Important log findings by file:")
-        collected_chars = 0
-        for rel in rel_files:
-            result = str(_tool_read_file(allowed_base, rel))
-            if result.startswith("No critical errors found in "):
-                continue
-            section = f"\n### {rel}\n{result}\n"
-            if collected_chars + len(section) > AI_SUMMARY_MAX_CONTEXT_CHARS:
-                findings_lines.append("\n... [findings truncated for context budget]")
-                break
-            findings_lines.append(section)
-            collected_chars += len(section)
-
-        findings_text = "\n".join(findings_lines).strip() or "No findings extracted."
-        user_content = (
-            "Analyze the provided folder findings and write a final markdown report "
-            "for datacenter GPU/server reliability review.\n\n"
-            f"{findings_text}"
-        )
-        fallback_text = "# AI Summary\n\n---\n\n" + findings_text
-
     request_payload = {
         "model": AI_SUMMARY_OPENCLAW_MODEL,
         "messages": [
-            {"role": "system", "content": AI_SUMMARY_STAGE2_SYSTEM_PROMPT.strip()},
+            {"role": "system", "content": system_prompt.strip()},
             {"role": "user", "content": user_content},
         ],
     }
@@ -427,3 +397,86 @@ def generate_ai_summary_markdown(folder_path: str, analysis_url: str | None = No
     if last_exc is not None:
         raise last_exc
     return fallback_text
+
+
+def generate_ai_analyzer_markdown(analysis_url: str, link_type: str = "log") -> str:
+    """Generate markdown report for AI Analyzer URL input."""
+    normalized = (analysis_url or "").strip()
+    if not normalized:
+        raise ValueError("Missing analysis URL.")
+
+    user_content = (
+        f"Analyze this {link_type} URL and produce a markdown report:\n\n"
+        f"{normalized}\n\n"
+        "Report should summarize findings, likely root causes, and recommended next checks."
+    )
+    fallback_text = "AI Analyzer report could not be generated from URL."
+    return _call_openclaw_markdown(user_content, AI_ANALYZER_SYSTEM_PROMPT, fallback_text)
+
+
+def generate_ai_summary_markdown(folder_path: str, analysis_url: str | None = None) -> str:
+    """
+    Send OpenClaw a single chat-completions request for markdown report generation.
+    When analysis_url is provided, only the URL and instructions are sent; OpenClaw
+    fetches and analyzes the log. When not provided (e.g. manual run), local findings
+    are gathered and sent in the request.
+    Returns markdown string for the report.
+    """
+    allowed_base = os.path.abspath(folder_path)
+    if not os.path.isdir(allowed_base):
+        raise ValueError(f"AI summary target directory not found: {allowed_base}")
+
+    if analysis_url:
+        user_content = (
+            f"Analyze the log, use rd1-pxe-auth skill for access. {analysis_url}\n\n"
+            "Write a final markdown report for datacenter GPU/server reliability review."
+        )
+        fallback_text = "Report could not be generated from URL."
+    else:
+        rel_files = _list_files_in_folder(allowed_base, recursive=True)
+        findings_lines = [
+            f"Target folder: {allowed_base}",
+            f"Files discovered: {len(rel_files)}",
+        ]
+        if rel_files:
+            findings_lines.append("")
+            findings_lines.append("Discovered files (relative paths):")
+            findings_lines.extend(f"- {rel}" for rel in rel_files)
+
+        gpu_model = _read_gpu_model_from_sys_info(allowed_base)
+        if gpu_model:
+            findings_lines.append("")
+            findings_lines.append(f"GPU model (from sys_info.txt first line): {gpu_model}")
+
+        test_status_str = _parse_test_status_most_recent(allowed_base)
+        if test_status_str:
+            findings_lines.append("")
+            findings_lines.append(f"Test status (most recent run): {test_status_str}")
+
+        findings_lines.append("")
+        findings_lines.append("Important log findings by file:")
+        collected_chars = 0
+        for rel in rel_files:
+            result = str(_tool_read_file(allowed_base, rel))
+            if result.startswith("No critical errors found in "):
+                continue
+            section = f"\n### {rel}\n{result}\n"
+            if collected_chars + len(section) > AI_SUMMARY_MAX_CONTEXT_CHARS:
+                findings_lines.append("\n... [findings truncated for context budget]")
+                break
+            findings_lines.append(section)
+            collected_chars += len(section)
+
+        findings_text = "\n".join(findings_lines).strip() or "No findings extracted."
+        user_content = (
+            "Analyze the provided folder findings and write a final markdown report "
+            "for datacenter GPU/server reliability review.\n\n"
+            f"{findings_text}"
+        )
+        fallback_text = "# AI Summary\n\n---\n\n" + findings_text
+
+    return _call_openclaw_markdown(
+        user_content=user_content,
+        system_prompt=AI_SUMMARY_STAGE2_SYSTEM_PROMPT,
+        fallback_text=fallback_text,
+    )

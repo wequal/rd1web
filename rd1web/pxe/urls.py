@@ -84,6 +84,7 @@ from .views.firmware_inventory import (
     firmware_inventory_model_delete,
 )
 from .views.remote_fw_update import remote_fw_status
+from .views.ai_analyzer import ai_analyzer, ai_analyzer_run, ai_analyzer_status
 from .api.system_api import systems_summary, systems_category
 
 
@@ -92,6 +93,9 @@ urlpatterns = [
     path('pxe/', pxe_input, name='pxe'),
     path('ipmitool/', ipmitool, name='ipmitool'),
     path('ipmitool/firmware/info/', get_firmware_info_view, name='get_firmware_info'),
+    path('ai-analyzer/', ai_analyzer, name='ai_analyzer'),
+    path('ai-analyzer/run/', ai_analyzer_run, name='ai_analyzer_run'),
+    path('ai-analyzer/status/<str:task_id>/', ai_analyzer_status, name='ai_analyzer_status'),
 
     path('mac-ip/', mac_ip_results, name='mac_ip_results'),
     path('api/mac-ip/', mac_ip_api, name='mac_ip_api'),

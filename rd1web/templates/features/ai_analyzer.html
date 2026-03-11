@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}AI Analyzer{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">AI Analyzer</h1>
+            <p class="mb-0 text-muted">Submit either Rburn or Cburn URL for OpenClaw analysis.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12 col-xl-9">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-link me-2"></i>Analyze URL
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form id="aiAnalyzerForm" method="post">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="{{ form.rburn_link.id_for_label }}" class="form-label fw-bold">Rburn link</label>
+                            {{ form.rburn_link }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.cburn_link.id_for_label }}" class="form-label fw-bold">Cburn link</label>
+                            {{ form.cburn_link }}
+                        </div>
+
+                        <div id="aiAnalyzerErrorAlert" class="alert alert-danger d-none mb-3"></div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-info" id="aiAnalyzerSubmitBtn">
+                                <i class="fas fa-robot me-1"></i>Analyze
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div id="aiAnalyzerResultCard" class="card shadow d-none">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-file-alt me-2"></i>AI Markdown Report
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div id="aiAnalyzerReportHtml"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include "partials/ai_analyzer_modal.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/ai_analyzer.js' %}?v=1"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (window.AiAnalyzer) {
+        window.AiAnalyzer.init({
+            formId: 'aiAnalyzerForm',
+            errorId: 'aiAnalyzerErrorAlert',
+            resultCardId: 'aiAnalyzerResultCard',
+            reportContainerId: 'aiAnalyzerReportHtml',
+            submitButtonId: 'aiAnalyzerSubmitBtn',
+            runUrl: "{% url 'ai_analyzer_run' %}",
+            statusUrlBase: "/ai-analyzer/status/"
+        });
+    }
+});
+</script>
+{% endblock %}
