@@ -84,6 +84,7 @@ class OptimizedUserActivityMiddleware:
             '/rma/remote-fw-status/',
             '/rma/generate-ai-summary-status/',
             '/rma/gb-generate-ai-summary-status/',
+            '/ai-analyzer/status/',
         ]
         if any(status_path in request.path for status_path in status_polling_paths):
             return
@@ -292,6 +293,10 @@ class OptimizedUserActivityMiddleware:
                 action = 'profile_view'
             elif path.startswith('/admin'):
                 action = 'admin_access'
+            elif path.startswith('/ai-analyzer'):
+                action = 'ai_analyzer'
+            elif path.startswith('/rma/generate-ai-summary') or path.startswith('/rma/gb-generate-ai-summary'):
+                action = 'ai_summary'
             elif path.startswith('/pxe'):
                 action = 'pxe_config'
             elif path.startswith('/systems'):
@@ -336,6 +341,8 @@ class OptimizedUserActivityMiddleware:
             'password_change': 'User changed password',
             'profile_view': 'User viewed profile',
             'admin_access': 'User accessed admin panel',
+            'ai_analyzer': 'User used AI Analyzer',
+            'ai_summary': 'User used AI Summary',
             'pxe_config': 'User accessed PXE configuration',
             'system_view': 'User viewed system details',
             'ipmitool_use': 'User used IPMI tool',
