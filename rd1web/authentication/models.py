@@ -45,6 +45,8 @@ class UserActivity(models.Model):
         ('login', 'Login'),
         ('logout', 'Logout'),
         ('page_view', 'Page View'),
+        ('ai_analyzer', 'AI Analyzer'),
+        ('ai_summary', 'AI Summary'),
         ('pxe_config', 'PXE Configuration'),
         ('system_view', 'System Details View'),
         ('ipmitool_use', 'IPMI Tool Usage'),
