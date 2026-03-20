@@ -37,6 +37,40 @@ def update_task_status(task_id, status, percent=0, message=""):
     }
     redis_client.set(f"remote_fw_update:{task_id}", json.dumps(data), ex=3600)
 
+
+def _check_clear_log_response(response, path):
+    """Log a warning if Redfish ClearLog did not return a typical success code."""
+    if response.status_code not in (200, 202, 204):
+        logger.warning(
+            "Failed to clear logs at %s: HTTP %s %s",
+            path,
+            response.status_code,
+            (response.text or "")[:500],
+        )
+
+
+def logClear(ip, user, pwd):
+    """
+    Clear all logs on UBB via Redfish LogService.ClearLog.
+    Failures are logged; does not raise (caller can continue to AC cycle).
+    """
+    logger.info("Clearing UBB logs")
+    paths = [
+        f"https://{ip}/redfish/v1/Systems/UBB/LogServices/Dump/Actions/LogService.ClearLog",
+        f"https://{ip}/redfish/v1/Systems/UBB/LogServices/EventLog/Actions/LogService.ClearLog",
+        f"https://{ip}/redfish/v1/Systems/UBB/LogServices/DiagLogs/Actions/LogService.ClearLog",
+    ]
+    for p in paths:
+        try:
+            response = requests.post(p, verify=False, auth=(user, pwd), timeout=120)
+            _check_clear_log_response(response, p)
+            if response.text:
+                logger.info("%s", response.text[:500])
+        except Exception as e:
+            logger.warning("Exception while clearing log data at %s: %s", p, e)
+        time.sleep(5)
+
+
 def run_remote_fw_update_task(task_id, bmc_ip, image_key):
     """Background task for remote firmware update"""
     logger.info(f"Starting remote FW update task {task_id} for {bmc_ip} with image {image_key}")
@@ -166,8 +200,10 @@ def run_remote_fw_update_task(task_id, bmc_ip, image_key):
                     time.sleep(20)
 
             if state == "Completed":
+                update_task_status(task_id, "Running", 93, "Clearing UBB logs...")
+                logClear(bmc_ip, BMC_USER, BMC_PASSWORD)
                 update_task_status(task_id, "Running", 95, "Firmware update completed. Checking AC cycle support...")
-                
+
                 # AC Cycle check
                 url = f"https://{bmc_ip}/redfish/v1/Systems/1"
                 try:

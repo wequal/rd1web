@@ -309,7 +309,7 @@ class RmaForm(forms.Form):
             ('level3_test', 'AGHFC Level 3'),
             ('remote_fw_update', 'Remote FW Update'),
             ('all_log', 'All Log'),
-            ('logs_clear', 'Clear Logs'),
+            ('logs_clear', 'AMD UBB Clear Logs'),
         ],
         widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
         label='Tests',
@@ -332,13 +332,13 @@ class RmaForm(forms.Form):
         """Validate that Default and All Log are not combined with other tests or firmware update."""
         tests = self.cleaned_data.get('tests', [])
 
-        # Default test cannot be combined with any specific tests, All Log, Clear Logs, or Remote FW Update
+        # Default test cannot be combined with any specific tests, All Log, AMD UBB Clear Logs, or Remote FW Update
         if 'default' in tests:
             specific_tests = [test for test in tests if test not in ('default',)]
             if specific_tests:
                 raise ValidationError(
-                    "Default test cannot be combined with specific tests (Pre GPU Test, DCGM, FD2, GPU Field Diag, AGHFC Level 3, All Log, Clear Logs, Remote FW Update). "
-                    "Please select either Default OR any combination of the specific tests (excluding All Log, Clear Logs, and Remote FW Update)."
+                    "Default test cannot be combined with specific tests (Pre GPU Test, DCGM, FD2, GPU Field Diag, AGHFC Level 3, All Log, AMD UBB Clear Logs, Remote FW Update). "
+                    "Please select either Default OR any combination of the specific tests (excluding All Log, AMD UBB Clear Logs, and Remote FW Update)."
                 )
 
         # All Log must be selected alone (no other tests)
@@ -347,10 +347,10 @@ class RmaForm(forms.Form):
                 "All Log cannot be combined with other tests, Firmware Update, or Remote FW Update. Please select only the All Log option."
             )
 
-        # Clear Logs must be selected alone (no other tests)
+        # AMD UBB Clear Logs must be selected alone (no other tests)
         if 'logs_clear' in tests and len(tests) > 1:
             raise ValidationError(
-                "Clear Logs cannot be combined with other tests, Firmware Update, or Remote FW Update. Please select only the Clear Logs option."
+                "AMD UBB Clear Logs cannot be combined with other tests, Firmware Update, or Remote FW Update. Please select only the AMD UBB Clear Logs option."
             )
 
         # Remote FW Update must be selected alone (no other tests)
@@ -369,7 +369,7 @@ class RmaForm(forms.Form):
         if 'logs_clear' in tests and image not in mi3xx_images:
             self.add_error(
                 'tests',
-                "Clear Logs is only available when an MI3XX image (MI300X, MI325X, or MI355X) is selected.",
+                "AMD UBB Clear Logs is only available when an MI3XX image (MI300X, MI325X, or MI355X) is selected.",
             )
         return cleaned_data
     

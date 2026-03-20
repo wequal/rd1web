@@ -280,7 +280,7 @@
                                     <div class="form-check">
                                         <input type="checkbox" class="form-check-input" name="rma-tests" value="logs_clear" id="id_rma-tests_logs_clear" {% if 'logs_clear' in form.tests.value %}checked{% endif %}>
                                         <label class="form-check-label" for="id_rma-tests_logs_clear">
-                                            <i class="fas me-1 text-secondary"></i>Clear Logs
+                                            <i class="fas me-1 text-secondary"></i>AMD UBB Clear Logs
                                         </label>
                                     </div>
                                 </div>
@@ -302,7 +302,7 @@
                             {% endif %}
                             <div id="tests-validation-message" class="text-warning mt-2" style="display: none;">
                                 <small><i class="fas fa-exclamation-triangle me-1"></i>
-                                    You can select either 'Default' test OR any combination of 'Pre GPU Test', 'DCGM', 'GPU Field Diag', 'FD2', 'AGHFC Level 3', 'Firmware Update'. The 'Default', 'All Log', 'Clear Logs', and 'Remote FW Update' options cannot be combined with any other tests or Firmware Update.
+                                    You can select either 'Default' test OR any combination of 'Pre GPU Test', 'DCGM', 'GPU Field Diag', 'FD2', 'AGHFC Level 3', 'Firmware Update'. The 'Default', 'All Log', 'AMD UBB Clear Logs', and 'Remote FW Update' options cannot be combined with any other tests or Firmware Update.
                                 </small>
                             </div>
                         </div>
@@ -1394,7 +1394,7 @@
                     return false;
                 }
 
-                // Clear Logs must be selected alone
+                // AMD UBB Clear Logs must be selected alone
                 if (logsClearSelected && (defaultSelected || anySpecificSelected || fwUpdateSelected || remoteFwSelected || allLogSelected)) {
                     testsValidationMessage.style.display = 'block';
                     return false;
@@ -1419,7 +1419,7 @@
 
                 if (changedCheckbox.checked) {
                     if (isDefault) {
-                        // If Default is selected, uncheck all others (including All Log, Clear Logs, Remote FW Update and fw_update)
+                        // If Default is selected, uncheck all others (including All Log, AMD UBB Clear Logs, Remote FW Update and fw_update)
                         otherCheckboxes.forEach(function(cb) {
                             cb.checked = false;
                         });
@@ -1448,7 +1448,7 @@
                             logsClearCheckboxTest.checked = false;
                         }
                     } else if (isLogsClear) {
-                        // If Clear Logs is selected, uncheck all other tests and fw_update
+                        // If AMD UBB Clear Logs is selected, uncheck all other tests and fw_update
                         if (defaultCheckbox) {
                             defaultCheckbox.checked = false;
                         }
@@ -1488,7 +1488,7 @@
                             logsClearCheckboxTest.checked = false;
                         }
                     } else {
-                        // Any other test or fw_update unchecks Default, All Log, Clear Logs, and Remote FW Update
+                        // Any other test or fw_update unchecks Default, All Log, AMD UBB Clear Logs, and Remote FW Update
                         if (defaultCheckbox) {
                             defaultCheckbox.checked = false;
                         }
@@ -1619,7 +1619,7 @@
 
             // Validate test selections
             if (defaultCheckbox && !validateTestSelections()) {
-                alert('Invalid test selection: Default, All Log, Clear Logs, and Remote FW Update cannot be combined with other tests or Firmware Update.');
+                alert('Invalid test selection: Default, All Log, AMD UBB Clear Logs, and Remote FW Update cannot be combined with other tests or Firmware Update.');
                 e.preventDefault();
                 return;
             }
