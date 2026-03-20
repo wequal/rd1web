@@ -291,7 +291,7 @@ class RmaForm(forms.Form):
         }),
     )
     bmc_ip=forms.ChoiceField(choices=[], widget=forms.Select(attrs={'class':'form-control','style': 'width: 500px;',}),label='BMC IP')
-    image=forms.ChoiceField(choices=[('','-- Select Image --'),('ubuntu2204-x86-rma','H100/200'),('ubuntu2204-b200-rma','B200'),('ubuntu2204-gb200','GB200'),('ubuntu2204-gb200','GH200'),('ubuntu2204-mi300x','MI300X'),('ubuntu2204-mi325x','MI325X'),('ubuntu2204-mi355x','MI355X')],label='Image')
+    image=forms.ChoiceField(choices=[('','-- Select Image --'),('ubuntu2204-x86-rma','H100/200'),('ubuntu2204-b200-rma','B200'),('ubuntu2204-gb200','GH200'),('ubuntu2204-mi300x','MI300X'),('ubuntu2204-mi325x','MI325X'),('ubuntu2204-mi355x','MI355X')],label='Image')
     remove=forms.BooleanField(required=False,label="Remove",initial=False)
     check=forms.BooleanField(required=False,label="Check",initial=False)
     fw_update=forms.BooleanField(required=False,label="Firmware Update",initial=False)
@@ -309,6 +309,7 @@ class RmaForm(forms.Form):
             ('level3_test', 'AGHFC Level 3'),
             ('remote_fw_update', 'Remote FW Update'),
             ('all_log', 'All Log'),
+            ('logs_clear', 'Clear Logs'),
         ],
         widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
         label='Tests',
@@ -331,19 +332,25 @@ class RmaForm(forms.Form):
         """Validate that Default and All Log are not combined with other tests or firmware update."""
         tests = self.cleaned_data.get('tests', [])
 
-        # Default test cannot be combined with any specific tests, All Log, or Remote FW Update
+        # Default test cannot be combined with any specific tests, All Log, Clear Logs, or Remote FW Update
         if 'default' in tests:
             specific_tests = [test for test in tests if test not in ('default',)]
             if specific_tests:
                 raise ValidationError(
-                    "Default test cannot be combined with specific tests (Pre GPU Test, DCGM, FD2, GPU Field Diag, AGHFC Level 3, All Log, Remote FW Update). "
-                    "Please select either Default OR any combination of the specific tests (excluding All Log and Remote FW Update)."
+                    "Default test cannot be combined with specific tests (Pre GPU Test, DCGM, FD2, GPU Field Diag, AGHFC Level 3, All Log, Clear Logs, Remote FW Update). "
+                    "Please select either Default OR any combination of the specific tests (excluding All Log, Clear Logs, and Remote FW Update)."
                 )
 
         # All Log must be selected alone (no other tests)
         if 'all_log' in tests and len(tests) > 1:
             raise ValidationError(
                 "All Log cannot be combined with other tests, Firmware Update, or Remote FW Update. Please select only the All Log option."
+            )
+
+        # Clear Logs must be selected alone (no other tests)
+        if 'logs_clear' in tests and len(tests) > 1:
+            raise ValidationError(
+                "Clear Logs cannot be combined with other tests, Firmware Update, or Remote FW Update. Please select only the Clear Logs option."
             )
 
         # Remote FW Update must be selected alone (no other tests)
@@ -353,6 +360,18 @@ class RmaForm(forms.Form):
             )
 
         return tests
+
+    def clean(self):
+        cleaned_data = super().clean()
+        tests = cleaned_data.get('tests') or []
+        image = cleaned_data.get('image')
+        mi3xx_images = ('ubuntu2204-mi300x', 'ubuntu2204-mi325x', 'ubuntu2204-mi355x')
+        if 'logs_clear' in tests and image not in mi3xx_images:
+            self.add_error(
+                'tests',
+                "Clear Logs is only available when an MI3XX image (MI300X, MI325X, or MI355X) is selected.",
+            )
+        return cleaned_data
     
     def clean_replacement_sn(self):
         """Validate that replacement_sn does not start with S9 or s9"""
