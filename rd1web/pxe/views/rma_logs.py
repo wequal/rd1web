@@ -2879,8 +2879,54 @@ def update_progress(percent, message):
 
 update_progress(0, "Initiating log collection from BMC...")
 
-# Step 1: Initiate log collection
-collect_url = f"https://{{bmc_ip}}/redfish/v1/Systems/UBB/LogServices/DiagLogs/Actions/LogService.CollectDiagnosticData"
+# Step 1: Discover collect action from DiagLogs resource, then initiate log collection
+ALL_LOG_1 = "/redfish/v1/Systems/UBB/LogServices/DiagLogs/Actions/LogService.CollectDiagnosticData"
+ALL_LOG_2 = "/redfish/v1/Systems/UBB/LogServices/DiagLogs/Actions/Oem/LogService.GetAllLogs"
+
+def _mi3xx_strings_from_actions(obj, out=None):
+    if out is None:
+        out = []
+    if isinstance(obj, dict):
+        for v in obj.values():
+            _mi3xx_strings_from_actions(v, out)
+    elif isinstance(obj, list):
+        for item in obj:
+            _mi3xx_strings_from_actions(item, out)
+    elif isinstance(obj, str):
+        out.append(obj)
+    return out
+
+def _mi3xx_resolve_collect_path(actions):
+    if not actions:
+        return None
+    flat = _mi3xx_strings_from_actions(actions)
+    if ALL_LOG_1 in flat:
+        return ALL_LOG_1
+    if ALL_LOG_2 in flat:
+        return ALL_LOG_2
+    return None
+
+diag_logs_url = f"https://{{bmc_ip}}/redfish/v1/Systems/UBB/LogServices/DiagLogs"
+try:
+    diag_resp = requests.get(diag_logs_url, auth=(user, pwd), verify=False, timeout=10)
+    diag_resp.raise_for_status()
+    diag_data = diag_resp.json()
+except Exception as e:
+    update_progress(0, f"ERROR: Failed to read DiagLogs resource: {{e}}")
+    print(f"ERROR: Failed to read DiagLogs resource: {{e}}")
+    sys.exit(1)
+
+collect_path = _mi3xx_resolve_collect_path(diag_data.get("Actions"))
+if not collect_path:
+    update_progress(
+        0,
+        "ERROR: No supported collect action in DiagLogs Actions (expected "
+        + ALL_LOG_1 + " or " + ALL_LOG_2 + ")",
+    )
+    print("ERROR: No supported collect action in DiagLogs Actions")
+    sys.exit(1)
+
+collect_url = f"https://{{bmc_ip}}{{collect_path}}"
 payload = {{"DiagnosticDataType": "OEM", "OEMDiagnosticDataType": "AllLogs"}}
 
 try:
