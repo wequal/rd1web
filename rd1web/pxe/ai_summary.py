@@ -428,7 +428,7 @@ def generate_ai_summary_markdown(folder_path: str, analysis_url: str | None = No
 
     if analysis_url:
         user_content = (
-            f"Analyze the log, use rd1-pxe-auth skill for access. {analysis_url}\n\n"
+            f"Analyze the log, use rd1-pxe-auth skill for access. do not use subagent to access the log {analysis_url}\n\n"
             "Write a final markdown report for datacenter GPU/server reliability review."
         )
         fallback_text = "Report could not be generated from URL."
