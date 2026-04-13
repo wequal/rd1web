@@ -283,6 +283,7 @@ class CustomUserForm(BaseUserChangeForm):
             ]
             admin_perms_order = [
                 'can_access_rma_pxe',
+                'can_manage_rma_permission',
                 'can_access_rma_dhcp_leases',
                 'can_access_rma_testing_db',
                 'can_force_unlink_golden',
@@ -316,7 +317,7 @@ class CustomUserForm(BaseUserChangeForm):
             self.fields['user_permissions'].help_text = (
                 'Select permissions for this user. '
                 'Default permissions (Dashboard, System Management, Tools, RMA Logs) are auto-granted to new users. '
-                'Admin-only permissions (RMA PXE, DHCP Leases, Testing DB, Force Unlink) require manual assignment.'
+                'Admin-only permissions (RMA PXE, RMA Permission page, DHCP Leases, Testing DB, Force Unlink) require manual assignment.'
             )
 
 # Extend the default User admin to include activity tracking
@@ -346,7 +347,7 @@ class UserAdmin(BaseUserAdmin):
                     <p><strong>✅ Default Permissions (Auto-granted to all users):</strong><br/>
                     Dashboard, System Management, Tools, RMA Logs</p>
                     <p><strong>🔒 Admin-Only Permissions (Manual):</strong><br/>
-                    RMA PXE Access, RMA DHCP Leases, RMA Testing DB, Force Unlink Golden</p>
+                    RMA PXE Access, RMA Permission page, RMA DHCP Leases, RMA Testing DB, Force Unlink Golden</p>
                 </div>
                 '''
             }),

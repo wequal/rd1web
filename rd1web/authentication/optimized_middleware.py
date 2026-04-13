@@ -303,6 +303,8 @@ class OptimizedUserActivityMiddleware:
                 action = 'system_view'
             elif path.startswith('/ipmitool'):
                 action = 'ipmitool_use'
+            elif path.startswith('/rma/permission'):
+                action = 'rma_permission'
             elif path.startswith('/rma/pxe'):
                 action = 'rma_pxe'
             elif path.startswith('/rma/logs'):
@@ -352,6 +354,7 @@ class OptimizedUserActivityMiddleware:
             'sol_access': 'User accessed SOL',
             'mac_ip_view': 'User viewed MAC-IP results',
             'rma_pxe': 'User accessed RMA PXE configuration',
+            'rma_permission': 'User accessed RMA Permission management',
             'rma_log_view': 'User viewed RMA logs',
             'rma_file_view': 'User viewed RMA file',
             'firmware_inventory_view': 'User viewed Firmware Inventory',

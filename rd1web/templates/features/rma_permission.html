@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block title %}RMA Permission{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="mb-4">
+        <h1 class="h3 mb-2 text-gray-800">
+            <i class="fas fa-user-shield me-2"></i>RMA Permission
+        </h1>
+        <p class="text-muted mb-0 small">
+            Search for a user by username or email, then grant or revoke <strong>RMA test permission</strong>
+            (backend: access to RMA PXE / RMA GPU TEST). Only users listed in search results can be changed here.
+        </p>
+    </div>
+
+    <form method="get" class="card shadow-sm mb-4">
+        <div class="card-body">
+            <label for="q" class="form-label">Search users</label>
+            <div class="input-group">
+                <input type="text" class="form-control" id="q" name="q" value="{{ q }}"
+                       placeholder="Username or email" maxlength="200" autocomplete="off">
+                <button type="submit" class="btn btn-primary">Search</button>
+            </div>
+        </div>
+    </form>
+
+    {% if q %}
+    <div class="card shadow-sm">
+        <div class="card-header py-3">
+            <span class="fw-semibold">Results</span>
+            <span class="text-muted small ms-2">(up to 50)</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>RMA test permission</th>
+                        <th style="width: 200px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td>{{ row.user.username }}</td>
+                        <td>{{ row.user.email|default:"—" }}</td>
+                        <td>
+                            {% if row.is_super %}
+                            <span class="text-muted">N/A (superuser)</span>
+                            {% elif row.explicit %}
+                            <span class="badge bg-success">Granted</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Not granted</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if row.is_self %}
+                            <span class="text-muted small">Your account (read-only here)</span>
+                            {% elif row.is_super %}
+                            <span class="text-muted small">—</span>
+                            {% else %}
+                            <form method="post" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="q" value="{{ q }}">
+                                <input type="hidden" name="user_id" value="{{ row.user.pk }}">
+                                {% if row.explicit %}
+                                <button type="submit" name="grant" value="0" class="btn btn-sm btn-outline-danger">Revoke</button>
+                                {% else %}
+                                <button type="submit" name="grant" value="1" class="btn btn-sm btn-outline-success">Grant</button>
+                                {% endif %}
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-muted text-center py-4">No users match this search.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% elif not q %}
+    <p class="text-muted">Enter a search term to find users.</p>
+    {% endif %}
+</div>
+{% endblock %}
