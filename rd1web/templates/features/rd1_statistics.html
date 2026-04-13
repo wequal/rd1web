@@ -1,0 +1,492 @@
+{% extends 'base.html' %}
+{% block title %}RD1 Statistics{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 .5rem 1.5rem rgba(0,0,0,.15) !important;
+    }
+    .stat-value {
+        font-size: 2.8rem;
+        font-weight: 700;
+        line-height: 1;
+        color: #000 !important;
+    }
+    .stat-label {
+        font-size: 0.78rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        margin-bottom: .25rem;
+    }
+    .period-btn { min-width: 100px; }
+    .gpu-table { font-size: 0.88rem; }
+    .fail-badge {
+        min-width: 38px;
+        display: inline-block;
+        text-align: center;
+        font-size: 0.82rem;
+    }
+    .fd2-detail-row td {
+        background-color: #f8f9fa;
+        border-top: none !important;
+    }
+    .fd2-items-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 6px 0;
+    }
+    .fd2-item-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        font-weight: 500;
+        border: 1px solid transparent;
+    }
+    .fd2-item-fail {
+        background-color: #fff0f0;
+        border-color: #f5c6cb;
+        color: #842029;
+    }
+    .fd2-item-pass {
+        background-color: #f0fff4;
+        border-color: #b7dfc6;
+        color: #155724;
+    }
+    .fd2-item-unknown {
+        background-color: #f5f5f5;
+        border-color: #dee2e6;
+        color: #6c757d;
+    }
+    .expand-btn {
+        cursor: pointer;
+        user-select: none;
+        padding: 0 4px;
+    }
+    .section-divider {
+        border-left: 4px solid;
+        padding-left: 12px;
+    }
+    .section-nvidia { border-color: #76b900; }
+    .section-amd    { border-color: #ed1c24; }
+    .strict-badge {
+        font-size: 0.7rem;
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffc107;
+        border-radius: 4px;
+        padding: 1px 6px;
+        vertical-align: middle;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">
+                <i class="fas fa-chart-line me-2"></i>RD1 Statistics
+                <span class="strict-badge ms-2">Strict Fail Count</span>
+            </h1>
+            <p class="text-muted mb-0 mt-1">
+                GPU test failure tracking — every failure is counted even if later retested and passed
+            </p>
+        </div>
+        <div>
+            {% if perms.pxe.can_access_rma_pxe %}
+            <button class="btn btn-sm btn-outline-warning" id="scanBtn">
+                <i class="fas fa-sync-alt me-1"></i>Trigger Scan
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Period Selector -->
+    <div class="card shadow mb-4">
+        <div class="card-body py-3">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="btn-group" role="group">
+                    <button type="button"
+                            class="btn period-btn {% if period == 'weekly' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+                            onclick="changePeriod('weekly')">Weekly</button>
+                    <button type="button"
+                            class="btn period-btn {% if period == 'monthly' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+                            onclick="changePeriod('monthly')">Monthly</button>
+                    <button type="button"
+                            class="btn period-btn {% if period == 'yearly' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+                            onclick="changePeriod('yearly')">Yearly</button>
+                </div>
+
+                <!-- Period Navigation -->
+                <div class="d-flex align-items-center">
+                    {% if period == 'weekly' %}
+                    <button class="btn btn-sm btn-outline-secondary" onclick="navigateWeek(-1)">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <span class="fw-bold mx-3">{{ period_display }}</span>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="navigateWeek(1)">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    {% elif period == 'monthly' %}
+                    <button class="btn btn-sm btn-outline-secondary" onclick="navigateMonth(-1)">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <span class="fw-bold mx-3">{{ period_display }}</span>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="navigateMonth(1)">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    {% elif period == 'yearly' %}
+                    <button class="btn btn-sm btn-outline-secondary" onclick="navigateYear(-1)">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <span class="fw-bold mx-3">{{ period_display }}</span>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="navigateYear(1)">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    {% else %}
+                    <span class="fw-bold mx-3">{{ period_display }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-6 col-md-3 mb-3">
+            <div class="card stat-card shadow h-100 border-start border-primary border-4">
+                <div class="card-body">
+                    <div class="stat-label">Total RMAs Tested</div>
+                    <div class="stat-value text-primary">{{ stats.total_units }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 mb-3">
+            <div class="card stat-card shadow h-100 border-start border-danger border-4">
+                <div class="card-body">
+                    <div class="stat-label">GPU Detection Failures</div>
+                    <div class="stat-value text-danger">{{ stats.total_failures.gpu_detection }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 mb-3">
+            <div class="card stat-card shadow h-100 border-start border-warning border-4">
+                <div class="card-body">
+                    <div class="stat-label">FD2 Test Failures</div>
+                    <div class="stat-value text-warning">{{ stats.total_failures.fd2_test }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 mb-3">
+            <div class="card stat-card shadow h-100 border-start border-success border-4">
+                <div class="card-body">
+                    <div class="stat-label">AGFHC Test Failures</div>
+                    <div class="stat-value text-success">{{ stats.total_failures.agfhc_test }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Secondary Cards -->
+    <div class="row mb-4">
+        <div class="col-6 col-md-4 mb-3">
+            <div class="card stat-card shadow h-100 border-start border-info border-4">
+                <div class="card-body">
+                    <div class="stat-label">DCGM Test Failures</div>
+                    <div class="stat-value text-info">{{ stats.total_failures.dcgm_test }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 mb-3">
+            <div class="card stat-card shadow h-100 border-start border-secondary border-4">
+                <div class="card-body">
+                    <div class="stat-label">DCGM R4 Failures</div>
+                    <div class="stat-value text-secondary">{{ stats.total_failures.dcgm_r4_test }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 mb-3">
+            <div class="card stat-card shadow h-100 border-start border-danger border-4">
+                <div class="card-body">
+                    <div class="stat-label">ECC Error Failures</div>
+                    <div class="stat-value text-danger">{{ stats.total_failures.ecc_error }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NVIDIA GPU Breakdown -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 fw-bold text-success section-divider section-nvidia">
+                <i class="fas fa-microchip me-1"></i>NVIDIA GPU Models
+            </h6>
+        </div>
+        <div class="card-body p-0">
+            {% if stats.gpu_breakdown %}
+            <div class="table-responsive">
+                <table class="table table-hover gpu-table mb-0" id="nvidiaTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:30px"></th>
+                            <th>GPU Model</th>
+                            <th class="text-center">Units</th>
+                            <th class="text-center">GPU Detect</th>
+                            <th class="text-center">ECC</th>
+                            <th class="text-center">DCGM</th>
+                            <th class="text-center">DCGM R4</th>
+                            <th class="text-center">FD2 Total</th>
+                            <th class="text-center">AGFHC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for gpu_model, data in stats.gpu_breakdown.items %}
+                        {% if not data.is_amd %}
+                        <tr class="nvidia-row" data-gpu="{{ gpu_model }}">
+                            <td class="text-center align-middle">
+                                {% if data.fd2_item_failures %}
+                                <span class="expand-btn text-muted" onclick="toggleFd2('{{ gpu_model|escapejs }}')" title="Expand FD2 details">
+                                    <i class="fas fa-chevron-right" id="icon-{{ gpu_model|slugify }}"></i>
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="align-middle fw-bold">{{ gpu_model }}</td>
+                            <td class="text-center align-middle">
+                                <span class="badge bg-secondary fail-badge">{{ data.count }}</span>
+                            </td>
+                            <td class="text-center align-middle">
+                                {% if data.failures.gpu_detection > 0 %}
+                                <span class="badge bg-danger fail-badge">{{ data.failures.gpu_detection }}</span>
+                                {% else %}
+                                <span class="badge bg-light text-dark fail-badge">0</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center align-middle">
+                                {% if data.failures.ecc_error > 0 %}
+                                <span class="badge bg-danger fail-badge">{{ data.failures.ecc_error }}</span>
+                                {% else %}
+                                <span class="badge bg-light text-dark fail-badge">0</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center align-middle">
+                                {% if data.failures.dcgm_test > 0 %}
+                                <span class="badge bg-danger fail-badge">{{ data.failures.dcgm_test }}</span>
+                                {% else %}
+                                <span class="badge bg-light text-dark fail-badge">0</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center align-middle">
+                                {% if data.failures.dcgm_r4_test > 0 %}
+                                <span class="badge bg-danger fail-badge">{{ data.failures.dcgm_r4_test }}</span>
+                                {% else %}
+                                <span class="badge bg-light text-dark fail-badge">0</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center align-middle">
+                                {% if data.failures.fd2_test > 0 %}
+                                <span class="badge bg-danger fail-badge">{{ data.failures.fd2_test }}</span>
+                                {% else %}
+                                <span class="badge bg-light text-dark fail-badge">0</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center align-middle">
+                                {% if data.failures.agfhc_test > 0 %}
+                                <span class="badge bg-danger fail-badge">{{ data.failures.agfhc_test }}</span>
+                                {% else %}
+                                <span class="badge bg-light text-dark fail-badge">0</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% if data.fd2_item_failures %}
+                        <tr class="fd2-detail-row" id="fd2-detail-{{ gpu_model|slugify }}" style="display:none;">
+                            <td></td>
+                            <td colspan="8">
+                                <div class="mb-1 small text-muted fw-semibold">
+                                    <i class="fas fa-list-ul me-1"></i>FD2 Individual Item Failures for {{ gpu_model }}
+                                </div>
+                                <div class="fd2-items-grid">
+                                    {% for item, count in data.fd2_item_failures.items %}
+                                    <div class="fd2-item-chip fd2-item-fail">
+                                        <i class="fas fa-times-circle" style="font-size:0.75rem"></i>
+                                        <span>{{ item }}</span>
+                                        <span class="badge bg-danger ms-1" style="font-size:0.7rem">{{ count }}</span>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info m-3">
+                <i class="fas fa-info-circle me-2"></i>No NVIDIA test data for this period. Scans run hourly automatically.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- AMD GPU Breakdown -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 fw-bold text-danger section-divider section-amd">
+                <i class="fas fa-microchip me-1"></i>AMD GPU Models (MI Series)
+                <small class="text-muted fw-normal ms-2">— GPU Detection &amp; AGFHC only</small>
+            </h6>
+        </div>
+        <div class="card-body p-0">
+            {% if stats.gpu_breakdown %}
+            <div class="table-responsive">
+                <table class="table table-hover gpu-table mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>GPU Model</th>
+                            <th class="text-center">Units</th>
+                            <th class="text-center">GPU Detection</th>
+                            <th class="text-center">AGFHC Test</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for gpu_model, data in stats.gpu_breakdown.items %}
+                        {% if data.is_amd %}
+                        <tr>
+                            <td class="align-middle fw-bold">{{ gpu_model }}</td>
+                            <td class="text-center align-middle">
+                                <span class="badge bg-secondary fail-badge">{{ data.count }}</span>
+                            </td>
+                            <td class="text-center align-middle">
+                                {% if data.failures.gpu_detection > 0 %}
+                                <span class="badge bg-danger fail-badge">{{ data.failures.gpu_detection }}</span>
+                                {% else %}
+                                <span class="badge bg-light text-dark fail-badge">0</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center align-middle">
+                                {% if data.failures.agfhc_test > 0 %}
+                                <span class="badge bg-danger fail-badge">{{ data.failures.agfhc_test }}</span>
+                                {% else %}
+                                <span class="badge bg-light text-dark fail-badge">0</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info m-3">
+                <i class="fas fa-info-circle me-2"></i>No AMD test data for this period. Scans run hourly automatically.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div><!-- /container-fluid -->
+
+<!-- Scan Status Toast -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+    <div id="scanToast" class="toast align-items-center text-white border-0" role="alert">
+        <div class="d-flex">
+            <div class="toast-body" id="scanToastBody">Scan started…</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ---- Period navigation ----
+function changePeriod(period) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('period', period);
+    ['week_offset','month_offset','year_offset','year','month'].forEach(k => url.searchParams.delete(k));
+    window.location.href = url.toString();
+}
+function navigateWeek(offset) {
+    const url = new URL(window.location.href);
+    const cur = parseInt(url.searchParams.get('week_offset') || '0');
+    url.searchParams.set('week_offset', cur + offset);
+    window.location.href = url.toString();
+}
+function navigateMonth(offset) {
+    const url = new URL(window.location.href);
+    const cur = parseInt(url.searchParams.get('month_offset') || '0');
+    url.searchParams.set('month_offset', cur + offset);
+    window.location.href = url.toString();
+}
+function navigateYear(offset) {
+    const url = new URL(window.location.href);
+    const cur = parseInt(url.searchParams.get('year_offset') || '0');
+    url.searchParams.set('year_offset', cur + offset);
+    window.location.href = url.toString();
+}
+
+// ---- FD2 expand/collapse ----
+function toggleFd2(gpuModel) {
+    const slug = gpuModel.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const row  = document.getElementById('fd2-detail-' + slug);
+    const icon = document.getElementById('icon-' + slug);
+    if (!row) return;
+    const expanded = row.style.display !== 'none';
+    row.style.display = expanded ? 'none' : 'table-row';
+    if (icon) {
+        icon.classList.toggle('fa-chevron-right', expanded);
+        icon.classList.toggle('fa-chevron-down', !expanded);
+    }
+}
+
+// ---- Trigger scan ----
+{% if perms.pxe.can_access_rma_pxe %}
+document.getElementById('scanBtn').addEventListener('click', function () {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Scanning…';
+
+    fetch("{% url 'rd1_statistics_scan' %}", {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(r => r.json())
+    .then(data => {
+        showToast(data.success ? 'success' : 'danger',
+                  data.success ? (data.message || 'Scan queued!') : ('Error: ' + data.error));
+        if (data.success) {
+            setTimeout(() => window.location.reload(), 3000);
+        }
+    })
+    .catch(err => showToast('danger', 'Request failed: ' + err))
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Trigger Scan';
+    });
+});
+{% endif %}
+
+function showToast(type, message) {
+    const toast = document.getElementById('scanToast');
+    const body  = document.getElementById('scanToastBody');
+    toast.classList.remove('bg-success', 'bg-danger', 'bg-warning');
+    toast.classList.add('bg-' + type);
+    body.textContent = message;
+    const bsToast = bootstrap.Toast.getOrCreateInstance(toast, {delay: 4000});
+    bsToast.show();
+}
+</script>
+{% endblock %}

@@ -72,6 +72,7 @@ from .views.rma_pcie_db import (
 )
 from .views.rma_dhcp_leases import rma_dhcp_leases, rma_dhcp_leases_refresh
 from .views.rma_statistics import rma_statistics, rma_statistics_api, trigger_scan
+from .views.rd1_statistics import rd1_statistics, rd1_statistics_api, rd1_trigger_scan
 from .views.firmware_inventory import (
     firmware_inventory_main,
     firmware_inventory_eco_list,
@@ -203,6 +204,11 @@ urlpatterns = [
     path('rma/statistics/', rma_statistics, name='rma_statistics'),
     path('api/rma/statistics/', rma_statistics_api, name='rma_statistics_api'),
     path('api/rma/statistics/scan/', trigger_scan, name='rma_statistics_scan'),
+
+    # RD1 Statistics URLs
+    path('rd1/statistics/', rd1_statistics, name='rd1_statistics'),
+    path('api/rd1/statistics/', rd1_statistics_api, name='rd1_statistics_api'),
+    path('api/rd1/statistics/scan/', rd1_trigger_scan, name='rd1_statistics_scan'),
     
     # Firmware Inventory URLs
     # IMPORTANT: More specific patterns must come BEFORE generic patterns

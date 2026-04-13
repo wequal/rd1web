@@ -103,6 +103,12 @@
             </a>
             {% endif %}
 
+            {% if perms.pxe.can_view_rd1_statistics %}
+            <a class="nav-link" href="{% url 'rd1_statistics' %}">
+                RD1 Statistic
+            </a>
+            {% endif %}
+
             {% if perms.pxe.can_access_firmware_inventory %}
             <a class="nav-link" href="{% url 'firmware_inventory' %}">
                 Firmware Inventory

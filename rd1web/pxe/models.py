@@ -20,6 +20,7 @@ class PxeEntry(models.Model):
             ('can_use_tools', 'Can use tools and utilities'),
             ('can_view_rma_logs', 'Can view RMA logs'),
             ('can_view_rma_statistics', 'Can view RMA statistics'),
+            ('can_view_rd1_statistics', 'Can view RD1 statistics'),
             # Admin-only permissions (require manual approval)
             ('can_access_rma_pxe', 'Can access RMA PXE management'),
             ('can_access_rma_general_test', 'Can access RMA General TEST'),
@@ -464,6 +465,103 @@ class RmaTestStatistic(models.Model):
         if not self.test_results:
             return 0
         return sum(1 for result in self.test_results.values() if result == 'fail')
+
+
+class Rd1TestStatistic(models.Model):
+    """
+    RD1 Test Statistics model — strict fail counting and per-item FD2 tracking.
+    Unlike RmaTestStatistic, any fail occurrence marks the test as failed even if
+    a later run passed.  FD2 individual sub-test results are stored inside the
+    test_results JSON under the 'fd2_items' key.
+    """
+    base = models.CharField(
+        max_length=10,
+        default='main',
+        db_index=True,
+        help_text="Statistics base source: 'main' for RMA_BASE_DIR, 'gb' for RMA_GB_BASE_DIR",
+        verbose_name='Base',
+    )
+    directory_name = models.CharField(
+        max_length=255,
+        db_index=True,
+        help_text='RMA directory name (e.g., 1660224656070_XD250311087)',
+        verbose_name='Directory Name'
+    )
+    base_sn = models.CharField(
+        max_length=100,
+        help_text='Base serial number parsed from directory name',
+        verbose_name='Base SN'
+    )
+    rma_number = models.CharField(
+        max_length=100,
+        help_text='RMA number parsed from directory name',
+        verbose_name='RMA Number'
+    )
+    gpu_model = models.CharField(
+        max_length=100,
+        default='Unknown',
+        help_text='GPU model from sys_info.txt (e.g., H100, B200)',
+        verbose_name='GPU Model'
+    )
+    test_date = models.DateTimeField(
+        help_text='Directory modification time for time grouping',
+        verbose_name='Test Date',
+        db_index=True
+    )
+    test_results = models.JSONField(
+        default=dict,
+        help_text=(
+            'Strict test results: {gpu_detection, ecc_error, dcgm_test, dcgm_r4_test, '
+            'fd2_test, fd2_items: {item: pass/fail}, agfhc_test}'
+        ),
+        verbose_name='Test Results'
+    )
+    file_mtime = models.FloatField(
+        help_text='test_results.log file modification time for change detection',
+        verbose_name='File Mtime'
+    )
+    last_scanned = models.DateTimeField(
+        auto_now=True,
+        help_text='When this directory was last scanned',
+        verbose_name='Last Scanned'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-test_date']
+        verbose_name = 'RD1 Test Statistic'
+        verbose_name_plural = 'RD1 Test Statistics'
+        unique_together = [['base', 'directory_name', 'file_mtime']]
+        indexes = [
+            models.Index(fields=['test_date']),
+            models.Index(fields=['gpu_model']),
+            models.Index(fields=['test_date', 'gpu_model']),
+            models.Index(fields=['base', 'test_date']),
+            models.Index(fields=['base', 'gpu_model']),
+        ]
+
+    def __str__(self):
+        return f"RD1 Stats: {self.directory_name} ({self.gpu_model})"
+
+    def has_any_failure(self):
+        """Check if any top-level test failed"""
+        if not self.test_results:
+            return False
+        return any(
+            v == 'fail'
+            for k, v in self.test_results.items()
+            if k != 'fd2_items' and isinstance(v, str)
+        )
+
+    def get_failure_count(self):
+        """Count number of failed top-level tests"""
+        if not self.test_results:
+            return 0
+        return sum(
+            1 for k, v in self.test_results.items()
+            if k != 'fd2_items' and v == 'fail'
+        )
 
 
 class FirmwareFile(models.Model):

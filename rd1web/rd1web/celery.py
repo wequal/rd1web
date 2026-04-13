@@ -33,6 +33,10 @@ app.conf.beat_schedule = {
         'task': 'pxe.tasks.scan_rma_statistics',
         'schedule': 3600.0,  # Every 1 hour
     },
+    'scan-rd1-statistics-every-hour': {
+        'task': 'pxe.tasks.scan_rd1_statistics',
+        'schedule': 3600.0,  # Every 1 hour
+    },
 }
 
 # Celery configuration
