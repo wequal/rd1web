@@ -58,6 +58,7 @@ class UserActivity(models.Model):
         ('profile_view', 'Profile View'),
         ('admin_access', 'Admin Panel Access'),
         ('rma_pxe', 'RMA PXE Configuration'),
+        ('rma_permission', 'RMA Permission management'),
         ('rma_log_view', 'RMA Log View'),
         ('rma_file_view', 'RMA File View'),
         ('mac_ip_view', 'MAC-IP Scan View'),

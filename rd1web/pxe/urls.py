@@ -29,6 +29,7 @@ from .views.rma_pxe import (
     gb_bios_update_status,
 )
 from .views.rma_general_test import rma_general_test
+from .views.rma_permission import rma_permission
 from .views.rma_logs import (
     rma_log,
     rma_view_file,
@@ -124,6 +125,7 @@ urlpatterns = [
     path('remote-control/sol_terminal/', remote_sol_terminal, name='remote_sol_terminal'),
     
     # RMA Management URLs
+    path('rma/permission/', rma_permission, name='rma_permission'),
     path('rma/pxe/', rma_pxe, name='rma_pxe'),
     path('rma/general-test/', rma_general_test, name='rma_general_test'),
     path('rma/logs/', rma_log, name='rma_log'),

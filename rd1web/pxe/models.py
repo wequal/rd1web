@@ -27,6 +27,7 @@ class PxeEntry(models.Model):
             ('can_view_rma_general_logs', 'Can view RMA General logs'),
             ('can_access_rma_dhcp_leases', 'Can access RMA DHCP Leases'),
             ('can_access_firmware_inventory', 'Can access Firmware Inventory'),
+            ('can_manage_rma_permission', 'Can use RMA Permission page to assign RMA test access'),
         ]
 
     def __str__(self):

@@ -114,6 +114,12 @@
                 Firmware Inventory
             </a>
             {% endif %}
+
+            {% if perms.pxe.can_manage_rma_permission %}
+            <a class="nav-link" href="{% url 'rma_permission' %}">
+                RMA Permission
+            </a>
+            {% endif %}
             {% endif %}
 
         </div>

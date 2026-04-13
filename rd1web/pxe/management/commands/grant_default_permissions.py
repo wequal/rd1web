@@ -100,4 +100,5 @@ class Command(BaseCommand):
         self.stdout.write('')
         self.stdout.write('  Admin-Only Permissions (manual approval required):')
         self.stdout.write('    - can_access_rma_pxe (SXM GPU TEST)')
+        self.stdout.write('    - can_manage_rma_permission (RMA Permission page)')
         self.stdout.write('    - can_access_rma_testing_db (RMA Testing DB)')
