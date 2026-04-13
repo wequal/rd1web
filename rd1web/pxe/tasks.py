@@ -266,3 +266,32 @@ def scan_rma_statistics(self):
         # Retry up to 3 times with exponential backoff
         raise self.retry(exc=e, countdown=300)  # Retry after 5 minutes
 
+
+@shared_task(bind=True, ignore_result=True, max_retries=3)
+def scan_rd1_statistics(self):
+    """
+    Scan RMA directories and populate Rd1TestStatistic with strict fail logic.
+    Runs every hour via Celery Beat.
+    Only processes directories where test_results.log has changed.
+    """
+    try:
+        logger.info("Starting RD1 statistics scan...")
+
+        from .rd1_statistics import scan_all_rd1_directories
+
+        stats = scan_all_rd1_directories()
+
+        logger.info(
+            f"RD1 statistics scan completed: {stats['processed']} processed, "
+            f"{stats['skipped']} skipped, {stats['errors']} errors out of {stats['total']} total"
+        )
+
+        return {
+            'status': 'success',
+            'stats': stats,
+        }
+
+    except Exception as e:
+        logger.error(f"Error in RD1 statistics scan: {e}")
+        raise self.retry(exc=e, countdown=300)
+
