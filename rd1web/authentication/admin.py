@@ -16,6 +16,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Usernames omitted from admin User Activity statistics (daily/weekly/monthly charts).
+USER_ACTIVITY_STATS_EXCLUDED_USERNAMES = ('devin', 'test')
+
 class UserSessionInline(admin.TabularInline):
     model = UserSession
     extra = 0
@@ -142,20 +145,20 @@ class UserActivityAdmin(admin.ModelAdmin):
             month_start = today.replace(day=1)
             month_end = month_start.replace(day=calendar.monthrange(month_start.year, month_start.month)[1])
         
-        # Calculate statistics (exclude 'devin' user from statistics)
+        # Calculate statistics (exclude configured usernames from statistics)
         daily_stats = UserActivity.objects.filter(
             timestamp__date=today
-        ).exclude(user__username='devin').values('action').annotate(count=Count('id')).order_by('-count')
+        ).exclude(user__username__in=USER_ACTIVITY_STATS_EXCLUDED_USERNAMES).values('action').annotate(count=Count('id')).order_by('-count')
         
         weekly_stats = UserActivity.objects.filter(
             timestamp__date__gte=week_start,
             timestamp__date__lte=week_end
-        ).exclude(user__username='devin').values('action').annotate(count=Count('id')).order_by('-count')
+        ).exclude(user__username__in=USER_ACTIVITY_STATS_EXCLUDED_USERNAMES).values('action').annotate(count=Count('id')).order_by('-count')
         
         monthly_stats = UserActivity.objects.filter(
             timestamp__date__gte=month_start,
             timestamp__date__lte=month_end
-        ).exclude(user__username='devin').values('action').annotate(count=Count('id')).order_by('-count')
+        ).exclude(user__username__in=USER_ACTIVITY_STATS_EXCLUDED_USERNAMES).values('action').annotate(count=Count('id')).order_by('-count')
         
         # Convert QuerySets to lists for proper evaluation
         daily_stats_list = list(daily_stats)
@@ -167,20 +170,20 @@ class UserActivityAdmin(admin.ModelAdmin):
         weekly_total = sum(item['count'] for item in weekly_stats_list)
         monthly_total = sum(item['count'] for item in monthly_stats_list)
 
-        # User activity summary (exclude 'devin' user)
+        # User activity summary (exclude configured usernames)
         user_daily = UserActivity.objects.filter(
             timestamp__date=today
-        ).exclude(user__username='devin').values('user__username').annotate(count=Count('id')).order_by('-count')[:10]
+        ).exclude(user__username__in=USER_ACTIVITY_STATS_EXCLUDED_USERNAMES).values('user__username').annotate(count=Count('id')).order_by('-count')[:10]
         
         user_weekly = UserActivity.objects.filter(
             timestamp__date__gte=week_start,
             timestamp__date__lte=week_end
-        ).exclude(user__username='devin').values('user__username').annotate(count=Count('id')).order_by('-count')[:10]
+        ).exclude(user__username__in=USER_ACTIVITY_STATS_EXCLUDED_USERNAMES).values('user__username').annotate(count=Count('id')).order_by('-count')[:10]
         
         user_monthly = UserActivity.objects.filter(
             timestamp__date__gte=month_start,
             timestamp__date__lte=month_end
-        ).exclude(user__username='devin').values('user__username').annotate(count=Count('id')).order_by('-count')[:10]
+        ).exclude(user__username__in=USER_ACTIVITY_STATS_EXCLUDED_USERNAMES).values('user__username').annotate(count=Count('id')).order_by('-count')[:10]
         
         # Convert user QuerySets to lists for charts
         user_daily_list = list(user_daily)
