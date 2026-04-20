@@ -691,7 +691,7 @@ def normalize_rma_mac_to_colons_optional(value):
 _RMA_MAC_WIDGET_PATTERN = (
     '([0-9A-Fa-f]{12}|([0-9A-Fa-f]{2}[:-]?){5}[0-9A-Fa-f]{2})'
 )
-_RMA_MAC_PLACEHOLDER = '12 hex or xx:xx:xx:xx:xx:xx'
+_RMA_MAC_PLACEHOLDER = 'Accept with or without colons'
 
 
 class RmaGeneralForm(forms.Form):
