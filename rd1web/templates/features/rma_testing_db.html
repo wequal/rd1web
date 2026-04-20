@@ -357,11 +357,11 @@
                 <tbody id="tableBody">
                     {% for entry in entries %}
                     <tr>
-                        <td><span class="mac-address">{{ entry.bmc_mac }}</span></td>
+                        <td><span class="mac-address">{{ entry.bmc_mac|cut:":" }}</span></td>
                         <td>{{ entry.bmc_ip }}</td>
                         <td>{{ entry.bmc_password }}</td>
-                        <td><span class="mac-address">{{ entry.lan0_mac }}</span></td>
-                        <td><span class="mac-address">{{ entry.lan1_mac }}</span></td>
+                        <td><span class="mac-address">{{ entry.lan0_mac|cut:":" }}</span></td>
+                        <td><span class="mac-address">{{ entry.lan1_mac|cut:":" }}</span></td>
                         <td>{{ entry.golden_number }}</td>
                         {% if show_is_golden %}
                         <td>{% if entry.is_golden %}<i class="fas fa-check text-success"></i> Yes{% else %}<i class="fas fa-minus text-muted"></i> No{% endif %}</td>
@@ -425,7 +425,7 @@
                             <div class="mb-3">
                                 <label for="id_bmc_mac" class="form-label required-field">BMC MAC Address</label>
                                 {{ add_form.bmc_mac }}
-                                <div class="form-text">Format: xx:xx:xx:xx:xx:xx</div>
+                                <div class="form-text">12 hex characters or xx:xx:xx:xx:xx:xx (stored with colons)</div>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -455,14 +455,14 @@
                             <div class="mb-3">
                                 <label for="id_lan0_mac" class="form-label required-field">LAN0 MAC Address</label>
                                 {{ add_form.lan0_mac }}
-                                <div class="form-text">Format: xx:xx:xx:xx:xx:xx</div>
+                                <div class="form-text">12 hex characters or xx:xx:xx:xx:xx:xx (stored with colons)</div>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="id_lan1_mac" class="form-label {% if lan1_required %}required-field{% endif %}">LAN1 MAC Address</label>
                                 {{ add_form.lan1_mac }}
-                                <div class="form-text">Format: xx:xx:xx:xx:xx:xx</div>
+                                <div class="form-text">12 hex characters or xx:xx:xx:xx:xx:xx (stored with colons)</div>
                             </div>
                         </div>
                     </div>
@@ -519,7 +519,7 @@
                             <div class="mb-3">
                                 <label for="edit_bmc_mac" class="form-label required-field">BMC MAC Address</label>
                                 <input type="text" class="form-control" id="edit_bmc_mac" name="bmc_mac" required>
-                                <div class="form-text">Format: xx:xx:xx:xx:xx:xx</div>
+                                <div class="form-text">12 hex characters or xx:xx:xx:xx:xx:xx (stored with colons)</div>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -545,14 +545,14 @@
                             <div class="mb-3">
                                 <label for="edit_lan0_mac" class="form-label required-field">LAN0 MAC Address</label>
                                 <input type="text" class="form-control" id="edit_lan0_mac" name="lan0_mac" required>
-                                <div class="form-text">Format: xx:xx:xx:xx:xx:xx</div>
+                                <div class="form-text">12 hex characters or xx:xx:xx:xx:xx:xx (stored with colons)</div>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="edit_lan1_mac" class="form-label {% if lan1_required %}required-field{% endif %}">LAN1 MAC Address</label>
                                 <input type="text" class="form-control" id="edit_lan1_mac" name="lan1_mac" {% if lan1_required %}required{% endif %}>
-                                <div class="form-text">Format: xx:xx:xx:xx:xx:xx</div>
+                                <div class="form-text">12 hex characters or xx:xx:xx:xx:xx:xx (stored with colons)</div>
                             </div>
                         </div>
                     </div>
@@ -635,6 +635,10 @@ let canDelete = {% if can_delete %}true{% else %}false{% endif %};
 let canEditGolden = {% if can_edit_golden %}true{% else %}false{% endif %};
 const showIsGolden = {% if show_is_golden %}true{% else %}false{% endif %};
 const emptyTableMessage = "{{ empty_table_message|default:"No SXM DB entries found. Click Add New Entry to get started."|escapejs }}";
+
+function formatMacDisplay(m) {
+    return String(m || '').replace(/:/g, '').replace(/-/g, '');
+}
 
 $(document).ready(function() {
     console.log('{{ db_page_title|default:"SXM DB"|escapejs }}: Modern UI initialized');
@@ -813,11 +817,11 @@ function editEntry(entryId) {
             if (response.success) {
                 const entry = response.entry;
                 $('#edit_entry_id').val(entry.id);
-                $('#edit_bmc_mac').val(entry.bmc_mac);
+                $('#edit_bmc_mac').val(formatMacDisplay(entry.bmc_mac));
                 $('#edit_bmc_ip').val(entry.bmc_ip);
                 $('#edit_bmc_password').val(entry.bmc_password);
-                $('#edit_lan0_mac').val(entry.lan0_mac);
-                $('#edit_lan1_mac').val(entry.lan1_mac);
+                $('#edit_lan0_mac').val(formatMacDisplay(entry.lan0_mac));
+                $('#edit_lan1_mac').val(formatMacDisplay(entry.lan1_mac));
                 $('#edit_golden_number').val(entry.golden_number);
                 if (showIsGolden && $('#edit_is_golden').length) {
                     $('#edit_is_golden').prop('checked', !!entry.is_golden);
@@ -835,7 +839,7 @@ function editEntry(entryId) {
 
 function confirmDelete(entryId, bmcMac, bmcIp) {
     deleteEntryId = entryId;
-    $('#delete-bmc-mac').text(bmcMac);
+    $('#delete-bmc-mac').text(formatMacDisplay(bmcMac));
     $('#delete-bmc-ip').text(bmcIp);
     $('#deleteConfirmModal').modal('show');
 }
@@ -972,11 +976,11 @@ function updateTable(data) {
         const isGoldenCell = showIsGolden ? `<td>${entry.is_golden ? '<i class="fas fa-check text-success"></i> Yes' : '<i class="fas fa-minus text-muted"></i> No'}</td>` : '';
         const row = `
             <tr>
-                <td><span class="mac-address">${entry.bmc_mac}</span></td>
+                <td><span class="mac-address">${formatMacDisplay(entry.bmc_mac)}</span></td>
                 <td>${entry.bmc_ip}</td>
                 <td>${entry.bmc_password}</td>
-                <td><span class="mac-address">${entry.lan0_mac}</span></td>
-                <td><span class="mac-address">${entry.lan1_mac}</span></td>
+                <td><span class="mac-address">${formatMacDisplay(entry.lan0_mac)}</span></td>
+                <td><span class="mac-address">${formatMacDisplay(entry.lan1_mac)}</span></td>
                 <td>${entry.golden_number}</td>
                 ${isGoldenCell}
                 <td>
