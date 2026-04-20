@@ -651,6 +651,49 @@ class GbGpuForm(forms.Form):
         return notice
 
 
+def _mac_hex12_from_user_input(mac_input):
+    """Return 12 lowercase hex chars (no separators) or raise ValidationError."""
+    normalized = mac_input.strip().replace(':', '').replace('-', '').lower()
+    if len(normalized) != 12:
+        raise ValidationError(
+            f'Invalid MAC address length. Expected 12 characters, got {len(normalized)}. '
+            f'Example: ac1f6b356f19 or ac:1f:6b:35:6f:19'
+        )
+    if not all(c in '0123456789abcdef' for c in normalized):
+        raise ValidationError(
+            'Invalid MAC address format. Must contain only hexadecimal characters (0-9, a-f). '
+            'Example: ac1f6b356f19 or ac:1f:6b:35:6f:19'
+        )
+    return normalized
+
+
+def normalize_rma_mac_to_colons(value):
+    """Normalize user MAC input to aa:bb:cc:dd:ee:ff for RMA DB storage."""
+    raw = (value or '').strip()
+    if not raw:
+        raise ValidationError(
+            'Invalid MAC address length. Expected 12 characters, got 0. '
+            'Example: ac1f6b356f19 or ac:1f:6b:35:6f:19'
+        )
+    hex12 = _mac_hex12_from_user_input(raw)
+    return ':'.join(hex12[i : i + 2] for i in range(0, 12, 2))
+
+
+def normalize_rma_mac_to_colons_optional(value):
+    """Like normalize_rma_mac_to_colons but returns '' when input is empty."""
+    raw = (value or '').strip()
+    if not raw:
+        return ''
+    hex12 = _mac_hex12_from_user_input(raw)
+    return ':'.join(hex12[i : i + 2] for i in range(0, 12, 2))
+
+
+_RMA_MAC_WIDGET_PATTERN = (
+    '([0-9A-Fa-f]{12}|([0-9A-Fa-f]{2}[:-]?){5}[0-9A-Fa-f]{2})'
+)
+_RMA_MAC_PLACEHOLDER = '12 hex or xx:xx:xx:xx:xx:xx'
+
+
 class RmaGeneralForm(forms.Form):
     """Form for RMA General TEST - simplified version without golden number dependencies"""
     system_sn = forms.CharField(
@@ -699,24 +742,7 @@ class RmaGeneralForm(forms.Form):
         mac_input = self.cleaned_data.get('nic_mac', '')
         if not mac_input:
             return ''
-        
-        # Remove common separators and convert to lowercase
-        normalized = mac_input.strip().replace(':', '').replace('-', '').lower()
-        
-        # Validate format (12 hex characters)
-        if len(normalized) != 12:
-            raise ValidationError(
-                f"Invalid MAC address length. Expected 12 characters, got {len(normalized)}. "
-                f"Example: ac1f6b356f19 or ac:1f:6b:35:6f:19"
-            )
-        
-        if not all(c in '0123456789abcdef' for c in normalized):
-            raise ValidationError(
-                "Invalid MAC address format. Must contain only hexadecimal characters (0-9, a-f). "
-                "Example: ac1f6b356f19 or ac:1f:6b:35:6f:19"
-            )
-        
-        return normalized
+        return _mac_hex12_from_user_input(mac_input)
 
 
 class RmaTestingDbForm(forms.ModelForm):
@@ -728,8 +754,8 @@ class RmaTestingDbForm(forms.ModelForm):
         widgets = {
             'bmc_mac': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'xx:xx:xx:xx:xx:xx',
-                'pattern': '[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}'
+                'placeholder': _RMA_MAC_PLACEHOLDER,
+                'pattern': _RMA_MAC_WIDGET_PATTERN,
             }),
             'bmc_ip': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -741,13 +767,13 @@ class RmaTestingDbForm(forms.ModelForm):
             }),
             'lan0_mac': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'xx:xx:xx:xx:xx:xx',
-                'pattern': '[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}'
+                'placeholder': _RMA_MAC_PLACEHOLDER,
+                'pattern': _RMA_MAC_WIDGET_PATTERN,
             }),
             'lan1_mac': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'xx:xx:xx:xx:xx:xx',
-                'pattern': '[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}'
+                'placeholder': _RMA_MAC_PLACEHOLDER,
+                'pattern': _RMA_MAC_WIDGET_PATTERN,
             }),
             'golden_number': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -755,6 +781,15 @@ class RmaTestingDbForm(forms.ModelForm):
             }),
             'is_golden': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
+
+    def clean_bmc_mac(self):
+        return normalize_rma_mac_to_colons(self.cleaned_data.get('bmc_mac'))
+
+    def clean_lan0_mac(self):
+        return normalize_rma_mac_to_colons(self.cleaned_data.get('lan0_mac'))
+
+    def clean_lan1_mac(self):
+        return normalize_rma_mac_to_colons(self.cleaned_data.get('lan1_mac'))
 
 
 class RmaGbDbForm(forms.ModelForm):
@@ -766,8 +801,8 @@ class RmaGbDbForm(forms.ModelForm):
         widgets = {
             'bmc_mac': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'xx:xx:xx:xx:xx:xx',
-                'pattern': '[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}'
+                'placeholder': _RMA_MAC_PLACEHOLDER,
+                'pattern': _RMA_MAC_WIDGET_PATTERN,
             }),
             'bmc_ip': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -779,14 +814,20 @@ class RmaGbDbForm(forms.ModelForm):
             }),
             'lan0_mac': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'xx:xx:xx:xx:xx:xx',
-                'pattern': '[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}'
+                'placeholder': _RMA_MAC_PLACEHOLDER,
+                'pattern': _RMA_MAC_WIDGET_PATTERN,
             }),
             'golden_number': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'Enter Golden Number'
             }),
         }
+
+    def clean_bmc_mac(self):
+        return normalize_rma_mac_to_colons(self.cleaned_data.get('bmc_mac'))
+
+    def clean_lan0_mac(self):
+        return normalize_rma_mac_to_colons(self.cleaned_data.get('lan0_mac'))
 
 
 class RmaGbDbSearchForm(forms.Form):
@@ -836,8 +877,8 @@ class RmaPcieDbForm(forms.ModelForm):
         widgets = {
             'bmc_mac': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'xx:xx:xx:xx:xx:xx',
-                'pattern': '[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}'
+                'placeholder': _RMA_MAC_PLACEHOLDER,
+                'pattern': _RMA_MAC_WIDGET_PATTERN,
             }),
             'bmc_ip': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -849,19 +890,28 @@ class RmaPcieDbForm(forms.ModelForm):
             }),
             'lan0_mac': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'xx:xx:xx:xx:xx:xx',
-                'pattern': '[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}'
+                'placeholder': _RMA_MAC_PLACEHOLDER,
+                'pattern': _RMA_MAC_WIDGET_PATTERN,
             }),
             'lan1_mac': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'xx:xx:xx:xx:xx:xx (optional)',
-                'pattern': '[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}[:-]?[0-9A-Fa-f]{2}'
+                'placeholder': f'{_RMA_MAC_PLACEHOLDER} (optional)',
+                'pattern': _RMA_MAC_WIDGET_PATTERN,
             }),
             'golden_number': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'Enter Golden Number'
             }),
         }
+
+    def clean_bmc_mac(self):
+        return normalize_rma_mac_to_colons(self.cleaned_data.get('bmc_mac'))
+
+    def clean_lan0_mac(self):
+        return normalize_rma_mac_to_colons(self.cleaned_data.get('lan0_mac'))
+
+    def clean_lan1_mac(self):
+        return normalize_rma_mac_to_colons_optional(self.cleaned_data.get('lan1_mac'))
 
 
 class RmaPcieDbSearchForm(forms.Form):
