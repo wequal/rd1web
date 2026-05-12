@@ -2585,6 +2585,7 @@ def get_gpu_model_from_image(image_value):
     image_to_gpu_map = {
         'ubuntu2204-x86-rma': 'H100/200',
         'ubuntu2204-b200-rma': 'B200',
+        'ubuntu2204-b300-rma': 'B300',
         'ubuntu2204-gb200': 'GB200',
         'ubuntu2204-mi300x': 'MI300X',
         'ubuntu2204-mi325x': 'MI325X',

@@ -1829,8 +1829,8 @@
             const selectedImage = rmaImageSelect.value;
             const fwUpdateChecked = fwUpdateCheckbox.checked;
             
-            // Show ECO section only if fw_update is checked and image is H100/200 or B200
-            if (fwUpdateChecked && (selectedImage === 'ubuntu2204-x86-rma' || selectedImage === 'ubuntu2204-b200-rma')) {
+            // Show ECO section only if fw_update is checked and image is H100/200, B200, or B300
+            if (fwUpdateChecked && (selectedImage === 'ubuntu2204-x86-rma' || selectedImage === 'ubuntu2204-b200-rma' || selectedImage === 'ubuntu2204-b300-rma')) {
                 if (ecoNumberSection) {
                     ecoNumberSection.style.display = 'block';
                     // Load ECO numbers for the selected image type
@@ -2264,7 +2264,7 @@
             let tests = '';
             if (selectedImage === 'ubuntu2204-x86-rma') { // H100/200 or Ubuntu2204
                 tests = '<strong>Pre GPU test, DCGM and FD2</strong>';
-            } else if (selectedImage === 'ubuntu2204-b200-rma') { // B200
+            } else if (selectedImage === 'ubuntu2204-b200-rma' || selectedImage === 'ubuntu2204-b300-rma') { // B200/B300
                 tests = '<strong>Pre GPU Test and FD2</strong>';
             }
 

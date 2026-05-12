@@ -19,6 +19,7 @@ redis_client = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDIS_P
 ECO_BKC_FILE = {
     "ubuntu2204-x86-rma": None,  # H100/200 - uses firmware inventory system, not BKC files
     "ubuntu2204-b200-rma": None,  # B200 - uses firmware inventory system, not BKC files
+    "ubuntu2204-b300-rma": None,  # B300 - uses firmware inventory system, not BKC files
     "ubuntu2204-mi300x": '/srv/share/mi3xx/AMD_MI300X_01.25.03.12.76.pldm',
     "ubuntu2204-mi325x": '/srv/share/mi3xx/AMD_MI325X_01.25.03.03.76.pldm',
     "ubuntu2204-mi355x": '/srv/share/mi3xx/AMD_MI350_355H_01.25.11.02.76.pldm'
