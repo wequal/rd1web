@@ -727,6 +727,9 @@ def get_eco_numbers_api(request, image_type):
         elif image_type == 'ubuntu2204-b200-rma':
             # B200 images
             product_types = ['B200_AC', 'B200_LC']
+        elif image_type == 'ubuntu2204-b300-rma':
+            # B300 images
+            product_types = ['B300_AC', 'B300_LC']
         
         if not product_types:
             return JsonResponse({
