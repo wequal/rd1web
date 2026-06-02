@@ -452,13 +452,23 @@ $(document).ready(function() {
                     loadTableData(1);
                 } else {
                     showAlert('danger', response.message || 'Failed to add entry');
+                    if (response.errors) {
+                        displayFormErrors(response.errors, 'add');
+                    }
                 }
             },
             error: function(xhr) {
                 submitBtn.html(originalText).prop('disabled', false);
                 let errorMessage = 'An error occurred while adding the entry';
-                if (xhr.status === 403) errorMessage = 'Permission denied.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMessage = xhr.responseJSON.message;
+                } else if (xhr.status === 403) {
+                    errorMessage = 'Permission denied.';
+                }
                 showAlert('danger', errorMessage);
+                if (xhr.responseJSON && xhr.responseJSON.errors) {
+                    displayFormErrors(xhr.responseJSON.errors, 'add');
+                }
             }
         });
     });
@@ -484,11 +494,21 @@ $(document).ready(function() {
                     loadTableData(1);
                 } else {
                     showAlert('danger', response.message || 'Failed to update entry');
+                    if (response.errors) {
+                        displayFormErrors(response.errors, 'edit');
+                    }
                 }
             },
-            error: function() {
+            error: function(xhr) {
                 submitBtn.html(originalText).prop('disabled', false);
-                showAlert('danger', 'An error occurred while updating the entry');
+                let errorMessage = 'An error occurred while updating the entry';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMessage = xhr.responseJSON.message;
+                }
+                showAlert('danger', errorMessage);
+                if (xhr.responseJSON && xhr.responseJSON.errors) {
+                    displayFormErrors(xhr.responseJSON.errors, 'edit');
+                }
             }
         });
     });
@@ -653,6 +673,54 @@ function showAlert(type, message) {
                      '</div>');
     $('body').append(alertDiv);
     setTimeout(function() { alertDiv.alert('close'); }, 5000);
+}
+
+function getFieldErrorMessage(fieldErrors) {
+    if (!fieldErrors || !fieldErrors.length) {
+        return 'Invalid value';
+    }
+
+    const firstError = fieldErrors[0];
+    if (typeof firstError === 'string') {
+        return firstError;
+    }
+
+    return firstError.message || String(firstError);
+}
+
+function displayFormErrors(errors, formType) {
+    $('.is-invalid').removeClass('is-invalid');
+    $('.invalid-feedback').remove();
+    $('.form-error-summary').remove();
+
+    if (errors) {
+        const form = formType === 'add' ? $('#addEntryForm') : $('#editEntryForm');
+        const summaryErrors = [];
+
+        Object.keys(errors).forEach(function(field) {
+            const errorMessage = getFieldErrorMessage(errors[field]);
+
+            if (field === '__all__') {
+                summaryErrors.push(errorMessage);
+                return;
+            }
+
+            const input = formType === 'add' ? $('#id_' + field) : $('#' + formType + '_' + field);
+            if (input.length) {
+                input.addClass('is-invalid');
+                const errorDiv = $('<div class="invalid-feedback"></div>').text(errorMessage);
+                input.after(errorDiv);
+            } else {
+                summaryErrors.push(errorMessage);
+            }
+        });
+
+        if (summaryErrors.length && form.length) {
+            const summaryDiv = $('<div class="alert alert-danger form-error-summary mb-3"></div>')
+                .text(summaryErrors.join(' '));
+            form.find('.modal-body').prepend(summaryDiv);
+        }
+    }
 }
 
 function updateStats() {

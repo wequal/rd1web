@@ -697,6 +697,9 @@ $(document).ready(function() {
                 }
                 
                 showAlert('danger', errorMessage);
+                if (xhr.responseJSON && xhr.responseJSON.errors) {
+                    displayFormErrors(xhr.responseJSON.errors, 'add');
+                }
             }
         });
     });
@@ -751,6 +754,9 @@ $(document).ready(function() {
                 }
                 
                 showAlert('danger', errorMessage);
+                if (xhr.responseJSON && xhr.responseJSON.errors) {
+                    displayFormErrors(xhr.responseJSON.errors, 'edit');
+                }
             }
         });
     });
@@ -1015,18 +1021,52 @@ function showAlert(type, message) {
     }, 5000);
 }
 
+function getFieldErrorMessage(fieldErrors) {
+    if (!fieldErrors || !fieldErrors.length) {
+        return 'Invalid value';
+    }
+
+    const firstError = fieldErrors[0];
+    if (typeof firstError === 'string') {
+        return firstError;
+    }
+
+    return firstError.message || String(firstError);
+}
+
 function displayFormErrors(errors, formType) {
     // Clear previous errors
-    $('.form-control').removeClass('is-invalid');
+    $('.is-invalid').removeClass('is-invalid');
     $('.invalid-feedback').remove();
+    $('.form-error-summary').remove();
     
     if (errors) {
+        const form = formType === 'add' ? $('#addEntryForm') : $('#editEntryForm');
+        const summaryErrors = [];
+
         Object.keys(errors).forEach(function(field) {
-            const input = $('#' + formType + '_' + field);
-            input.addClass('is-invalid');
-            const errorDiv = $('<div class="invalid-feedback">' + errors[field][0] + '</div>');
-            input.after(errorDiv);
+            const errorMessage = getFieldErrorMessage(errors[field]);
+
+            if (field === '__all__') {
+                summaryErrors.push(errorMessage);
+                return;
+            }
+
+            const input = formType === 'add' ? $('#id_' + field) : $('#' + formType + '_' + field);
+            if (input.length) {
+                input.addClass('is-invalid');
+                const errorDiv = $('<div class="invalid-feedback"></div>').text(errorMessage);
+                input.after(errorDiv);
+            } else {
+                summaryErrors.push(errorMessage);
+            }
         });
+
+        if (summaryErrors.length && form.length) {
+            const summaryDiv = $('<div class="alert alert-danger form-error-summary mb-3"></div>')
+                .text(summaryErrors.join(' '));
+            form.find('.modal-body').prepend(summaryDiv);
+        }
     }
 }
 

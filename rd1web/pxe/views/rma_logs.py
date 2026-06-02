@@ -2590,6 +2590,7 @@ def get_gpu_model_from_image(image_value):
         'ubuntu2204-mi300x': 'MI300X',
         'ubuntu2204-mi325x': 'MI325X',
         'ubuntu2204-mi355x': 'MI355X',
+        'ubuntu24-mi355x-eco2': 'MI355X-ECO2',
     }
     return image_to_gpu_map.get(image_value)
 

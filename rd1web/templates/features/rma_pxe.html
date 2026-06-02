@@ -347,20 +347,14 @@
                             </label>
                             <div class="row">
                                 <div class="col-md-4">
-                                    <div class="form-check">
-                                        {{ form.check }}
-                                        <label class="form-check-label" for="{{ form.check.id_for_label }}">
-                                            <i class="fas fa-search me-1"></i>{{ form.check.label }}
-                                        </label>
-                                    </div>
+                                    <button type="submit" name="rma-check" value="on" class="btn btn-outline-info w-100">
+                                        <i class="fas fa-search me-1"></i>{{ form.check.label }}
+                                    </button>
                                 </div>
                                 <div class="col-md-4">
-                                    <div class="form-check">
-                                        {{ form.remove }}
-                                        <label class="form-check-label" for="{{ form.remove.id_for_label }}">
-                                            <i class="fas fa-trash me-1"></i>{{ form.remove.label }}
-                                        </label>
-                                    </div>
+                                    <button type="submit" name="rma-remove" value="on" class="btn btn-outline-danger w-100">
+                                        <i class="fas fa-trash me-1"></i>{{ form.remove.label }}
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -1221,7 +1215,8 @@
             const isMi3xxImage = (
                 selectedImage === 'ubuntu2204-mi300x' ||
                 selectedImage === 'ubuntu2204-mi325x' ||
-                selectedImage === 'ubuntu2204-mi355x'
+                selectedImage === 'ubuntu2204-mi355x' ||
+                selectedImage === 'ubuntu24-mi355x-eco2'
             );
             const isGh200 = selectedText === 'GH200';
 
