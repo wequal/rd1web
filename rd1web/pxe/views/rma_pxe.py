@@ -19,7 +19,7 @@ import subprocess
 import time
 from datetime import datetime
 import requests
-from .remote_fw_update import run_remote_fw_update_task
+from .remote_fw_update import run_remote_fw_update_task, logClear, BMC_USER, BMC_PASSWORD
 
 logger = logging.getLogger(__name__)
 
@@ -1055,7 +1055,14 @@ def rma_pxe(request):
                         'result':result, 'golden_entries': golden_entries, 'can_force_unlink': can_force_unlink
                     })
             
-                if remove:
+                if 'logs_clear' in tests:
+                    threading.Thread(
+                        target=logClear,
+                        args=(bmc_ip, BMC_USER, BMC_PASSWORD),
+                        daemon=True,
+                    ).start()
+                    result['logs_clear'] = [f'AMD UBB Clear Logs started for {bmc_ip}. Logs are being cleared in the background.']
+                elif remove:
                     result['actions'] = remove_pxe_entries_and_boot_files(macs)
                 elif check:
                     result['check']=[]

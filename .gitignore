@@ -21,4 +21,4 @@ celery_beat.log
 celery_beat.pid
 celery_worker.log
 celery_worker.pid
-celerybeat-schedule.db
+celerybeat-schedule.dbvenv/

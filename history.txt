@@ -15,7 +15,7 @@
     /home/devin/ubuntu24-mi355x-eco2/image.sh
     /home/devin/ubuntu24-mi355x-eco2/image.py
 
-    /srv/share/scripts/helper/mi3xx_data.py         //update the MI355 firmware version and path mapping
+    /srv/share/scripts/helper/mi3xx_data.py         //update the MI355 firmware version and path mapping, ECO_NUMBER.
     /srv/share/mi3xx/AMD_MI350_355H_01.26.00.02.76.pldm          //used after iPXE os boot.
     /srv/share/mi3xx/AGFHC_v1.30.0_Ubuntu_24.04_ECCN_3D991.zip   //used during ipxe OS build    
     /srv/share/scripts/helper/helper.py
